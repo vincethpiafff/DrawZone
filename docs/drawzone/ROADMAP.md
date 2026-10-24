@@ -8,7 +8,7 @@ et elle donne un outil utilisable tôt.
 |---|---|---|---|
 | **v0.0** | Outils installés, fork, compilation de Chataigne, réception d'Augmenta Fusion | Chataigne compilé en local qui reçoit Augmenta | ✅ 23/10/2026 |
 | **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ⏭️ prochaine |
-| **v0.2** | Zones multiples (rectangle, cercle, polygone) et métriques | Valeurs utilisables dans la State Machine et le Router | |
+| **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | |
 | **v0.4** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
 | **v0.5** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | |
@@ -28,8 +28,8 @@ et elle donne un outil utilisable tôt.
 - Un paramètre booléen « présence », visible dans l'Inspector et utilisable
   dans la State Machine.
 
-À décider au démarrage : réutiliser le récepteur OSC de Chataigne (module
-OSC existant) ou recevoir directement dans le module Spatial.
+Décidé au démarrage (D12, 24/10/2026) : le module Spatial hérite du module
+OSC de Chataigne.
 
 ### v0.2 — métriques de zone
 
@@ -38,6 +38,21 @@ OSC existant) ou recevoir directement dans le module Spatial.
   temps de présence, taux d'occupation (%), position normalisée dans la zone,
   distance au centre.
 - Anti-clignotement en bord de zone (hystérésis, délai).
+
+**Slots de joueurs** (idée de Vincent, 24/10/2026), après les métriques :
+
+- L'utilisateur fixe un nombre de slots (ex. 2 : « Joueur 1 », « Joueur 2 »),
+  quel que soit le nombre de personnes détectées, pour tout le module ou
+  pour une zone.
+- Une règle d'attribution choisie dans une liste. Première règle : la
+  première personne détectée prend et conserve le slot 1, la deuxième le
+  slot 2. Autres règles possibles plus tard : la plus proche d'un point,
+  la première entrée dans une zone.
+- Une règle de libération : à la sortie, ou après un délai de grâce (une
+  personne perdue puis retrouvée sous un nouvel id, près du même endroit,
+  récupère son slot). Lié au point dur « instabilité des identifiants ».
+- Chaque slot expose ses paramètres (occupé, position, id Augmenta),
+  utilisables dans la State Machine comme les métriques de zone.
 
 ### v0.3 — éditeur 2D
 

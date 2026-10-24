@@ -94,3 +94,25 @@ notre Projucer, est commité (commit `3d851a53`, tag `v0.0.0`).
 **Raison** : un clone du dépôt compile directement sur la machine de Vincent.
 En cas de conflit avec upstream : reprendre la version de Ben puis
 réenregistrer dans le Projucer.
+
+## D12 — Le module Spatial hérite du module OSC de Chataigne (24/10/2026)
+
+**Décision** : `SpatialModule` hérite de `OSCModule`, comme les modules
+PowerPoint ou Millumin de Ben, et ne réécrit que `processMessageInternal()`.
+Le module ne fait que **traduire** les messages Augmenta en une liste de
+personnes (id, position en mètres) rangée dans une classe à nous,
+indépendante d'OSC. Les zones ne lisent que cette liste.
+
+**Raisons** :
+- On récupère sans rien écrire : port d'entrée réglable, choix de la carte
+  réseau, journal des messages, témoin d'activité, scripts, et les sorties
+  OSC dont on aura besoin en v0.6.
+- Code de Ben déjà testé, et notre code reste court.
+- La liste de personnes indépendante d'OSC prépare la v0.4 : PSN et TUIO
+  seront d'autres traducteurs vers la même liste.
+
+**Conséquence** : deux modules ne peuvent pas écouter le même port. Pour
+tester, désactiver ou supprimer le module OSC générique sur le port 12000.
+
+**Alternative écartée** : un port ouvert directement par le module Spatial.
+Plus de code, code de Ben en double, aucun gain en v0.1.

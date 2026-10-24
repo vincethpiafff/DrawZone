@@ -78,11 +78,18 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 ## ⬜ À faire ensuite
 
 - ⬜ **v0.1 — squelette du module Spatial** :
-  - ⬜ lire la spécification Augmenta (`docs/drawzone/notes/augmenta-protocol.md`
-    et le wiki Augmenta) ;
-  - ⬜ étudier les modules PosiStageNet et OSC de Chataigne (unity build,
-    `ModuleFactory.cpp`, `ModuleIncludes*.cpp`) ;
-  - ⬜ décider : récepteur OSC de Chataigne réutilisé, ou port propre au module ;
+  - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
+    wiki renvoie vers docs.augmenta.tech, où la page du protocole est
+    introuvable. → Ordre des arguments repris du code du plugin officiel
+    Unreal, recoupé avec nos observations. Résultat dans
+    `docs/drawzone/notes/augmenta-protocol.md` ;
+  - ✅ étudier les modules OSC et PosiStageNet de Chataigne (24/10). Les modules
+    « Software » (PowerPoint, Millumin…) héritent de `OSCModule` et ne
+    réécrivent que `processMessageInternal()`. Enregistrement = 3 lignes
+    (`ModuleIncludes.h`, `ModuleIncludes2.cpp`, `ModuleFactory.cpp`) ;
+  - ✅ décider : récepteur OSC de Chataigne réutilisé → **D12** validée par
+    Vincent le 24/10 (`SpatialModule` hérite de `OSCModule`, liste de
+    personnes indépendante d'OSC) ;
   - ⬜ créer la branche `feature/spatial-module` ;
   - ⬜ module vide enregistré dans Chataigne, compilé et visible dans le menu ;
   - ⬜ réception Augmenta et liste des personnes ;
@@ -94,7 +101,11 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 Idées notées en route, datées, à trier plus tard (roadmap, décision ou abandon).
 Format : `- 💡 JJ/MM/AAAA — idée (contexte, qui l'a proposée)`.
 
-- *(aucune pour l'instant)*
+- 💡 24/10/2026 — **Slots de joueurs** (Vincent) : nombre fixe d'ids
+  (« Joueur 1 », « Joueur 2 ») quel que soit le nombre de personnes
+  détectées, avec une règle d'attribution (ex. la première personne détectée
+  prend et garde le slot 1). → Intégrée à la roadmap en **v0.2**, après les
+  métriques de zone.
 
 ## Rappels
 
