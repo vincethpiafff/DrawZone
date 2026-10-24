@@ -45,6 +45,10 @@ Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
   testée par Vincent dans Chataigne avec Augmenta Fusion.
 - Rôles : Claude écrit le code, compile, corrige. Vincent définit le
   comportement attendu, teste avec du vrai tracking, valide.
+- **Traçabilité : `TODO.md`** (racine du dépôt). Le lire en début de séance.
+  Le mettre à jour après chaque étape : réussites (✅), échecs (❌) avec leur
+  cause et leur correction, étape en cours (⏭️), à faire (⬜), idées (💡).
+  Les échecs sont notés aussi, pas seulement les succès.
 - Pas de commit ni de push sans l'accord de Vincent.
 
 ## 3. Arborescence locale (Windows uniquement pour l'instant)

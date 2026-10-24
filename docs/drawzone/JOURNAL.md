@@ -5,6 +5,21 @@ rencontrés, où on s'est arrêté. Ajouter les séances les plus récentes en h
 
 ---
 
+## 24/10/2026 — Première session dans VS Code avec Claude Code
+
+- Lecture de `CLAUDE.md`, `JOURNAL.md`, `ROADMAP.md` et `TODO.md`, résumé du
+  projet validé par Vincent.
+- Petit raté : `TODO.md` n'a pas été trouvé à la première lecture, car il a été
+  ajouté au dépôt pendant la séance. Relu ensuite.
+- `TODO.md` devient le **document de traçabilité** du projet (réussites,
+  échecs et corrections, idées). Section « Idées » ajoutée, règle ajoutée
+  dans `CLAUDE.md`.
+- `D:\DRAWZONE\DrawZone_old` : déjà supprimé.
+- Reste à faire : vérifier que les GitHub Actions sont désactivées sur le
+  fork, puis démarrer la v0.1.
+
+---
+
 ## 23/10/2026 — Conception et v0.0 (dans claude.ai, avant VS Code)
 
 ### Conception
