@@ -121,6 +121,20 @@ code dans `Source/Module/modules/spatial/`.
   Une branche `main` (stable DrawZone) sera créée à la première version stable.
 - Remotes : `origin` = notre fork ; `upstream` = Chataigne de Ben en
   **lecture seule** (son URL de push vaut `NE_PAS_PUSHER`). Ne jamais changer ça.
+  Même blocage sur les 6 sous-modules (`Modules/juce_*`) et sur
+  `D:\DRAWZONE\JUCE`, dont `origin` est un dépôt de Ben. Ce réglage est local :
+  à refaire après un nouveau clone
+  (`git submodule foreach "git remote set-url --push origin NE_PAS_PUSHER"`).
+- **Ne pas déranger Ben** (le fork est public et relié au sien) :
+  - ne jamais ouvrir de Pull Request vers `benkuper/Chataigne`. Sur un fork,
+    GitHub propose ce dépôt par défaut : pour une PR interne, vérifier que
+    « base repository » vaut `vincethpiafff/DrawZone`. Ne pas utiliser
+    « Contribute → Open pull request » ;
+  - ne jamais écrire `@benkuper` ni `benkuper/<dépôt>#<n°>` dans un commit,
+    un ticket ou une PR (cela le notifie ou ajoute un lien chez lui) ;
+  - les GitHub Actions restent désactivées sur le fork (Settings → Actions →
+    General → « Disable actions ») ;
+  - « Sync fork » sur `master` est sans risque : il récupère, il n'envoie rien.
 - Commits au format Conventional Commits, en anglais :
   `feat(spatial): ...`, `fix(...)`, `docs(...)`, `chore(build): ...`.
 - Versions SemVer propres à DrawZone avec tags annotés (`v0.1.0`…), et

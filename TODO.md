@@ -64,12 +64,16 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 | 2.9 | Ouverture dans VS Code + première session Claude Code (24/10) | ❌ puis ✅ | Première lecture : `TODO.md` introuvable, car le fichier a été ajouté au dépôt pendant la séance. → Relu ensuite, résumé du projet validé. |
 | 2.10 | Rôle de `TODO.md` défini | ✅ | Document de traçabilité du projet : réussites, échecs et corrections, idées. Mentionné dans `CLAUDE.md` (section 2). Section « Idées » ajoutée. |
 | 2.11 | Ménage : suppression de `D:\DRAWZONE\DrawZone_old` | ✅ | Constaté le 24/10 : le dossier n'existe plus. |
+| 2.12 | Dossier de captures d'écran pour Claude Code | ❌ puis ✅ | Créé d'abord dans le dépôt (`docs/drawzone/screenshots/`) : malentendu. → Supprimé et recréé hors du dépôt : `D:\DRAWZONE\screenshots\`, donc rien à ignorer côté Git. |
+| 2.13 | Vocabulaire | ✅ | « le repo » = `D:\DRAWZONE` ; « le dossier DrawZone » = `D:\DRAWZONE\DrawZone` (dépôt Git). |
+| 2.14 | Vérifier que la CI de Ben est désactivée sur le fork | ❌ puis ✅ | Capture du 24/10 : la CI est **active**. Le push `419bf011` a déclenché `build.yml` (#1, « Queued »). Ce workflow se lance à chaque push (`on: [push]`) sur 4 machines GitHub (Windows, macOS, 2× Linux) et utilise les secrets de Ben (absents chez nous). → Actions désactivées par Vincent (Settings → Actions → General). Annulation du run #1 : erreur GitHub « Cannot cancel a check suite that is completed » alors que le run est affiché « In progress ». Sans conséquence : le run échouera seul (secrets absents), rien n'est envoyé chez Ben. |
+| 2.15 | Audit « ne pas déranger Ben » (local) | ✅ | `upstream` en push `NE_PAS_PUSHER` ✅ ; `core.autocrlf=false` partout ✅ ; seul workflow : `build.yml` ✅. Point faible : les 6 sous-modules et `D:\DRAWZONE\JUCE` ont encore l'URL de push de Ben (un push serait refusé, mais autant le bloquer). |
+| 2.16 | Push bloqué sur les 6 sous-modules et sur JUCE | ✅ | `git remote set-url --push origin NE_PAS_PUSHER`. Test : un push à blanc échoue bien (« 'NE_PAS_PUSHER' does not appear to be a git repository »). La récupération (fetch) depuis Ben fonctionne toujours. Réglage local, à refaire après un nouveau clone. |
+| 2.17 | Règles « ne pas déranger Ben » dans `CLAUDE.md` (section 5) | ✅ | Pas de PR vers Ben, pas de mention `@benkuper` ni de lien vers ses tickets, Actions désactivées, « Sync fork » sans risque. |
 
 ## ⏭️ En cours
 
-- ⬜ Vérifier https://github.com/vincethpiafff/DrawZone/actions : la CI de Ben
-  doit être désactivée sur le fork (sinon Settings → Actions → General →
-  Disable actions).
+- *(rien en cours : Phase 2 terminée, prochaine étape la v0.1)*
 
 ## ⬜ À faire ensuite
 
