@@ -90,6 +90,14 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	r.removeFromTop(8);
 
+	//Top view above the table, the table keeps at least a few rows
+	const int minTableHeight = lineHeight * 5;
+	if (r.getHeight() > minTableHeight + 80)
+	{
+		paintTopView(g, r.removeFromTop(jmax(80, (int)(r.getHeight() * .6f))));
+		r.removeFromTop(8);
+	}
+
 	//Table
 	const StringArray headers = { "id", "x norm", "y norm", "x (m)", "y (m)", "age (s)", "speed" };
 	const int numColumns = headers.size();
@@ -135,5 +143,72 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.5f));
 		g.drawText("Nobody tracked", r.removeFromTop(lineHeight), Justification::centredLeft);
+	}
+}
+
+void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
+{
+	Point<float> size = snapshot.sceneSize;
+	if (size.x <= 0 || size.y <= 0)
+	{
+		g.setColour(TEXT_COLOR.withAlpha(.5f));
+		g.drawFittedText("Waiting for scene size (/scene)", r, Justification::centred, 1);
+		return;
+	}
+
+	//room for the meter labels on the top and left edges
+	const int labelSize = 16;
+	Rectangle<float> area = r.withTrimmedTop(labelSize).withTrimmedLeft(labelSize * 2).reduced(2).toFloat();
+
+	//keep the scene proportions, origin top left like Augmenta
+	float scale = jmin(area.getWidth() / size.x, area.getHeight() / size.y);
+	Rectangle<float> scene(area.getX(), area.getY(), size.x * scale, size.y * scale);
+
+	g.setColour(BG_COLOR.darker(.3f));
+	g.fillRect(scene);
+
+	//1 m grid, labels thinned out when the meters get too small on screen
+	int labelStep = 1;
+	while (labelStep * scale < 24) labelStep *= 2;
+
+	g.setFont(Font(11.0f));
+	for (int i = 0; i <= (int)size.x; i++)
+	{
+		float x = scene.getX() + i * scale;
+		g.setColour(NORMAL_COLOR.withAlpha(.35f));
+		g.drawVerticalLine((int)x, scene.getY(), scene.getBottom());
+		if (i % labelStep == 0)
+		{
+			g.setColour(TEXT_COLOR.withAlpha(.6f));
+			g.drawText(String(i), Rectangle<float>(x - 15, scene.getY() - labelSize, 30, (float)labelSize), Justification::centred);
+		}
+	}
+
+	for (int i = 0; i <= (int)size.y; i++)
+	{
+		float y = scene.getY() + i * scale;
+		g.setColour(NORMAL_COLOR.withAlpha(.35f));
+		g.drawHorizontalLine((int)y, scene.getX(), scene.getRight());
+		if (i % labelStep == 0)
+		{
+			g.setColour(TEXT_COLOR.withAlpha(.6f));
+			g.drawText(String(i), Rectangle<float>(scene.getX() - labelSize * 2, y - 8, (float)labelSize * 2 - 4, 16), Justification::centredRight);
+		}
+	}
+
+	g.setColour(NORMAL_COLOR);
+	g.drawRect(scene, 1);
+
+	//People
+	const float radius = 6;
+	g.setFont(Font(12.0f, Font::bold));
+	for (auto& p : snapshot.persons)
+	{
+		Point<float> pos(scene.getX() + p.position.x * scene.getWidth(), scene.getY() + p.position.y * scene.getHeight());
+		Colour c = Colour::fromHSV((p.id * .13f) - (int)(p.id * .13f), .7f, 1, 1);
+
+		g.setColour(c);
+		g.fillEllipse(Rectangle<float>(radius * 2, radius * 2).withCentre(pos));
+		g.drawText(String(p.id), Rectangle<float>(pos.x + radius + 2, pos.y - 8, 40, 16), Justification::centredLeft);
 	}
 }

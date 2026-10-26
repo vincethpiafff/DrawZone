@@ -34,6 +34,7 @@ public:
 
 private:
 	SpatialModule* getSpatialModule();
+	void paintTopView(Graphics& g, Rectangle<int> r);
 
 	//copied on each refresh, so painting never touches the network data
 	bool hasModule = false;
