@@ -120,6 +120,8 @@ void MainContentComponent::init()
 
 	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Preview Video", &VideoPreviewPanel::create));
 	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Composition Video", &CompositionVideoPanel::create));
+	// DrawZone: Tracking Monitor panel
+	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Tracking Monitor", &TrackingMonitorPanel::create));
 
 	OrganicMainContentComponent::init();
 

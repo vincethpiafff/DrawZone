@@ -536,6 +536,12 @@
     <Filter Include="Chataigne\Source\Module\modules\posistagenet">
       <UniqueIdentifier>{8315CC6E-A442-E46E-6881-E59DA25239A7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Chataigne\Source\Module\modules\spatial\ui">
+      <UniqueIdentifier>{6B88DF83-E71E-294B-92A7-3AFCDD5ABA85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Chataigne\Source\Module\modules\spatial">
+      <UniqueIdentifier>{16FEF8B9-460F-F07A-E97F-89C429D03CEA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Chataigne\Source\Module\modules\buttplug\commands">
       <UniqueIdentifier>{E7F34692-148B-5A64-4F32-1B552EEA13B9}</UniqueIdentifier>
     </Filter>
@@ -2121,6 +2127,15 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.cpp">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\buttplug\ButtplugModule.cpp">
       <Filter>Chataigne\Source\Module\modules\buttplug</Filter>
@@ -5261,6 +5276,15 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h">
       <Filter>Chataigne\Source\Module\modules\buttplug</Filter>

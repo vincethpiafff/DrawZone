@@ -214,6 +214,9 @@
 #include "modules/posistagenet/PosiStageNetModule.h"
 #include "modules/posistagenet/commands/PosiStageNetCommand.h"
 
+// DrawZone: Spatial module
+#include "modules/spatial/SpatialModule.h"
+
 #include "ui/ModuleChooserUI.h"
 #include "ui/ModuleUI.h"
 #include "ui/ModuleManagerUI.h"

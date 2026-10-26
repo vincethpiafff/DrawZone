@@ -1433,6 +1433,20 @@
             <FILE id="O19KOs" name="PosiStageNetModule.h" compile="0" resource="0"
                   file="Source/Module/modules/posistagenet/PosiStageNetModule.h"/>
           </GROUP>
+          <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F501}" name="spatial">
+            <FILE id="dzSpCp" name="SpatialModule.cpp" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialModule.cpp"/>
+            <FILE id="dzSpHd" name="SpatialModule.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialModule.h"/>
+            <FILE id="dzTdCp" name="TrackingData.cpp" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/TrackingData.cpp"/>
+            <FILE id="dzTdHd" name="TrackingData.h" compile="0" resource="0" file="Source/Module/modules/spatial/TrackingData.h"/>
+            <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F502}" name="ui">
+              <FILE id="dzTmCp" name="TrackingMonitorPanel.cpp" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.cpp"/>
+              <FILE id="dzTmHd" name="TrackingMonitorPanel.h" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.h"/>
+            </GROUP>
+          </GROUP>
           <GROUP id="buttplugModule" name="buttplug">
             <FILE id="buttplugCpp" name="ButtplugModule.cpp" compile="0" resource="0"
                   file="Source/Module/modules/buttplug/ButtplugModule.cpp"/>
