@@ -90,8 +90,144 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
   - ✅ décider : récepteur OSC de Chataigne réutilisé → **D12** validée par
     Vincent le 24/10 (`SpatialModule` hérite de `OSCModule`, liste de
     personnes indépendante d'OSC) ;
-  - ⬜ créer la branche `feature/spatial-module` ;
-  - ⬜ module vide enregistré dans Chataigne, compilé et visible dans le menu ;
+  - ✅ créer la branche `feature/spatial-module` (24/10, depuis `develop`) ;
+  - ⏭️ module vide enregistré dans Chataigne, compilé et visible dans le menu :
+    - ✅ `Source/Module/modules/spatial/SpatialModule.h/.cpp` (hérite de
+      `OSCModule`, port d'entrée 12000, sortie 9000) ;
+    - ✅ 3 points d'accroche `// DrawZone:` : `ModuleIncludes.h`,
+      `ModuleIncludes3.cpp`, `ModuleFactory.cpp` (catégorie « DrawZone ») ;
+    - ❌ puis ✅ ajout au `.jucer` : un `sed` de Git Bash a converti tout le
+      fichier en LF (≈4000 lignes modifiées). → Fichier restauré
+      (`git checkout`), insertion refaite avec l'outil d'édition : 6 lignes.
+      Leçon : ne jamais modifier le `.jucer` (CRLF) avec `sed` ;
+    - ❌ puis ✅ Projucer `--resave` : lancé directement, il rend la main avant
+      d'avoir fini (rien régénéré). → `Start-Process -Wait` : 8 exports
+      régénérés, uniquement des ajouts de nos 2 fichiers (77 lignes) ;
+    - ✅ compilation `build_dev.bat` : 0 erreur, 1 avertissement du code de Ben
+      (C4101), 2 min 26 ;
+    - ⬜ test par Vincent : module visible dans le menu, réception OSC ;
+  - ⏭️ **workflow de test « Claude lance Chataigne et lit les logs »** (24/10) :
+    - ✅ étape 1 — couper tout envoi vers les serveurs de Ben. Trouvé dans le
+      code : vérification des mises à jour, envoi des rapports de plantage
+      (« Auto send crash log » activé par défaut), statistiques d'usage Matomo
+      (au démarrage, à l'arrêt, au plantage, toutes les 5 min), conversion en
+      ligne des anciens fichiers `.noisette` (le fichier entier est envoyé).
+      → Bloc `// DrawZone:` de 8 lignes dans `Source/Main.cpp`, après les
+      lignes de Ben (sans les modifier) : adresses vidées. Les simples
+      lectures (page d'accueil, liste des modules communautaires, aide) sont
+      gardées. ❌ puis ✅ : `Main.cpp` mélange CRLF et LF ; l'outil d'édition
+      avait tout converti en CRLF → fichier restauré, insertion à l'octet près
+      avec `perl`. Compilation : 0 erreur, 0 avertissement ;
+    - ✅ étape 2 — Claude lance Chataigne en arrière-plan (console captée,
+      notification si arrêt ou plantage). Vincent a coché Preferences →
+      Save / Load → « Save logs » → fichier créé :
+      `%APPDATA%\Chataigne\log_<date>_<heure>.txt` (un par lancement ; les
+      messages d'avant la case cochée n'y sont pas) ;
+    - ⏭️ étape 2 bis — **brancher Claude Code sur le serveur MCP de Chataigne**
+      (travail de Ben déjà compilé dans notre build : `Source/MCP/`,
+      `Modules/juce_organicui/mcp/`, doc `Tools/mcp/CLIENTS.md`). Règle :
+      Claude en **lecture seule** (profil Inspect), Vincent fait toutes les
+      actions en utilisateur.
+      - ✅ Preferences → MCP : client « Claude Code », Access = Inspect,
+        Advanced execution décoché, Enabled coché. Serveur à l'écoute sur
+        `127.0.0.1:42002` (vérifié) ;
+      - ✅ test `curl` sans jeton : HTTP 401 « Authentication required »
+        (le serveur répond et exige bien un jeton) ;
+      - ❌ jeton dans la variable utilisateur `CHATAIGNE_MCP_TOKEN` :
+        1er essai, variable absente du registre (lieu d'exécution de `setx`
+        inconnu) ; 2e essai, la variable contenait le texte d'exemple de la
+        consigne `<colle le jeton ici>` (consigne ambiguë de Claude) ;
+        3e essai, longueur 0. Un jeton valide fait **64 caractères**.
+      - 26/10 : on abandonne `setx`, nouvelle méthode : **Claude lit le
+        presse-papier** (`Get-Clipboard`), donc plus d'erreur de
+        copier-coller. Séance interrompue (redémarrage du PC) avant la copie ;
+      - ✅ 26/10 : jeton lu dans le presse-papier (64 caractères, jamais
+        affiché), enregistré dans la variable utilisateur
+        `CHATAIGNE_MCP_TOKEN` et dans `D:\DRAWZONE\.secrets\chataigne_mcp_token.txt`
+        (hors dépôt) ;
+      - ❌ puis ✅ test HTTP : `initialize` → 200 (Chataigne 1.10.5b6), mais
+        `tools/list` → 404. Cause : chaque requête doit renvoyer l'en-tête
+        `Mcp-Session-Id` donné par `initialize` (règle du protocole MCP).
+        → Avec l'en-tête : 20 outils listés, `chataigne_diagnostics` renvoie
+        les logs et `"readOnly": true` (profil Inspect confirmé) ;
+      - ✅ `D:\DRAWZONE\.mcp.json` créé (modèle de `Tools/mcp/CLIENTS.md`,
+        le jeton n'y est pas écrit : `${CHATAIGNE_MCP_TOKEN}`) ;
+      - ⏭️ Vincent relance Claude Code depuis `D:\DRAWZONE`
+        (`claude --continue`), approuve le serveur « chataigne », vérifie
+        avec `/mcp`. Chataigne doit être lancé avant ;
+      - ❌ 26/10 : Claude Code relancé depuis `D:\DRAWZONE`, serveur
+        « chataigne » reconnu, mais connexion refusée (`ECONNREFUSED`).
+        Cause : Chataigne n'était pas lancé (aucun processus, port 42002
+        fermé). → Lancer Chataigne, puis `/mcp` → reconnecter « chataigne » ;
+      - ✅ 26/10 : Claude lance Chataigne en arrière-plan ; port 42002 ouvert
+        au bout de 25 s (le serveur répond) ;
+      - ✅ 26/10 : Vincent `/mcp` → Reconnect. Outils `mcp__chataigne__*`
+        disponibles dans Claude Code ; `chataigne_project` lit la session
+        (vide, non enregistrée) et `chataigne_diagnostics` les logs, avec
+        `"readOnly": true`. **Étape 2 bis terminée.** Règle : Claude n'appelle
+        que les outils de lecture (project, diagnostics, inspect, browse,
+        observe…) ;
+    - ✅ 26/10 étape 3 — vérifié par Claude via MCP (lecture seule) :
+      module « Spatial » présent (`/modules/spatial`, catégorie DrawZone),
+      il reçoit Fusion sur 12000 (~50 messages/s : `/object/update`,
+      `/object/update/extra`, `/scene`, `/fusion`) ; 1 personne (id 1,
+      x≈0.60, y≈0.34, immobile), scène 8 × 4,5 m. Aucune alerte.
+      « Values » vide : normal, l'OSCModule de base ne crée pas de valeurs
+      (c'est le module OSC générique qui a « Auto Add ») → à faire à
+      l'étape suivante. « Log Incoming » activé = logs très chargés ;
+  - ⏭️ 26/10 **fenêtre « Tracking Monitor »** (demande de Vincent, avant la
+    suite) : voir en temps réel, sans log qui défile, les personnes reçues
+    (id, coordonnées…) par le système d'entrée. Plan proposé, en attente
+    de validation :
+    - ✅ brique A — décoder Augmenta dans le module Spatial et tenir une
+      liste de personnes **indépendante du protocole** (PSN/TUIO plus tard
+      rempliront la même liste). Plan validé par Vincent (colonnes OK,
+      brique C OK) :
+      - ✅ code : `TrackingData.h/.cpp` (liste verrouillée, écrite par le
+        fil réseau, lue par l'interface), `SpatialModule` décode `/scene`,
+        `/object/enter|update|leave`, retire une personne sans nouvelles
+        depuis 1 s, valeur « Person Count » dans Values ;
+      - ✅ `.jucer` (+3 lignes, CRLF via `perl`) puis Projucer `--resave` :
+        uniquement des ajouts ;
+      - ❌ puis ✅ compilation : `build_dev.bat` ne se lance pas depuis le
+        terminal de Claude (« not recognized », guillemets cmd imbriqués)
+        → MSBuild appelé directement depuis PowerShell, mêmes options.
+        Compilation 0 erreur (seul C4101 de Ben) ; ❌ édition de liens
+        LNK1104 : `Chataigne.exe` verrouillé car Chataigne est ouvert ;
+      - ✅ Chataigne fermé → édition de liens OK (exe du 26/10 19:55),
+        Chataigne relancé en arrière-plan par Claude ;
+      - ✅ test 1 : module recréé, `/mcp` Reconnect ; via MCP,
+        `/modules/spatial/values/personCount` = 1 (lecture seule) avec la
+        personne simulée de Fusion ;
+      - ✅ test 2 (Vincent) : ajout / retrait de personnes simulées dans
+        Fusion, « Person Count » suit ;
+      - ✅ décision de Vincent : **source muette (> 1 s sans message) → la
+        liste se vide**. Avant, le nettoyage ne tournait qu'à la réception
+        de `/scene`, donc les personnes restaient si Fusion s'arrêtait.
+        → `Timer` de 200 ms dans `SpatialModule` + `removeAllIfSilent()`.
+        Compilation 0 erreur ; édition de liens en attente (Chataigne ouvert) ;
+      - ✅ édition de liens OK (exe du 26/10 20:10), Chataigne relancé ;
+      - ✅ test 3 (Vincent) : Fusion coupé → « Person Count » repasse à 0,
+        Fusion relancé → le compte remonte. **Brique A validée.**
+        Vincent préfère tester tout de suite plutôt que grouper avec la
+        brique B : **étape par étape, pas d'écritures groupées** ;
+    - ✅ brique B — panneau « Tracking Monitor » (menu des fenêtres de
+      Chataigne) : en-tête source / état / messages/s / scène, puis tableau
+      id, x, y (normalisé et mètres), âge, vitesse, rafraîchi ~10 fois/s ;
+      - ✅ code : `spatial/ui/TrackingMonitorPanel.h/.cpp` (premier module
+        Spatial trouvé, copie de la liste 10 fois/s puis dessin) ; includes
+        dans nos fichiers `SpatialModule.h/.cpp` ; `Source/MainComponent.cpp`
+        +2 lignes `// DrawZone:` (perl, fins de ligne conservées) ;
+      - ❌ puis ✅ `FontOptions` (API JUCE 8) n'existe pas dans notre JUCE 7
+        → `Font(taille)` comme dans le code de Ben (corrigé avant compilation) ;
+      - ✅ `.jucer` (+6 lignes, sous-groupe `ui`) + Projucer : uniquement
+        des ajouts ; compilation 0 erreur, liens en attente (Chataigne ouvert) ;
+      - ✅ liens OK (exe du 26/10 20:19), Chataigne relancé ;
+      - ✅ test (Vincent) : menu Windows → « Tracking Monitor » : en-tête,
+        tableau qui suit Fusion, « Silent source » + liste vide quand Fusion
+        est coupé. **Brique B validée.**
+    - ⏭️ brique C — petite vue de dessus avec les points (validée par
+      Vincent le 26/10) ;
   - ⬜ réception Augmenta et liste des personnes ;
   - ⬜ une zone rectangle + booléen « présence » ;
   - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.

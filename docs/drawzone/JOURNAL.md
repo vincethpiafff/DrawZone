@@ -5,6 +5,30 @@ rencontrés, où on s'est arrêté. Ajouter les séances les plus récentes en h
 
 ---
 
+## 26/10/2026 — MCP branché, réception Augmenta et Tracking Monitor
+
+- MCP : jeton lu dans le presse-papier (après 3 échecs avec `setx`),
+  `.mcp.json` dans `D:\DRAWZONE` (hors dépôt, jeton non écrit). Claude Code
+  relié à Chataigne en **lecture seule** (profil Inspect, `"readOnly": true`).
+  Raté : 1re connexion refusée car Chataigne n'était pas lancé.
+- Module Spatial vide testé avec Fusion : il reçoit ~50 messages/s.
+- Demande de Vincent : une fenêtre de monitoring plutôt que des logs qui
+  défilent. Plan en 3 briques validé :
+  - **A** : décodage Augmenta (`/scene`, `/object/enter|update|leave`) dans
+    une liste de personnes indépendante du protocole (`TrackingData`),
+    valeur « Person Count », liste vidée quand la source est muette
+    (> 1 s, choix de Vincent). Validée ;
+  - **B** : panneau « Tracking Monitor » (menu Windows), en-tête d'état et
+    tableau rafraîchis 10 fois/s. Validé ;
+  - **C** : vue de dessus — prochaine étape.
+- Ratés : `build_dev.bat` ne se lance pas depuis le terminal de Claude
+  (MSBuild appelé directement), `FontOptions` (JUCE 8) absent de notre
+  JUCE 7. Tous notés dans `TODO.md`.
+- Règle confirmée par Vincent : une brique = un cycle compilation → test,
+  jamais deux changements testés ensemble.
+
+---
+
 ## 24/10/2026 — Première session dans VS Code avec Claude Code
 
 - Lecture de `CLAUDE.md`, `JOURNAL.md`, `ROADMAP.md` et `TODO.md`, résumé du
@@ -15,8 +39,29 @@ rencontrés, où on s'est arrêté. Ajouter les séances les plus récentes en h
   échecs et corrections, idées). Section « Idées » ajoutée, règle ajoutée
   dans `CLAUDE.md`.
 - `D:\DRAWZONE\DrawZone_old` : déjà supprimé.
-- Reste à faire : vérifier que les GitHub Actions sont désactivées sur le
-  fork, puis démarrer la v0.1.
+- GitHub Actions : la CI de Ben tournait encore (run déclenché par notre
+  push) → désactivée par Vincent. Push bloqué (`NE_PAS_PUSHER`) sur les
+  sous-modules et JUCE. Règles « ne pas déranger Ben » dans `CLAUDE.md`.
+- Vocabulaire : « le repo » = `D:\DRAWZONE` ; captures dans
+  `D:\DRAWZONE\screenshots\` (hors Git).
+- v0.1 démarrée :
+  - protocole Augmenta v2 documenté (ordre des arguments pris dans le
+    plugin officiel Unreal) ; décision **D12** : `SpatialModule` hérite de
+    `OSCModule` ; idée « slots de joueurs » placée en v0.2 ;
+  - branche `feature/spatial-module` : module Spatial vide (catégorie
+    « DrawZone »), enregistré, `.jucer` réenregistré, compilé (0 erreur) ;
+  - découverte : notre build envoyait des données aux serveurs de Ben
+    (mises à jour, rapports de plantage, statistiques Matomo, conversion
+    de fichiers) → bloc `// DrawZone:` dans `Source/Main.cpp`, compilé.
+- Workflow de test : Claude lance Chataigne et lit les logs (fichier
+  « Save logs » OK). Branchement MCP sur le serveur de Ben en cours :
+  serveur OK, **jeton pas encore enregistré** (voir `TODO.md`).
+- Ratés : `sed` qui convertit les fins de ligne du `.jucer`, outil
+  d'édition qui uniformise `Main.cpp`, Projucer `--resave` qui rend la main
+  trop tôt, consigne `setx` ambiguë. Tous notés dans `TODO.md`.
+- Arrêt de séance : rien de la v0.1 n'est committé (branche
+  `feature/spatial-module`, modifications locales). Reprise : jeton MCP,
+  puis test du module Spatial vide.
 
 ---
 
