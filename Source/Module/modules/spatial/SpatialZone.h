@@ -22,6 +22,11 @@ public:
 	SpatialZone(var params = var());
 	~SpatialZone();
 
+	//bounds used until the tracking system sends its scene size
+	static constexpr float maxMeters = 1000;
+
+	void setSceneSize(Point<float> sceneSize);
+
 	Point2DParameter* center;	// meters
 	Point2DParameter* size;		// meters
 

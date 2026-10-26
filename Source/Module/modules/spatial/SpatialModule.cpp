@@ -84,9 +84,14 @@ void SpatialModule::processAugmentaPerson(const OSCMessage& msg)
 
 void SpatialModule::updateZones()
 {
-	if (zoneManager.items.isEmpty()) return;
-
 	TrackingData::Snapshot s = trackingData.getSnapshot();
+
+	if (s.sceneSize != zonesSceneSize)
+	{
+		zonesSceneSize = s.sceneSize;
+		for (auto& z : zoneManager.items) z->setSceneSize(zonesSceneSize);
+	}
+
 	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons, s.sceneSize);
 }
 
@@ -99,11 +104,20 @@ void SpatialModule::timerCallback()
 void SpatialModule::itemAdded(SpatialZone* zone)
 {
 	zonesValuesCC.addChildControllableContainer(&zone->zoneValues);
+	zone->setSceneSize(zonesSceneSize);
+
+	//a new zone starts at the center of the scene
+	bool isLoading = isCurrentlyLoadingData || zoneManager.isCurrentlyLoadingData;
+	if (!isLoading && zonesSceneSize.x > 0 && zonesSceneSize.y > 0) zone->center->setPoint(zonesSceneSize / 2);
 }
 
 void SpatialModule::itemsAdded(Array<SpatialZone*> zones)
 {
-	for (auto& z : zones) zonesValuesCC.addChildControllableContainer(&z->zoneValues);
+	for (auto& z : zones)
+	{
+		zonesValuesCC.addChildControllableContainer(&z->zoneValues);
+		z->setSceneSize(zonesSceneSize);
+	}
 }
 
 void SpatialModule::itemRemoved(SpatialZone* zone)

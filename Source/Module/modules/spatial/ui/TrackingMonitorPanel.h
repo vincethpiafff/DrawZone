@@ -42,5 +42,15 @@ private:
 	int localPort = 0;
 	TrackingData::Snapshot snapshot;
 
+	struct ZoneView
+	{
+		String name;
+		Rectangle<float> bounds;	// meters
+		Colour color;
+		bool enabled = true;
+		bool presence = false;
+	};
+	Array<ZoneView> zones;
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingMonitorPanel)
 };

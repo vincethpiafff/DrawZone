@@ -39,6 +39,7 @@ public:
 
 	BaseManager<SpatialZone> zoneManager;
 	ControllableContainer zonesValuesCC;
+	Point<float> zonesSceneSize;	//scene size last applied to the zone bounds
 
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);

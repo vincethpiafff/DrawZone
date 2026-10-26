@@ -243,6 +243,10 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
         bas** (noté dans `augmenta-protocol.md`). **Brique C validée.**
       - ✅ commits locaux `5dccf7c6` feat(spatial) (vue de dessus) et
         `3f6be380` docs (rien poussé) ;
+  - 💡→⬜ 26/10 demande de Vincent : **éditer les zones à la souris dans le
+    Tracking Monitor** (glisser une zone = déplacer, 4 poignées aux angles
+    = redimensionner). C'est le cœur de la v0.3 (« éditeur 2D ») de la
+    roadmap ; proposé comme brique Z3 juste après Z2 ;
   - ⬜ réception Augmenta et liste des personnes ;
   - ⏭️ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
     attente de validation (modèle existant chez Ben : `FFTAnalyzerManager`
@@ -263,9 +267,45 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       - ✅ test sauvegarde / réouverture (Vincent) : la zone revient
         (`D:\DRAWZONE\ChataigneProject\TEST_ZONES.noisette`, nouveau
         dossier de Vincent pour les sessions de test, hors Git).
-        **Brique Z1 validée.**
-    - ⬜ brique Z2 — zones dessinées dans la vue de dessus du Tracking
-      Monitor (remplie quand présence) ;
+        **Brique Z1 validée.** Commit local `264f2b48` (rien poussé) ;
+    - ✅ brique Z2 — zones dessinées dans la vue de dessus du Tracking
+      Monitor (remplie quand présence) :
+      - ✅ code : chaque zone a une couleur (« Color » de l'élément,
+        aléatoire à la création) ; le panneau copie les zones 10 fois/s et
+        les dessine sous les personnes (contour + nom, remplie si
+        présence, grisée si désactivée). Compilation 0 erreur, liens OK
+        (exe du 26/10 20:58), Chataigne relancé ;
+      - ❌ test Vincent : **plantage** en changeant la taille de la zone.
+        Lu par MCP : crash dans `paintTopView` → `drawText` ; taille de la
+        zone = **22 369 624 m** (glisser sur le champ fait exploser la
+        valeur, car j'avais mis une borne quasi infinie `INT32_MAX`) →
+        rectangle de >1 milliard de pixels, le moteur de dessin de JUCE
+        plante. Correction : bornes finies (centre ±1000 m, taille
+        0–1000 m, `SpatialZone::maxMeters`) + zone découpée à la scène
+        avant dessin ;
+      - ❌ compilation : C1041, `Chataigne.pdb` verrouillé : Chataigne est
+        encore ouvert dans son gestionnaire de crash (il lit le .pdb pour
+        la pile d'appels) → fermer Chataigne puis recompiler ;
+      - ✅ demande de Vincent : **les bornes d'une zone suivent la scène
+        reçue** (Fusion 8 × 4,5 m → centre 0–8 / 0–4,5, taille ≤ 8 × 4,5).
+        `SpatialZone::setSceneSize()`, appliqué quand `/scene` change de
+        taille et à la création ; 1000 m tant que la scène n'est pas reçue ;
+        une nouvelle zone démarre au centre de la scène. Effet de bord :
+        si la scène rétrécit, les zones trop grandes sont recadrées ;
+      - ❌ puis ✅ recompilation : MSBuild répond « à jour » sans rien
+        recompiler (exe resté à 20:58) — la compilation ratée par C1041
+        a faussé son suivi. → `.obj` du projet supprimés, recompilation
+        complète en 3 min 26 (seuls avertissements : ceux de Ben, C4101 et
+        C4206). Exe du 26/10 21:10, Chataigne relancé ;
+      - ✅ test (Vincent) : plus de plantage, bornes = scène, zone dessinée
+        et remplie, nouvelle zone au centre ;
+      - ❌ éditeur graphique 2D de « Center » (Inspector) : y vers le haut,
+        alors que la scène a y vers le bas (Screenshot_4). → option de
+        Chataigne `extendedEditorInvertY` activée par défaut sur Center
+        (= « Invert Y » du clic droit). Compilation 0 erreur, liens OK
+        (exe du 26/10 21:17), Chataigne relancé ;
+      - ✅ test Vincent : Invert Y OK. **Brique Z2 validée.**
+      - ⬜ test Vincent ;
   - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.
 
 ## 💡 Idées
@@ -285,6 +325,13 @@ Format : `- 💡 JJ/MM/AAAA — idée (contexte, qui l'a proposée)`.
   vitesse, défilement du tableau, colonnes au choix (hauteur, orientation…),
   personne survolée ↔ ligne du tableau. À faire « dans un temps plus
   lointain », pas en v0.1.
+- 💡 26/10/2026 — **Vue 2D des zones envoyée en Spout / NDI** (Vincent) :
+  sortie vidéo de la vue de dessus (zones + personnes), récupérable dans
+  Smode, TouchDesigner, etc., pour voir les zones dans l'espace de
+  projection. Déjà présent dans notre base : module `NDIOutModule`
+  (`Source/Module/modules/video/`) et module `juce_sharedtexture`
+  (Spout, `Modules/`). À étudier : rendu hors écran de la vue, résolution
+  et calage sur la scène (1 px = x cm), fond transparent ou non.
 
 ## Rappels
 

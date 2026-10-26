@@ -13,20 +13,37 @@ SpatialZone::SpatialZone(var params) :
 	zoneValues("Zone 1")
 {
 	center = addPoint2DParameter("Center", "Center of the zone, in meters from the top left corner of the scene");
-	center->setPoint(4, 2.25f);
+	center->setDefaultPoint(4, 2.25f);
+	center->extendedEditorInvertY = true; //2D editor : y goes down, like the scene (origin top left)
 
 	size = addPoint2DParameter("Size", "Width and height of the zone, in meters");
-	size->setBounds(0, 0, INT32_MAX, INT32_MAX);
-	size->setPoint(2, 2);
+	size->setDefaultPoint(2, 2);
+
+	setSceneSize(Point<float>());
 
 	presence = zoneValues.addBoolParameter("Presence", "Is at least one person in this zone ?", false);
 	presence->setControllableFeedbackOnly(true);
 	personCount = zoneValues.addIntParameter("Person Count", "Number of people in this zone", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
+
+	//color used to draw the zone in the Tracking Monitor
+	Random r;
+	setHasCustomColor(true);
+	itemColor->setDefaultValue(Colour::fromHSV(r.nextFloat(), .7f, 1, 1));
 }
 
 SpatialZone::~SpatialZone()
 {
+}
+
+//the zone must stay inside the scene sent by the tracking system
+//(finite bounds also stop the Inspector drag from jumping to millions of meters)
+void SpatialZone::setSceneSize(Point<float> sceneSize)
+{
+	if (sceneSize.x <= 0 || sceneSize.y <= 0) sceneSize = Point<float>(maxMeters, maxMeters); //scene not received yet
+
+	center->setBounds(0, 0, sceneSize.x, sceneSize.y);
+	size->setBounds(0, 0, sceneSize.x, sceneSize.y);
 }
 
 bool SpatialZone::contains(Point<float> positionMeters) const

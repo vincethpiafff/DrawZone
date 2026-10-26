@@ -38,10 +38,24 @@ void TrackingMonitorPanel::timerCallback()
 		moduleName = sm->niceName;
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
+
+		zones.clearQuick();
+		for (auto& z : sm->zoneManager.items)
+		{
+			ZoneView zv;
+			zv.name = z->niceName;
+			Point<float> size = z->size->getPoint();
+			zv.bounds = Rectangle<float>(size.x, size.y).withCentre(z->center->getPoint());
+			zv.color = z->itemColor->getColor();
+			zv.enabled = z->enabled->boolValue();
+			zv.presence = z->presence->boolValue();
+			zones.add(zv);
+		}
 	}
 	else
 	{
 		snapshot = TrackingData::Snapshot();
+		zones.clear();
 	}
 
 	repaint();
@@ -198,6 +212,28 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 
 	g.setColour(NORMAL_COLOR);
 	g.drawRect(scene, 1);
+
+	//Zones, under the people, filled when someone is inside
+	g.setFont(Font(11.0f));
+	for (auto& z : zones)
+	{
+		Rectangle<float> zr(scene.getX() + z.bounds.getX() * scale, scene.getY() + z.bounds.getY() * scale, z.bounds.getWidth() * scale, z.bounds.getHeight() * scale);
+
+		//only draw the part inside the scene : huge coordinates crash the renderer
+		zr = zr.getIntersection(scene.expanded(2));
+		if (zr.isEmpty()) continue;
+
+		Colour c = z.enabled ? z.color : NORMAL_COLOR;
+
+		if (z.presence)
+		{
+			g.setColour(c.withAlpha(.35f));
+			g.fillRect(zr);
+		}
+		g.setColour(c.withAlpha(z.enabled ? 1 : .5f));
+		g.drawRect(zr, z.presence ? 2.0f : 1.0f);
+		g.drawText(z.name, zr.reduced(3).withHeight(14), Justification::topLeft);
+	}
 
 	//People
 	const float radius = 6;
