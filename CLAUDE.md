@@ -33,7 +33,9 @@ Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 ## 2. Comment travailler avec Vincent
 
 - **Répondre en français.** Le code, les noms de fichiers, les commits et les
-  commentaires dans le code sont en anglais.
+  commentaires dans le code sont en anglais. **Tout ce qui est visible dans
+  Chataigne** (noms de modules, paramètres, valeurs, panneaux, menus,
+  messages de log) est aussi **en anglais** (règle de Vincent, 26/10/2026).
 - Vincent n'est pas développeur C++. Il lit le code et comprend la logique
   (il pratique Python). Expliquer ce qu'on fait et pourquoi, simplement.
 - **Étape par étape.** Une étape à la fois, attendre sa validation avant la

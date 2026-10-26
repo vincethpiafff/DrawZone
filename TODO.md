@@ -243,10 +243,29 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
         bas** (noté dans `augmenta-protocol.md`). **Brique C validée.**
       - ✅ commits locaux `5dccf7c6` feat(spatial) (vue de dessus) et
         `3f6be380` docs (rien poussé) ;
-  - 💡→⬜ 26/10 demande de Vincent : **éditer les zones à la souris dans le
-    Tracking Monitor** (glisser une zone = déplacer, 4 poignées aux angles
-    = redimensionner). C'est le cœur de la v0.3 (« éditeur 2D ») de la
-    roadmap ; proposé comme brique Z3 juste après Z2 ;
+  - ✅ 26/10 brique Z3 (demande de Vincent) : **éditer les zones à la
+    souris dans le Tracking Monitor** (glisser = déplacer, 4 poignées aux
+    angles = redimensionner ; clic droit Duplicate / Delete / Hide, ajoutés
+    en cours par Vincent). C'est le cœur de la v0.3 (« éditeur 2D ») :
+    - ✅ code : test de clic (poignées puis intérieur, zone du dessus en
+      premier), curseurs, poignées sur la zone survolée, un seul pas
+      d'annulation par glissement (Ctrl+Z), zone sélectionnée dans
+      l'Inspector au clic ; « Hide » = nouveau paramètre « Hidden » (la
+      zone détecte toujours), « Show hidden zones » au clic droit dans le
+      vide ; une zone dupliquée n'est plus recentrée ;
+    - ✅ règle de Vincent ajoutée à `CLAUDE.md` : tout ce qui est visible
+      dans Chataigne est en anglais ;
+    - ✅ compilation 0 erreur (exe du 26/10 21:22), Chataigne relancé ;
+    - ✅ test Vincent : déplacement, poignées, Ctrl+Z, Duplicate, Delete,
+      Hide, Show hidden zones : tout fonctionne ;
+    - ✅ retours de Vincent, codés : bouton « Show hidden zones (N) » sous
+      la vue 2D (visible s'il y a des zones masquées) au lieu du clic
+      droit ; clic droit dans la scène hors zone → « Create zone » (centrée
+      sur le clic) ; vue 2D centrée et agrandie (mise en page calculée
+      dans `resized()` : en-tête, vue, bouton, tableau de hauteur fixe
+      6 personnes). Compilation 0 erreur, liens OK (exe du 26/10 21:30),
+      Chataigne relancé ;
+    - ✅ test Vincent : tout fonctionne. **Brique Z3 validée.**
   - ⬜ réception Augmenta et liste des personnes ;
   - ⏭️ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
     attente de validation (modèle existant chez Ben : `FFTAnalyzerManager`

@@ -26,6 +26,25 @@ rencontrés, où on s'est arrêté. Ajouter les séances les plus récentes en h
   JUCE 7. Tous notés dans `TODO.md`.
 - Règle confirmée par Vincent : une brique = un cycle compilation → test,
   jamais deux changements testés ensemble.
+- Suite de la soirée :
+  - vue de dessus dans le Tracking Monitor (axes Augmenta vérifiés :
+    origine en haut à gauche, y vers le bas) ;
+  - **zones rectangulaires** (liste « Zones », valeurs Presence et Person
+    Count par zone, sauvegardées avec la session), dessinées dans le
+    moniteur, bornes calées sur la scène reçue ;
+  - **édition à la souris** dans le moniteur : déplacer, poignées,
+    Ctrl+Z, clic droit Create / Duplicate / Delete / Hide, bouton « Show
+    hidden zones ».
+- Ratés : plantage du moniteur avec une zone de 22 millions de mètres
+  (borne infinie) → bornes = scène + dessin découpé ; compilation qui
+  croyait tout à jour après un échec → recompilation complète.
+- Règles ajoutées : tout ce qui est visible dans Chataigne en anglais ;
+  sessions de test dans `D:\DRAWZONE\ChataigneProject\` ; messages de
+  Claude plus courts.
+- Idées notées : moniteur plus « user friendly », vue 2D en Spout / NDI.
+- Arrêt : tout est committé en local sur `feature/spatial-module`, rien
+  poussé. Reprise : objectif v0.1 atteint (booléen « présence ») → bilan
+  v0.1, puis tag `v0.1.0` à décider avec Vincent.
 
 ---
 
