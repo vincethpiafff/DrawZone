@@ -9,20 +9,31 @@
 */
 
 #include "TrackingData.cpp"
+#include "SpatialZone.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
 
 SpatialModule::SpatialModule() :
-	OSCModule(getDefaultTypeString(), 12000, 9000)
+	OSCModule(getDefaultTypeString(), 12000, 9000),
+	zoneManager("Zones"),
+	zonesValuesCC("Zones")
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
 
-	startTimer(200);
+	//zones are saved with the module parameters (recursive save)
+	moduleParams.addChildControllableContainer(&zoneManager);
+	zoneManager.selectItemWhenCreated = false;
+	zoneManager.addBaseManagerListener(this);
+
+	valuesCC.addChildControllableContainer(&zonesValuesCC);
+
+	startTimerHz(zoneUpdateRateHz);
 }
 
 SpatialModule::~SpatialModule()
 {
 	stopTimer();
+	zoneManager.removeBaseManagerListener(this);
 }
 
 void SpatialModule::processMessageInternal(const OSCMessage& msg)
@@ -71,7 +82,36 @@ void SpatialModule::processAugmentaPerson(const OSCMessage& msg)
 	trackingData.updatePerson(p);
 }
 
+void SpatialModule::updateZones()
+{
+	if (zoneManager.items.isEmpty()) return;
+
+	TrackingData::Snapshot s = trackingData.getSnapshot();
+	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons, s.sceneSize);
+}
+
 void SpatialModule::timerCallback()
 {
 	if (trackingData.removeAllIfSilent(sourceTimeoutMs)) personCount->setValue(0);
+	updateZones();
+}
+
+void SpatialModule::itemAdded(SpatialZone* zone)
+{
+	zonesValuesCC.addChildControllableContainer(&zone->zoneValues);
+}
+
+void SpatialModule::itemsAdded(Array<SpatialZone*> zones)
+{
+	for (auto& z : zones) zonesValuesCC.addChildControllableContainer(&z->zoneValues);
+}
+
+void SpatialModule::itemRemoved(SpatialZone* zone)
+{
+	zonesValuesCC.removeChildControllableContainer(&zone->zoneValues);
+}
+
+void SpatialModule::itemsRemoved(Array<SpatialZone*> zones)
+{
+	for (auto& z : zones) zonesValuesCC.removeChildControllableContainer(&z->zoneValues);
 }

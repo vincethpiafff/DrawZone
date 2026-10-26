@@ -241,8 +241,31 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       - ✅ test (Vincent) : points conformes à Fusion, déplacements dans le
         bon sens. **Axe Y vérifié : origine en haut à gauche, y vers le
         bas** (noté dans `augmenta-protocol.md`). **Brique C validée.**
+      - ✅ commits locaux `5dccf7c6` feat(spatial) (vue de dessus) et
+        `3f6be380` docs (rien poussé) ;
   - ⬜ réception Augmenta et liste des personnes ;
-  - ⬜ une zone rectangle + booléen « présence » ;
+  - ⏭️ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
+    attente de validation (modèle existant chez Ben : `FFTAnalyzerManager`
+    du module Audio, liste d'éléments dans les paramètres, valeurs
+    correspondantes dans Values) :
+    - ✅ brique Z1 — liste « Zones » dans les paramètres du module (centre
+      et taille en mètres) ; par zone, dans Values : « Presence » et
+      « Person Count ». Liste validée par Vincent :
+      - ✅ code : `SpatialZone.h/.cpp` (BaseItem), `zoneManager` dans
+        `moduleParams` (sauvegardé avec la session), valeurs dans
+        Values → Zones → <nom de zone> ; zones calculées sur le fil
+        principal à 50 Hz (le minuteur passe de 200 ms à 20 ms) ;
+      - ✅ `.jucer` + Projucer (ajouts seulement), compilation 0 erreur,
+        liens OK (exe du 26/10 20:48), Chataigne relancé ;
+      - ❌ Chataigne fermé par erreur juste après la relance (code 0, pas
+        de plantage dans le log) → relancé ;
+      - ✅ test (Vincent) : ajout de zone, présence, renommage, suppression ;
+      - ✅ test sauvegarde / réouverture (Vincent) : la zone revient
+        (`D:\DRAWZONE\ChataigneProject\TEST_ZONES.noisette`, nouveau
+        dossier de Vincent pour les sessions de test, hors Git).
+        **Brique Z1 validée.**
+    - ⬜ brique Z2 — zones dessinées dans la vue de dessus du Tracking
+      Monitor (remplie quand présence) ;
   - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.
 
 ## 💡 Idées

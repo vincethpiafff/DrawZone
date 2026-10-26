@@ -382,6 +382,7 @@
 		5163443F8020E6D7801B6CC0 /* Signal.png */ /* Signal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Signal.png; path = ../../Resources/Modules/Signal.png; sourceTree = SOURCE_ROOT; };
 		51E48B2FB3F206E53D1D792C /* CommandDefinitionManager.h */ /* CommandDefinitionManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CommandDefinitionManager.h; path = ../../Source/Common/Command/CommandDefinitionManager.h; sourceTree = SOURCE_ROOT; };
 		51FDE47C4EDEF58051AC4915 /* ChataigneAudioLayer.cpp */ /* ChataigneAudioLayer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChataigneAudioLayer.cpp; path = ../../Source/TimeMachine/Sequence/layers/audio/ChataigneAudioLayer.cpp; sourceTree = SOURCE_ROOT; };
+		52283D92A577DEF4A41D1B2A /* SpatialZone.h */ /* SpatialZone.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialZone.h; path = ../../Source/Module/modules/spatial/SpatialZone.h; sourceTree = SOURCE_ROOT; };
 		526F7B3CB32C2F185CE3428D /* ProcessorManager.h */ /* ProcessorManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ProcessorManager.h; path = ../../Source/Common/Processor/ProcessorManager.h; sourceTree = SOURCE_ROOT; };
 		53784EA2F05A99905184F791 /* SimpleRemapFilter.cpp */ /* SimpleRemapFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SimpleRemapFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/SimpleRemapFilter.cpp; sourceTree = SOURCE_ROOT; };
 		53A5A48ED7FEF0F32D648EA3 /* KeyboardModule.cpp */ /* KeyboardModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = KeyboardModule.cpp; path = ../../Source/Module/modules/controller/keyboard/KeyboardModule.cpp; sourceTree = SOURCE_ROOT; };
@@ -580,6 +581,7 @@
 		8D3AFD7B0479583F5D50856C /* GenericAppCommand.cpp */ /* GenericAppCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = GenericAppCommand.cpp; path = ../../Source/Module/modules/generic/commands/GenericAppCommand.cpp; sourceTree = SOURCE_ROOT; };
 		8E161399DEC1EED4622B6EE6 /* BinaryData.cpp */ /* BinaryData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BinaryData.cpp; path = ../../JuceLibraryCode/BinaryData.cpp; sourceTree = SOURCE_ROOT; };
 		8E3E93C35A0A71C64796898E /* juce_organicui */ /* juce_organicui */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_organicui; path = ../../Modules/juce_organicui; sourceTree = SOURCE_ROOT; };
+		8E608A91450F6B0C21AEF7C6 /* SpatialZone.cpp */ /* SpatialZone.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialZone.cpp; path = ../../Source/Module/modules/spatial/SpatialZone.cpp; sourceTree = SOURCE_ROOT; };
 		8E93C7D90650CE468073A0C1 /* ConversionFilter.cpp */ /* ConversionFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConversionFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ConversionFilter.cpp; sourceTree = SOURCE_ROOT; };
 		8EA49DBD43BC8C9552B08309 /* ltc.c */ /* ltc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ltc.c; path = ../../Source/Common/LTC/ltc.c; sourceTree = SOURCE_ROOT; };
 		8EAE45830C7DE886C140D709 /* MergeFilter.h */ /* MergeFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MergeFilter.h; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/MergeFilter.h; sourceTree = SOURCE_ROOT; };
@@ -2315,6 +2317,8 @@
 			children = (
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
+				8E608A91450F6B0C21AEF7C6,
+				52283D92A577DEF4A41D1B2A,
 				856DC9E1B71F7B5BFAD71F34,
 				6C47AA001FF7F30011B7FCF5,
 				D28D2F74C0D7EF9E40B5AC4D,

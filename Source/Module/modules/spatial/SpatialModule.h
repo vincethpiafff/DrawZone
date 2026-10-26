@@ -15,10 +15,12 @@
 #pragma once
 
 #include "TrackingData.h"
+#include "SpatialZone.h"
 
 class SpatialModule :
 	public OSCModule,
-	public Timer
+	public Timer,
+	public BaseManager<SpatialZone>::ManagerListener
 {
 public:
 	SpatialModule();
@@ -28,15 +30,26 @@ public:
 	static const uint32 personTimeoutMs = 1000;
 	//no message at all for this long : the source is silent, the list is emptied
 	static const uint32 sourceTimeoutMs = 1000;
+	//zones are evaluated on the message thread at this rate
+	static const int zoneUpdateRateHz = 50;
 
 	TrackingData trackingData;
 
 	IntParameter* personCount;
 
+	BaseManager<SpatialZone> zoneManager;
+	ControllableContainer zonesValuesCC;
+
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);
 
+	void updateZones();
 	void timerCallback() override;
+
+	void itemAdded(SpatialZone* zone) override;
+	void itemsAdded(Array<SpatialZone*> zones) override;
+	void itemRemoved(SpatialZone* zone) override;
+	void itemsRemoved(Array<SpatialZone*> zones) override;
 
 	static SpatialModule* create() { return new SpatialModule(); }
 	virtual String getDefaultTypeString() const override { return "Spatial"; }

@@ -1437,6 +1437,8 @@
             <FILE id="dzSpCp" name="SpatialModule.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialModule.cpp"/>
             <FILE id="dzSpHd" name="SpatialModule.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialModule.h"/>
+            <FILE id="dzZnCp" name="SpatialZone.cpp" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialZone.cpp"/>
+            <FILE id="dzZnHd" name="SpatialZone.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialZone.h"/>
             <FILE id="dzTdCp" name="TrackingData.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/TrackingData.cpp"/>
             <FILE id="dzTdHd" name="TrackingData.h" compile="0" resource="0" file="Source/Module/modules/spatial/TrackingData.h"/>

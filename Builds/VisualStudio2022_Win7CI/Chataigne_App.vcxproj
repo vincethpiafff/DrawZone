@@ -942,6 +942,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3334,6 +3337,7 @@
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\commands\PosiStageNetCommand.h"/>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h"/>
