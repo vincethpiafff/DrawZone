@@ -175,7 +175,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       « Values » vide : normal, l'OSCModule de base ne crée pas de valeurs
       (c'est le module OSC générique qui a « Auto Add ») → à faire à
       l'étape suivante. « Log Incoming » activé = logs très chargés ;
-  - ⏭️ 26/10 **fenêtre « Tracking Monitor »** (demande de Vincent, avant la
+  - ✅ 26/10 **fenêtre « Tracking Monitor »** (demande de Vincent, avant la
     suite) : voir en temps réel, sans log qui défile, les personnes reçues
     (id, coordonnées…) par le système d'entrée. Plan proposé, en attente
     de validation :
@@ -226,8 +226,21 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       - ✅ test (Vincent) : menu Windows → « Tracking Monitor » : en-tête,
         tableau qui suit Fusion, « Silent source » + liste vide quand Fusion
         est coupé. **Brique B validée.**
-    - ⏭️ brique C — petite vue de dessus avec les points (validée par
-      Vincent le 26/10) ;
+    - ✅ 26/10 commits **locaux** (accord de Vincent, rien poussé) sur
+      `feature/spatial-module` : `bf1aaf99` chore (envois vers Ben coupés),
+      `fdbf448c` feat(spatial) (module + briques A et B), `0380aaa5` docs ;
+    - ✅ brique C — petite vue de dessus avec les points (validée par
+      Vincent le 26/10) :
+      - ✅ code : `paintTopView()` dans `TrackingMonitorPanel` (aucun
+        nouveau fichier, pas de Projucer) : scène aux bonnes proportions,
+        origine en haut à gauche, grille 1 m, graduations en mètres,
+        un point coloré + id par personne ; vue au-dessus du tableau
+        (60 % de la hauteur, le tableau garde au moins 5 lignes) ;
+      - ✅ compilation 0 erreur ; liens OK (exe du 26/10 20:36),
+        Chataigne relancé ;
+      - ✅ test (Vincent) : points conformes à Fusion, déplacements dans le
+        bon sens. **Axe Y vérifié : origine en haut à gauche, y vers le
+        bas** (noté dans `augmenta-protocol.md`). **Brique C validée.**
   - ⬜ réception Augmenta et liste des personnes ;
   - ⬜ une zone rectangle + booléen « présence » ;
   - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.
@@ -242,6 +255,13 @@ Format : `- 💡 JJ/MM/AAAA — idée (contexte, qui l'a proposée)`.
   détectées, avec une règle d'attribution (ex. la première personne détectée
   prend et garde le slot 1). → Intégrée à la roadmap en **v0.2**, après les
   métriques de zone.
+- 💡 26/10/2026 — **Tracking Monitor plus « user friendly »** (Vincent) :
+  la fenêtre fonctionne (en-tête, vue de dessus, tableau) mais son
+  affichage est à retravailler plus tard. Pistes à trier : choix du module
+  si plusieurs Spatial, vue et tableau redimensionnables, zoom, flèche de
+  vitesse, défilement du tableau, colonnes au choix (hauteur, orientation…),
+  personne survolée ↔ ligne du tableau. À faire « dans un temps plus
+  lointain », pas en v0.1.
 
 ## Rappels
 
