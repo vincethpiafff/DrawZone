@@ -134,7 +134,17 @@ code dans `Source/Module/modules/spatial/`.
     un ticket ou une PR (cela le notifie ou ajoute un lien chez lui) ;
   - les GitHub Actions restent désactivées sur le fork (Settings → Actions →
     General → « Disable actions ») ;
-  - « Sync fork » sur `master` est sans risque : il récupère, il n'envoie rien.
+  - « Sync fork » sur `master` est sans risque : il récupère, il n'envoie rien ;
+  - un build DrawZone n'envoie rien aux serveurs de Ben : bloc `// DrawZone:`
+    dans `Source/Main.cpp` (mises à jour, rapports de plantage, statistiques
+    Matomo, conversion en ligne des fichiers). À garder lors des fusions avec
+    upstream, et à étendre si Ben ajoute un nouvel envoi.
+- **Fins de ligne** : les fichiers de Ben mélangent parfois CRLF et LF dans un
+  même fichier (ex. `Source/Main.cpp`), et le `.jucer` est en CRLF. Après
+  chaque modification d'un fichier de Ben, `git diff --stat` doit montrer
+  uniquement nos lignes. Ne pas utiliser `sed` de Git Bash (il convertit) ;
+  l'outil d'édition peut aussi uniformiser : vérifier, et sinon insérer
+  à l'octet près avec `perl -0777 -pi`.
 - Commits au format Conventional Commits, en anglais :
   `feat(spatial): ...`, `fix(...)`, `docs(...)`, `chore(build): ...`.
 - Versions SemVer propres à DrawZone avec tags annotés (`v0.1.0`…), et
