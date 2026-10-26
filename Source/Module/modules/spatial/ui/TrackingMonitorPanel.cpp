@@ -11,7 +11,36 @@
 TrackingMonitorPanel::TrackingMonitorPanel(const String& contentName) :
 	ShapeShifterContentComponent(contentName)
 {
+	showHiddenButton.onClick = [this]() { showHiddenZones(); };
+	addChildComponent(showHiddenButton);
+
 	startTimerHz(refreshRateHz);
+}
+
+void TrackingMonitorPanel::resized()
+{
+	Rectangle<int> r = getLocalBounds().reduced(8);
+
+	headerRect = r.removeFromTop(lineHeight * 3);
+	r.removeFromTop(8);
+
+	//the table keeps a fixed height (header + 6 people), the top view takes the rest
+	tableRect = r.removeFromBottom(lineHeight * 7 + 2);
+	r.removeFromBottom(8);
+
+	if (r.getHeight() > 120)
+	{
+		showHiddenButton.setBounds(r.removeFromBottom(24).withSizeKeepingCentre(200, 22));
+		r.removeFromBottom(4);
+		topViewRect = r;
+	}
+	else
+	{
+		//not enough room : no top view, the table gets everything
+		topViewRect = Rectangle<int>();
+		showHiddenButton.setBounds(Rectangle<int>());
+		tableRect = tableRect.withTop(headerRect.getBottom() + 8);
+	}
 }
 
 TrackingMonitorPanel::~TrackingMonitorPanel()
@@ -43,12 +72,14 @@ void TrackingMonitorPanel::timerCallback()
 		for (auto& z : sm->zoneManager.items)
 		{
 			ZoneView zv;
+			zv.zone = z;
 			zv.name = z->niceName;
 			Point<float> size = z->size->getPoint();
 			zv.bounds = Rectangle<float>(size.x, size.y).withCentre(z->center->getPoint());
 			zv.color = z->itemColor->getColor();
 			zv.enabled = z->enabled->boolValue();
 			zv.presence = z->presence->boolValue();
+			zv.hidden = z->hiddenInMonitor->boolValue();
 			zones.add(zv);
 		}
 	}
@@ -58,23 +89,28 @@ void TrackingMonitorPanel::timerCallback()
 		zones.clear();
 	}
 
+	int numHidden = 0;
+	for (auto& z : zones) if (z.hidden) numHidden++;
+	showHiddenButton.setButtonText("Show hidden zones (" + String(numHidden) + ")");
+	showHiddenButton.setVisible(numHidden > 0 && !topViewRect.isEmpty());
+
 	repaint();
 }
 
 void TrackingMonitorPanel::paint(Graphics& g)
 {
 	g.fillAll(BG_COLOR);
-
-	Rectangle<int> r = getLocalBounds().reduced(8);
-	const int lineHeight = 18;
+	sceneScale = 0; //set again by paintTopView if the top view is visible
 
 	if (!hasModule)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.6f));
 		g.setFont(Font(14.0f));
-		g.drawFittedText("No Spatial module. Add one from Modules > DrawZone > Spatial.", r, Justification::centred, 3);
+		g.drawFittedText("No Spatial module. Add one from Modules > DrawZone > Spatial.", getLocalBounds().reduced(8), Justification::centred, 3);
 		return;
 	}
+
+	Rectangle<int> r = headerRect;
 
 	//Header : source and state
 	uint32 now = Time::getMillisecondCounter();
@@ -102,17 +138,10 @@ void TrackingMonitorPanel::paint(Graphics& g)
 		+ "    Frame : " + String(snapshot.frame)
 		+ "    People : " + String(snapshot.persons.size()), line, Justification::centredLeft);
 
-	r.removeFromTop(8);
-
-	//Top view above the table, the table keeps at least a few rows
-	const int minTableHeight = lineHeight * 5;
-	if (r.getHeight() > minTableHeight + 80)
-	{
-		paintTopView(g, r.removeFromTop(jmax(80, (int)(r.getHeight() * .6f))));
-		r.removeFromTop(8);
-	}
+	if (!topViewRect.isEmpty()) paintTopView(g, topViewRect);
 
 	//Table
+	r = tableRect;
 	const StringArray headers = { "id", "x norm", "y norm", "x (m)", "y (m)", "age (s)", "speed" };
 	const int numColumns = headers.size();
 	auto getCell = [&](Rectangle<int> row, int column)
@@ -170,13 +199,15 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		return;
 	}
 
-	//room for the meter labels on the top and left edges
+	//room for the meter labels on the top and left edges (kept on both sides so the scene stays centered)
 	const int labelSize = 16;
-	Rectangle<float> area = r.withTrimmedTop(labelSize).withTrimmedLeft(labelSize * 2).reduced(2).toFloat();
+	Rectangle<float> area = r.toFloat().reduced(labelSize * 2.0f, (float)labelSize);
 
-	//keep the scene proportions, origin top left like Augmenta
+	//keep the scene proportions, origin top left like Augmenta, centered in the panel
 	float scale = jmin(area.getWidth() / size.x, area.getHeight() / size.y);
-	Rectangle<float> scene(area.getX(), area.getY(), size.x * scale, size.y * scale);
+	Rectangle<float> scene = Rectangle<float>(size.x * scale, size.y * scale).withCentre(area.getCentre());
+	sceneScreenRect = scene;
+	sceneScale = scale;
 
 	g.setColour(BG_COLOR.darker(.3f));
 	g.fillRect(scene);
@@ -215,12 +246,13 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 
 	//Zones, under the people, filled when someone is inside
 	g.setFont(Font(11.0f));
-	for (auto& z : zones)
+	for (int i = 0; i < zones.size(); i++)
 	{
-		Rectangle<float> zr(scene.getX() + z.bounds.getX() * scale, scene.getY() + z.bounds.getY() * scale, z.bounds.getWidth() * scale, z.bounds.getHeight() * scale);
+		auto& z = zones.getReference(i);
+		if (z.hidden) continue;
 
 		//only draw the part inside the scene : huge coordinates crash the renderer
-		zr = zr.getIntersection(scene.expanded(2));
+		Rectangle<float> zr = toScreen(z.bounds).getIntersection(scene.expanded(2));
 		if (zr.isEmpty()) continue;
 
 		Colour c = z.enabled ? z.color : NORMAL_COLOR;
@@ -233,6 +265,18 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		g.setColour(c.withAlpha(z.enabled ? 1 : .5f));
 		g.drawRect(zr, z.presence ? 2.0f : 1.0f);
 		g.drawText(z.name, zr.reduced(3).withHeight(14), Justification::topLeft);
+
+		//resize handles on the zone under the mouse or being edited
+		bool isDragged = dragZone != nullptr && dragZone.get() == z.zone.get();
+		if (i == hoveredZone || isDragged)
+		{
+			g.setColour(c);
+			Rectangle<float> h(handleSize, handleSize);
+			g.fillRect(h.withCentre(zr.getTopLeft()));
+			g.fillRect(h.withCentre(zr.getTopRight()));
+			g.fillRect(h.withCentre(zr.getBottomRight()));
+			g.fillRect(h.withCentre(zr.getBottomLeft()));
+		}
 	}
 
 	//People
@@ -247,4 +291,171 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		g.fillEllipse(Rectangle<float>(radius * 2, radius * 2).withCentre(pos));
 		g.drawText(String(p.id), Rectangle<float>(pos.x + radius + 2, pos.y - 8, 40, 16), Justification::centredLeft);
 	}
+}
+
+Rectangle<float> TrackingMonitorPanel::toScreen(Rectangle<float> meters) const
+{
+	return Rectangle<float>(sceneScreenRect.getX() + meters.getX() * sceneScale, sceneScreenRect.getY() + meters.getY() * sceneScale,
+		meters.getWidth() * sceneScale, meters.getHeight() * sceneScale);
+}
+
+TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) const
+{
+	ZoneHit hit;
+	if (sceneScale <= 0) return hit;
+
+	//last drawn = on top, so test from the end
+	for (int i = zones.size() - 1; i >= 0; i--)
+	{
+		if (zones[i].hidden) continue;
+
+		Rectangle<float> zr = toScreen(zones[i].bounds);
+		const Point<float> corners[4] = { zr.getTopLeft(), zr.getTopRight(), zr.getBottomRight(), zr.getBottomLeft() };
+		for (int c = 0; c < 4; c++)
+		{
+			if (corners[c].getDistanceFrom(pos) <= handleSize)
+			{
+				hit.zoneIndex = i;
+				hit.corner = c;
+				return hit;
+			}
+		}
+
+		if (zr.contains(pos))
+		{
+			hit.zoneIndex = i;
+			return hit;
+		}
+	}
+
+	return hit;
+}
+
+void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
+{
+	ZoneHit hit = hitTest(e.position);
+
+	if (hit.zoneIndex != hoveredZone)
+	{
+		hoveredZone = hit.zoneIndex;
+		repaint();
+	}
+
+	if (hit.corner == 0 || hit.corner == 2) setMouseCursor(MouseCursor::TopLeftCornerResizeCursor);
+	else if (hit.corner == 1 || hit.corner == 3) setMouseCursor(MouseCursor::TopRightCornerResizeCursor);
+	else if (hit.zoneIndex >= 0) setMouseCursor(MouseCursor::DraggingHandCursor);
+	else setMouseCursor(MouseCursor::NormalCursor);
+}
+
+void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
+{
+	ZoneHit hit = hitTest(e.position);
+	SpatialZone* zone = hit.zoneIndex >= 0 ? dynamic_cast<SpatialZone*>(zones[hit.zoneIndex].zone.get()) : nullptr;
+
+	if (e.mods.isRightButtonDown())
+	{
+		PopupMenu m;
+		if (zone != nullptr)
+		{
+			m.addItem(1, "Duplicate");
+			m.addItem(2, "Delete");
+			m.addItem(3, "Hide");
+		}
+		else if (sceneScale > 0 && sceneScreenRect.contains(e.position))
+		{
+			m.addItem(4, "Create zone");
+		}
+
+		if (m.getNumItems() == 0) return;
+
+		Point<float> clickMeters = (e.position - sceneScreenRect.getTopLeft()) / sceneScale;
+		WeakReference<ControllableContainer> zoneRef(zone);
+		WeakReference<Component> panelRef(this);
+		m.showMenuAsync(PopupMenu::Options(), [zoneRef, panelRef, clickMeters](int result)
+			{
+				SpatialZone* z = dynamic_cast<SpatialZone*>(zoneRef.get());
+				switch (result)
+				{
+				case 1: if (z != nullptr) z->duplicate(); break;
+				case 2: if (z != nullptr) z->remove(); break;
+				case 3: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(false, true); break;
+				case 4: if (auto* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get())) p->createZoneAt(clickMeters); break;
+				}
+			});
+		return;
+	}
+
+	if (zone == nullptr) return;
+
+	zone->selectThis();
+
+	dragZone = zone;
+	dragCorner = hit.corner;
+	dragStartCenter = zone->center->getPoint();
+	dragStartSize = zone->size->getPoint();
+	dragStartBounds = Rectangle<float>(dragStartSize.x, dragStartSize.y).withCentre(dragStartCenter);
+}
+
+void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
+{
+	SpatialZone* zone = dynamic_cast<SpatialZone*>(dragZone.get());
+	if (zone == nullptr || sceneScale <= 0) return;
+
+	Point<float> delta = e.getOffsetFromDragStart().toFloat() / sceneScale;
+
+	if (dragCorner < 0)
+	{
+		zone->center->setPoint(dragStartCenter + delta);
+	}
+	else
+	{
+		//the opposite corner stays in place, the dragged one follows the mouse
+		const Point<float> corners[4] = { dragStartBounds.getTopLeft(), dragStartBounds.getTopRight(), dragStartBounds.getBottomRight(), dragStartBounds.getBottomLeft() };
+		Point<float> fixedCorner = corners[(dragCorner + 2) % 4];
+		Point<float> movedCorner = corners[dragCorner] + delta;
+
+		Rectangle<float> scene(snapshot.sceneSize.x, snapshot.sceneSize.y);
+		Rectangle<float> r = Rectangle<float>(fixedCorner, movedCorner).getIntersection(scene);
+
+		zone->size->setPoint(r.getWidth(), r.getHeight());
+		zone->center->setPoint(r.getCentre());
+	}
+
+	timerCallback(); //refresh right away, not at the next 10 Hz tick
+}
+
+void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
+{
+	SpatialZone* zone = dynamic_cast<SpatialZone*>(dragZone.get());
+	dragZone = nullptr;
+	if (zone == nullptr) return;
+
+	//one undo step for the whole drag
+	Array<UndoableAction*> actions;
+	if (zone->center->getPoint() != dragStartCenter) actions.add(zone->center->setUndoablePoint(dragStartCenter, zone->center->getPoint(), true));
+	if (zone->size->getPoint() != dragStartSize) actions.add(zone->size->setUndoablePoint(dragStartSize, zone->size->getPoint(), true));
+	if (!actions.isEmpty()) UndoMaster::getInstance()->performActions("Edit " + zone->niceName, actions);
+
+	mouseMove(e);
+}
+
+void TrackingMonitorPanel::showHiddenZones()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	for (auto& z : sm->zoneManager.items) z->hiddenInMonitor->setValue(false);
+	timerCallback();
+}
+
+void TrackingMonitorPanel::createZoneAt(Point<float> positionMeters)
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	SpatialZone* z = sm->zoneManager.addItem();
+	if (z == nullptr) return;
+
+	z->center->setPoint(positionMeters);
+	timerCallback();
 }

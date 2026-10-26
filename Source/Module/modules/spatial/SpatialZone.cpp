@@ -19,6 +19,8 @@ SpatialZone::SpatialZone(var params) :
 	size = addPoint2DParameter("Size", "Width and height of the zone, in meters");
 	size->setDefaultPoint(2, 2);
 
+	hiddenInMonitor = addBoolParameter("Hidden", "Hide this zone in the Tracking Monitor (it still detects people)", false);
+
 	setSceneSize(Point<float>());
 
 	presence = zoneValues.addBoolParameter("Presence", "Is at least one person in this zone ?", false);

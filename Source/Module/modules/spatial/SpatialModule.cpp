@@ -106,9 +106,10 @@ void SpatialModule::itemAdded(SpatialZone* zone)
 	zonesValuesCC.addChildControllableContainer(&zone->zoneValues);
 	zone->setSceneSize(zonesSceneSize);
 
-	//a new zone starts at the center of the scene
+	//a brand new zone starts at the center of the scene (not a duplicated or loaded one)
 	bool isLoading = isCurrentlyLoadingData || zoneManager.isCurrentlyLoadingData;
-	if (!isLoading && zonesSceneSize.x > 0 && zonesSceneSize.y > 0) zone->center->setPoint(zonesSceneSize / 2);
+	bool isNew = !zone->center->isOverriden;
+	if (!isLoading && isNew && zonesSceneSize.x > 0 && zonesSceneSize.y > 0) zone->center->setPoint(zonesSceneSize / 2);
 }
 
 void SpatialModule::itemsAdded(Array<SpatialZone*> zones)

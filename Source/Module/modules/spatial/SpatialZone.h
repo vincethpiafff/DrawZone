@@ -29,6 +29,7 @@ public:
 
 	Point2DParameter* center;	// meters
 	Point2DParameter* size;		// meters
+	BoolParameter* hiddenInMonitor;
 
 	ControllableContainer zoneValues;
 	BoolParameter* presence;
