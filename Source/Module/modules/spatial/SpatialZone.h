@@ -30,12 +30,27 @@ public:
 	Point2DParameter* center;	// meters
 	Point2DParameter* size;		// meters
 	BoolParameter* hiddenInMonitor;
+	IntParameter* capacity;
 
 	ControllableContainer zoneValues;
 	BoolParameter* presence;
 	IntParameter* personCount;
+	Trigger* entered;
+	Trigger* exited;
+	IntParameter* lastEnteredId;
+	FloatParameter* presenceTime;
+	FloatParameter* occupancy;
+
+	//whole group in the zone (barycenter) ; values kept when the zone gets empty
+	Point2DParameter* averagePosition = nullptr;		// 0-1 in the zone, origin top left
+	FloatParameter* averageDistanceToCenter = nullptr;	// meters
+
+	uint32 presenceStartMs = 0;	// when the zone became occupied
+
+	Array<int> idsInside;	// people in the zone at the last update, to detect each entry and exit
 
 	bool contains(Point<float> positionMeters) const;
+	Rectangle<float> getBounds() const;	// meters
 	void updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize);
 
 	void onContainerNiceNameChanged() override;

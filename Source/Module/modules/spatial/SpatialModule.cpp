@@ -15,7 +15,8 @@
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
 	zoneManager("Zones"),
-	zonesValuesCC("Zones")
+	zonesValuesCC("Zones"),
+	peopleValuesCC("People")
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
@@ -26,6 +27,8 @@ SpatialModule::SpatialModule() :
 	zoneManager.addBaseManagerListener(this);
 
 	valuesCC.addChildControllableContainer(&zonesValuesCC);
+	peopleValuesCC.saveAndLoadRecursiveData = false; //live data, nothing to save
+	valuesCC.addChildControllableContainer(&peopleValuesCC);
 
 	startTimerHz(zoneUpdateRateHz);
 }
@@ -93,6 +96,83 @@ void SpatialModule::updateZones()
 	}
 
 	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons, s.sceneSize);
+
+	updatePeople(s);
+}
+
+void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
+{
+	//people who left : their values disappear
+	for (auto it = people.begin(); it != people.end();)
+	{
+		bool stillTracked = false;
+		for (auto& p : s.persons) if (p.id == it->first) { stillTracked = true; break; }
+
+		if (stillTracked) it++;
+		else
+		{
+			peopleValuesCC.removeChildControllableContainer(it->second); //owned : deleted here
+			it = people.erase(it);
+		}
+	}
+
+	for (auto& p : s.persons)
+	{
+		SpatialPerson* sp;
+		auto it = people.find(p.id);
+		if (it != people.end()) sp = it->second;
+		else
+		{
+			sp = new SpatialPerson(p.id);
+			peopleValuesCC.addChildControllableContainer(sp, true);
+			people[p.id] = sp;
+		}
+
+		Point<float> meters(p.position.x * s.sceneSize.x, p.position.y * s.sceneSize.y);
+		Array<SpatialZone*> zones;
+		for (auto& z : zoneManager.items) if (z->enabled->boolValue() && z->contains(meters)) zones.add(z);
+		sp->update(meters, zones);
+	}
+}
+
+SpatialPerson::SpatialPerson(int id) :
+	ControllableContainer("Person " + String(id))
+{
+	personId = addIntParameter("Id", "Id sent by the tracking system", id);
+	personId->setControllableFeedbackOnly(true);
+	position = addPoint2DParameter("Position", "Position in meters, from the top left corner of the scene");
+	position->setControllableFeedbackOnly(true);
+	zoneName = addStringParameter("Zone", "Zone the person is in, \"A + B\" where zones overlap, empty outside any zone", "");
+	zoneName->setControllableFeedbackOnly(true);
+	relativePosition = addPoint2DParameter("Relative Position", "Position in the zone, from 0,0 (top left) to 1,1 (bottom right). Where zones overlap, position in the overlapping area. -1,-1 outside any zone");
+	relativePosition->setBounds(-1, -1, 1, 1);
+	relativePosition->setPoint(-1, -1);
+	relativePosition->setControllableFeedbackOnly(true);
+}
+
+void SpatialPerson::update(Point<float> positionMeters, const Array<SpatialZone*>& zones)
+{
+	position->setPoint(positionMeters);
+
+	if (zones.isEmpty())
+	{
+		zoneName->setValue("");
+		relativePosition->setPoint(-1, -1);
+		return;
+	}
+
+	//area shared by all the zones the person is in (the zone itself when only one)
+	StringArray names;
+	Rectangle<float> area = zones[0]->getBounds();
+	for (auto& z : zones)
+	{
+		names.add(z->niceName);
+		area = area.getIntersection(z->getBounds());
+	}
+
+	zoneName->setValue(names.joinIntoString(" + "));
+	relativePosition->setPoint(area.getWidth() > 0 ? (positionMeters.x - area.getX()) / area.getWidth() : .5f,
+		area.getHeight() > 0 ? (positionMeters.y - area.getY()) / area.getHeight() : .5f);
 }
 
 void SpatialModule::timerCallback()

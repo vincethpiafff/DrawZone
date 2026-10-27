@@ -17,6 +17,23 @@
 #include "TrackingData.h"
 #include "SpatialZone.h"
 
+//Values of one tracked person, shown in Values > People while the person is tracked
+class SpatialPerson :
+	public ControllableContainer
+{
+public:
+	SpatialPerson(int id);
+
+	IntParameter* personId;
+	Point2DParameter* position;			// meters, origin top left of the scene
+	StringParameter* zoneName;			// zone(s) the person is in, empty outside
+	Point2DParameter* relativePosition;	// 0-1 in the zone or zones overlap, -1 outside
+
+	void update(Point<float> positionMeters, const Array<SpatialZone*>& zones);
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialPerson)
+};
+
 class SpatialModule :
 	public OSCModule,
 	public Timer,
@@ -41,10 +58,14 @@ public:
 	ControllableContainer zonesValuesCC;
 	Point<float> zonesSceneSize;	//scene size last applied to the zone bounds
 
+	ControllableContainer peopleValuesCC;
+	std::map<int, SpatialPerson*> people;	// by person id, owned by peopleValuesCC
+
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);
 
 	void updateZones();
+	void updatePeople(const TrackingData::Snapshot& s);
 	void timerCallback() override;
 
 	void itemAdded(SpatialZone* zone) override;

@@ -168,6 +168,7 @@ void TrackingMonitorPanel::timerCallback()
 
 	zones.clearQuick();
 	personZones.clearQuick();
+	personRelativePositions.clearQuick();
 
 	if (hasModule)
 	{
@@ -206,6 +207,10 @@ void TrackingMonitorPanel::timerCallback()
 				}
 			}
 			personZones.add(zoneIndex);
+
+			//relative position computed by the module (zone or zones overlap)
+			auto it = sm->people.find(p.id);
+			personRelativePositions.add(it != sm->people.end() ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
 		}
 	}
 	else
@@ -560,7 +565,8 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 
 	Rectangle<int> columns = r.removeFromTop(16).reduced(8, 0);
 	g.drawText("id", columns.removeFromLeft(36), Justification::centredLeft);
-	g.drawText("x , y (m)", columns.removeFromLeft(columns.getWidth() / 2), Justification::centredLeft);
+	g.drawText("x, y (m)", columns.removeFromLeft(columns.getWidth() / 3), Justification::centredLeft);
+	g.drawText("relative", columns.removeFromLeft(columns.getWidth() / 2), Justification::centredLeft);
 	g.drawText("zone", columns, Justification::centredLeft);
 	r.removeFromTop(2);
 
@@ -582,8 +588,20 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 		g.setColour(TEXT_COLOR);
 		g.drawText(String(p.id), idR.withTrimmedLeft(15), Justification::centredLeft);
 
-		g.drawText(String(p.position.x * snapshot.sceneSize.x, 1) + " , " + String(p.position.y * snapshot.sceneSize.y, 1),
-			cells.removeFromLeft(cells.getWidth() / 2), Justification::centredLeft);
+		g.drawText(String(p.position.x * snapshot.sceneSize.x, 1) + ", " + String(p.position.y * snapshot.sceneSize.y, 1),
+			cells.removeFromLeft(cells.getWidth() / 3), Justification::centredLeft);
+
+		Point<float> rel = i < personRelativePositions.size() ? personRelativePositions[i] : Point<float>(-1, -1);
+		Rectangle<int> relR = cells.removeFromLeft(cells.getWidth() / 2);
+		if (rel.x < 0)
+		{
+			g.setColour(dimText);
+			g.drawText("-", relR, Justification::centredLeft);
+		}
+		else
+		{
+			g.drawText(String(rel.x, 2) + ", " + String(rel.y, 2), relR, Justification::centredLeft);
+		}
 
 		int zoneIndex = i < personZones.size() ? personZones[i] : -1;
 		if (zoneIndex >= 0 && zoneIndex < zones.size())
