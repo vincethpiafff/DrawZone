@@ -195,12 +195,11 @@ void TrackingMonitorPanel::timerCallback()
 		//first enabled zone containing each person, same test as the zones themselves
 		for (auto& p : snapshot.persons)
 		{
-			Point<float> meters(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
 			int zoneIndex = -1;
 			for (int i = 0; i < sm->zoneManager.items.size(); i++)
 			{
 				SpatialZone* z = sm->zoneManager.items[i];
-				if (z->enabled->boolValue() && z->contains(meters))
+				if (z->idsInside.contains(p.id)) //same membership as the zone (with its anti-flicker)
 				{
 					zoneIndex = i;
 					break;

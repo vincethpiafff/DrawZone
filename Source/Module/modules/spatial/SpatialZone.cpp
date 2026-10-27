@@ -21,6 +21,9 @@ SpatialZone::SpatialZone(var params) :
 
 	capacity = addIntParameter("Capacity", "Number of people for which this zone is considered full (Occupancy = 100 %)", 4, 1);
 
+	exitMargin = addFloatParameter("Exit Margin", "Anti-flicker : once inside, a person only leaves this zone when further than this distance outside its border, in meters", .1f, 0);
+	exitDelay = addFloatParameter("Exit Delay", "Anti-flicker : a person who leaves this zone or is lost by the tracking is still counted inside for this time, in seconds. Coming back meanwhile triggers neither Exited nor Entered", .3f, 0);
+
 	hiddenInMonitor = addBoolParameter("Hidden", "Hide this zone in the Tracking Monitor (it still detects people)", false);
 
 	setSceneSize(Point<float>());
@@ -66,10 +69,10 @@ void SpatialZone::setSceneSize(Point<float> sceneSize)
 	size->setBounds(0, 0, sceneSize.x, sceneSize.y);
 }
 
-bool SpatialZone::contains(Point<float> positionMeters) const
+bool SpatialZone::contains(Point<float> positionMeters, float margin) const
 {
 	Point<float> c = center->getPoint();
-	Point<float> halfSize = size->getPoint() / 2;
+	Point<float> halfSize = size->getPoint() / 2 + Point<float>(margin, margin);
 	return std::abs(positionMeters.x - c.x) <= halfSize.x && std::abs(positionMeters.y - c.y) <= halfSize.y;
 }
 
@@ -81,22 +84,39 @@ Rectangle<float> SpatialZone::getBounds() const
 
 void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize)
 {
+	uint32 now = Time::getMillisecondCounter();
 	Array<int> ids;
-	Point<float> sum;	// meters
+	Point<float> sum;	// meters, people really inside only (not the ones kept by the exit delay)
+	int sumCount = 0;
 	if (enabled->boolValue())
 	{
+		//anti-flicker : the border is pushed out by the exit margin for people already inside
 		for (auto& p : persons)
 		{
 			Point<float> meters(p.position.x * sceneSize.x, p.position.y * sceneSize.y);
-			if (!contains(meters)) continue;
+			if (!contains(meters, idsInside.contains(p.id) ? exitMargin->floatValue() : 0)) continue;
 			ids.add(p.id);
+			lastInsideMs.set(p.id, now);
 			sum += meters;
+			sumCount++;
+		}
+
+		//anti-flicker : people who just left or were lost are still counted during the exit delay
+		uint32 delayMs = (uint32)(exitDelay->floatValue() * 1000);
+		for (int id : idsInside)
+		{
+			if (!ids.contains(id) && now - lastInsideMs[id] < delayMs) ids.add(id);
 		}
 	}
 
-	if (ids.size() > 0)
+	for (int id : idsInside)
 	{
-		Point<float> average = sum / (float)ids.size();
+		if (!ids.contains(id)) lastInsideMs.remove(id);
+	}
+
+	if (sumCount > 0)
+	{
+		Point<float> average = sum / (float)sumCount;
 		Rectangle<float> b = getBounds();
 		averagePosition->setPoint(b.getWidth() > 0 ? (average.x - b.getX()) / b.getWidth() : .5f,
 			b.getHeight() > 0 ? (average.y - b.getY()) / b.getHeight() : .5f);
@@ -104,7 +124,6 @@ void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons, Point<f
 	}
 
 	//count first, so the triggers below already see the new values
-	uint32 now = Time::getMillisecondCounter();
 	if (ids.size() > 0 && idsInside.isEmpty()) presenceStartMs = now;
 	presenceTime->setValue(ids.size() > 0 ? (now - presenceStartMs) / 1000.0f : 0);
 

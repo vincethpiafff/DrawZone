@@ -31,6 +31,8 @@ public:
 	Point2DParameter* size;		// meters
 	BoolParameter* hiddenInMonitor;
 	IntParameter* capacity;
+	FloatParameter* exitMargin;	// meters
+	FloatParameter* exitDelay;	// seconds
 
 	ControllableContainer zoneValues;
 	BoolParameter* presence;
@@ -48,8 +50,9 @@ public:
 	uint32 presenceStartMs = 0;	// when the zone became occupied
 
 	Array<int> idsInside;	// people in the zone at the last update, to detect each entry and exit
+	HashMap<int, uint32> lastInsideMs;	// last time each person of idsInside was really inside, for the exit delay
 
-	bool contains(Point<float> positionMeters) const;
+	bool contains(Point<float> positionMeters, float margin = 0) const;
 	Rectangle<float> getBounds() const;	// meters
 	void updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize);
 

@@ -379,7 +379,12 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 08:08), Chataigne relancé par Claude ;
     - ✅ test Vincent : Average Position / Distance et colonne « relative » OK. **P2 validé.** Métriques et positions terminées ;
   - ⏸️ 27/10 fin de séance. Branche `feature/zone-metrics` **non commitée** (M1, M2, M3, P1b, P2, colonne « relative »), en attente de l'accord de Vincent. Reprise : anti-clignotement ;
-  - ⬜ anti-clignotement (marge d'hystérésis, délai) ;
+  - ✅ 27/10 reprise : accord de Vincent → commit de `feature/zone-metrics`, fusion dans `develop`, push de `develop` sur le fork ;
+    - ❌ mise à jour de TODO.md par un script Python avant le commit : Python absent de la machine → TODO.md mis à jour ensuite avec l'outil d'édition (cette entrée), commit fait quand même ;
+  - ⏭️ anti-clignotement, branche `feature/zone-antiflicker`. Choix de Vincent : **marge + délai de sortie** par zone :
+    - ✅ code : « Exit Margin » (m, défaut 0,1 : une fois dedans, on ne sort qu'au-delà du bord + marge) ; « Exit Delay » (s, défaut 0,3 : une personne sortie ou perdue reste comptée pendant ce délai, si elle revient ni Exited ni Entered) ; Average Position calculée sur les personnes vraiment dedans ; People → Zone / Relative Position et Tracking Monitor suivent la même appartenance que la zone (Relative Position bornée à 0–1 dans la marge) ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 12:33), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Anti-clignotement validé.** Branche non commitée, en attente de l'accord de Vincent ;
   - ⬜ formes : cercle, puis polygone ;
   - ⬜ slots de joueurs ;
 
