@@ -16,6 +16,7 @@
 
 #include "TrackingData.h"
 #include "SpatialZone.h"
+#include "PlayerSlots.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
 class SpatialPerson :
@@ -28,8 +29,16 @@ public:
 	Point2DParameter* position;			// meters, origin top left of the scene
 	StringParameter* zoneName;			// zone(s) the person is in, empty outside
 	Point2DParameter* relativePosition;	// 0-1 in the zone or zones overlap, -1 outside
+	StringParameter* slotName;			// player slot of the person, empty without a slot
+
+	//as sent by the tracking system
+	Point2DParameter* velocity;
+	FloatParameter* orientation;
+	FloatParameter* height;		// meters
+	FloatParameter* age;		// seconds since entering
 
 	void update(Point<float> positionMeters, const Array<SpatialZone*>& zones);
+	void updateTracking(const TrackedPerson& p, const String& slot);
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialPerson)
 };
@@ -60,6 +69,8 @@ public:
 
 	ControllableContainer peopleValuesCC;
 	std::map<int, SpatialPerson*> people;	// by person id, owned by peopleValuesCC
+
+	PlayerSlots playerSlots;
 
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);

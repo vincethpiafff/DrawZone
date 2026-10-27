@@ -1051,6 +1051,9 @@
     <ClCompile Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\PlayerSlots.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3511,6 +3514,7 @@
     <ClInclude Include="..\..\Source\Module\modules\gpio\GPIOModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\commands\PosiStageNetCommand.h"/>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>

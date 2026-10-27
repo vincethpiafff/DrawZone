@@ -2128,6 +2128,9 @@
     <ClCompile Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.cpp">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\PlayerSlots.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
@@ -5279,6 +5282,9 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>

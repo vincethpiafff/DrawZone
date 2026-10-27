@@ -77,6 +77,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 ## ⬜ À faire ensuite
 
+- ⬜ **Étape de test importante après la v0.4** (demande de Vincent, 27/10/2026) : vérifier le comportement de l'interface (Tracking Monitor, zones, slots) avec **plusieurs scènes**, puis avec **deux systèmes de tracking** en même temps (par exemple Augmenta Fusion en OSC + Naostage en PSN).
+
 - ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
     wiki renvoie vers docs.augmenta.tech, où la page du protocole est
@@ -379,9 +381,88 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 08:08), Chataigne relancé par Claude ;
     - ✅ test Vincent : Average Position / Distance et colonne « relative » OK. **P2 validé.** Métriques et positions terminées ;
   - ⏸️ 27/10 fin de séance. Branche `feature/zone-metrics` **non commitée** (M1, M2, M3, P1b, P2, colonne « relative »), en attente de l'accord de Vincent. Reprise : anti-clignotement ;
-  - ⬜ anti-clignotement (marge d'hystérésis, délai) ;
-  - ⬜ formes : cercle, puis polygone ;
-  - ⬜ slots de joueurs ;
+  - ✅ 27/10 reprise : accord de Vincent → commit de `feature/zone-metrics`, fusion dans `develop`, push de `develop` sur le fork ;
+    - ❌ mise à jour de TODO.md par un script Python avant le commit : Python absent de la machine → TODO.md mis à jour ensuite avec l'outil d'édition (cette entrée), commit fait quand même ;
+  - ⏭️ anti-clignotement, branche `feature/zone-antiflicker`. Choix de Vincent : **marge + délai de sortie** par zone :
+    - ✅ code : « Exit Margin » (m, défaut 0,1 : une fois dedans, on ne sort qu'au-delà du bord + marge) ; « Exit Delay » (s, défaut 0,3 : une personne sortie ou perdue reste comptée pendant ce délai, si elle revient ni Exited ni Entered) ; Average Position calculée sur les personnes vraiment dedans ; People → Zone / Relative Position et Tracking Monitor suivent la même appartenance que la zone (Relative Position bornée à 0–1 dans la marge) ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 12:33), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Anti-clignotement validé.**
+    - ✅ commit local sur `feature/zone-antiflicker` (accord de Vincent : « commit juste », sans fusion ni push) ;
+  - ⏭️ forme **cercle**, branche `feature/zone-shapes`. Choix de Vincent : **ellipse via Size** (réglage « Shape » Rectangle / Ellipse ; l'ellipse remplit le rectangle Center + Size, cercle si largeur = hauteur ; Relative Position 0–1 dans le carré englobant) :
+    - ✅ code : test d'appartenance elliptique (Exit Margin ajoutée aux demi-axes) ; Tracking Monitor : ellipse dessinée (halo, remplissage, contour), cadre fin + poignées aux coins quand elle est sélectionnée / survolée, clic dans l'ellipse seulement ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 13:44), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Ellipse validée.** Non commitée ;
+  - ⏭️ demande de Vincent : double clic sur le nom d'une zone → renommer (même branche `feature/zone-shapes`) :
+    - ✅ code (`TrackingMonitorPanel` seulement) : double clic sur une ligne de zone de la colonne (pas le rail, sans noms) ou sur le nom en haut à gauche d'une zone dans la vue → champ de texte sur place ; Entrée ou clic ailleurs = valider (annulable par Ctrl+Z), Échap = annuler, nom vide ignoré ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 17:09), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « le rename fonctionne ». **Renommage validé.**
+  - ⏭️ demande de Vincent : clic droit sur une zone de la colonne (et du rail) → même menu que dans la vue (Duplicate, Delete, Hide, Set color...) ; pour une zone cachée, « Show » à la place de « Hide » :
+    - ✅ code (`TrackingMonitorPanel` seulement) : menu déplacé dans `showContextMenu()`, partagé par la vue et la colonne ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 17:16), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Menu clic droit de la colonne validé.**
+  - ⏸️ 27/10 fin de séance. `feature/zone-antiflicker` commitée localement (non fusionnée, non poussée). `feature/zone-shapes` (partie d'elle) commitée localement (accord de Vincent : « commit juste ») : ellipse, renommage par double clic, menu clic droit dans la colonne. Reprise : polygone ;
+  - ⏭️ demande de Vincent : que Claude puisse lui-même reconnecter le serveur MCP « chataigne » à chaque redémarrage de Chataigne (ECONNREFUSED au démarrage de Claude Code car Chataigne n'était pas lancé, et pas de reconnexion automatique ensuite) :
+    - ❌ 27/10 soir : rien de prévu côté Claude Code pour qu'il se reconnecte seul (`/mcp` est une commande de l'utilisateur) ; pas de Node ni de Python sur la machine pour un relais local ;
+    - ❌ premier essai curl : 404 puis « Session protocol version mismatch » → il faut le handshake `initialize` + l'en-tête `MCP-Protocol-Version: 2025-06-18` + `Mcp-Session-Id` ;
+    - ✅ script `D:\DRAWZONE\tools\chataigne-mcp.sh` (hors du dépôt) : appelle directement le serveur MCP de Chataigne par curl, nouvelle session à chaque appel, donc marche après chaque redémarrage sans reconnexion. `list` = liste des outils ; `<outil> '<json>'` = appel. Testé avec `chataigne_diagnostics` : OK ;
+  - ⏭️ forme libre (branche `feature/zone-shapes`). Choix de Vincent : option « Draw free shape », un clic par point, fermeture par clic sur le premier point ou double clic ; trois types de point : normal (Linear), Quadratic (une poignée), Cubic (deux poignées), à changer par clic droit sur le point. Deux briques :
+    - ⏭️ F1 — forme libre à segments droits :
+      - ✅ code : « Shape » → Free Shape ; points rangés dans la zone (Points → Point N → Position, 0–1 dans la boîte Center + Size, enregistrés dans la session) ; appartenance par `Path::contains` + Exit Margin par distance au contour ; passage en Free Shape depuis l'Inspector = 4 coins de la boîte. Tracking Monitor : clic droit sur la scène → « Draw free shape » (clic = point, clic sur le premier point / double clic / Entrée = fermer, Retour arrière = retirer le dernier point, Échap = annuler) ; poignées rondes sur les points, déplaçables (la boîte suit, un seul Ctrl+Z) ; poignées de coin = mise à l'échelle. Pointeurs des courbes (F2) déjà déclarés dans le `.h` ;
+      - ❌ `build_dev.bat` lancé depuis le terminal de Claude : « not recognized » (déjà noté dans BUILDING.md §6) → MSBuild appelé directement ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:22), Chataigne relancé par Claude ;
+      - ✅ test Vincent : « OK pour les tests ». **F1 validée.**
+    - ⏭️ D1 — demande de Vincent : clic droit sur la scène → Draw rectangle / Draw ellipse / Draw free shape (rectangle et ellipse : appuyer, glisser, relâcher) :
+      - ✅ code (`TrackingMonitorPanel` seulement) : « Create zone » gardé, puis Draw rectangle / Draw ellipse / Draw free shape ; aperçu pendant le glissement, Échap = annuler, simple clic sans glisser = rien de créé (< 5 cm) ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:31), Chataigne relancé par Claude ;
+      - 💬 Vincent : ne pas envoyer de messages d'avancement pendant la compilation (« n'arrête pas la compilation pour me dire chaque étape ») → un seul message à la fin ;
+      - ✅ test Vincent : « ok pour ça ». **D1 validée.**
+    - ⏭️ F2 — clic droit sur un point : Linear / Quadratic / Cubic, poignées des courbes :
+      - ✅ code : ZonePoint → Interpolation, Handle In, Handle Out (m, depuis le point) ; contour en courbes (cubique si les deux côtés ont une poignée, quadratique si un seul) ; Quadratic = poignée Out reflétée de l'autre côté. Tracking Monitor : clic droit sur un point → menu Linear / Quadratic / Cubic (un Ctrl+Z) ; au premier passage en courbe, poignées le long de la direction point précédent → suivant ; poignées (losanges) visibles et déplaçables sur la zone sélectionnée ; les poignées suivent la mise à l'échelle par les coins ; clic dans la forme testé sur la courbe (elle peut sortir de la boîte). Enregistré dans la session ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:37), Chataigne relancé par Claude ;
+      - ✅ test Vincent : « ok ». **F2 validée.** Formes terminées (rectangle, ellipse, forme libre à courbes) ;
+    - ✅ commit local sur `feature/zone-shapes` (accord de Vincent : « commit juste », sans fusion ni push) ;
+  - ⏸️ slots de joueurs : mis en attente par Vincent (27/10) pour régler d'abord des détails d'interface et de placement des informations ;
+  - ⏭️ demande de Vincent : valeurs des zones en temps réel sous forme de tableau dans le Tracking Monitor, 4 propositions d'agencement à comparer (branche `feature/zone-info-layouts`, partie de `feature/zone-shapes`) :
+    - ✅ code (`TrackingMonitorPanel` seulement, dessin) : bouton « Zone values : … » dans l'en-tête pour basculer entre 1. Cards (3 lignes par zone dans la colonne), 2. Column table (tableau compact dans la colonne), 3. Bottom table (tableau large sous la vue de dessus, toutes les valeurs), 4. On the zones (étiquette sous chaque zone + croix au barycentre) ;
+    - ✅ choix de Vincent : garder les **Cards**, plus lisibles → 4 maquettes texte proposées avant le code (A grille, B une ligne par valeur, C compacte, D compacte dépliable) ; choix : **D avec le détail en B**. Et : clic sur une carte → Inspector = paramètres, puis Values, puis Points (en dernier, repliés) ;
+    - ✅ code : les 3 autres agencements et le bouton de choix retirés (retour au fichier commité puis cartes D seules) ; carte = flèche de dépliage, pastille, nom, « n / cap · temps », barre d'occupation pleine largeur + % ; dépliée : Occupancy, Presence time, Last entered, Avg position, Avg distance (étiquette à gauche, valeur à droite) ; carte teintée de la couleur de la zone quand occupée. Inspector : `SpatialZoneEditor` (dans `SpatialZone.h/.cpp`) ajoute les Values de la zone (titre « Values ») avant les Points ; Points repliés par défaut ;
+    - ❌ compilation : `Array<BaseItem*>(zone)` pris pour le constructeur « tableau terminé par null » (C2678) → `Array<BaseItem*>((BaseItem*)zone)` ;
+    - ✅ Chataigne fermé par Claude, compilation 0 erreur, liens OK (exe du 27/10 21:01), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Cartes D + Inspector (Values, Points repliés) validés.** Non commité ;
+    - 💬 Vincent : « c'est ok pour les informations et l'UI » → détails d'interface terminés, retour aux slots de joueurs ;
+    - ✅ commit local sur `feature/zone-info-layouts` (accord de Vincent), sans fusion ni push ;
+  - ⏭️ slots de joueurs, choix de Vincent : portée **scène** ; perte de tracking : **les deux au choix** (paramètre : libération immédiate ou délai de grâce avec reprise près de la dernière position) ; slots pleins : nouvelle personne **ignorée** (pas de file d'attente) ;
+    - ✅ proposition validée (« ok ») : paramètres Player Slots (Enabled, Slot Count, Release Mode Immediate / Grace Delay, Grace Delay, Rejoin Distance) ; Values > Slots (Free Slots ; par slot : Occupied, Person Id, Position, Joined, Left) ; 2 briques : 1. logique + Values, 2. numéro de slot dans le Tracking Monitor ;
+    - ✅ brique 1, code : `PlayerSlots.h/.cpp` (nouveaux fichiers, inclus par SpatialModule, pas de passage par le Projucer), branche `feature/player-slots` ; plus petit slot libre ; slots pleins → personne ignorée jusqu'à sa sortie de la scène ; en Grace Delay, slot réservé (position figée), reprise sans Left ni Joined par une nouvelle personne à moins de Rejoin Distance, ou par le même id qui revient ;
+    - ✅ compilation 0 erreur (exe du 27/10 22:23), Chataigne relancé par Claude ;
+    - ✅ (28/10) avant le commit : déclarer `PlayerSlots.h/.cpp` dans `Chataigne.jucer` (compile="0", comme les autres fichiers spatial) puis réenregistrer avec le Projucer ; → fait : 2 lignes dans `Chataigne.jucer`, `Projucer --resave` : seuls les projets Xcode (×2) et Visual Studio (×3, .vcxproj + .filters) changent, uniquement des lignes ajoutées ; recompilation OK (rien à refaire), Chataigne relancé ;
+    - 💬 demandes de Vincent avant commit : modes renommés, gestion des slots dans le Tracking Monitor, slots renommables, nom du slot affiché sur la personne dans la vue 2D, emplacement réservé visible dans la vue 2D (plus tard en NDI/Spout) ;
+    - ✅ proposition validée : modes **Next Person Takes Slot** (slot libéré aussitôt, pour la dernière personne arrivée) et **Hold Spot To Reclaim** (slot réservé à la dernière position ; la 1re personne sans slot qui entre dans le cercle Reclaim Radius le reprend ; Hold Time, 0 = sans limite) ; slots renommables avec une couleur ;
+    - ✅ intégration UI : 4 propositions (A colonne, B onglets, C bandeau sous la vue, D fusion avec People) → choix **C** (bandeau de slots façon HUD sous la vue de dessus) ; retirer le gros chiffre (nombre de personnes) en bas à droite des zones dans la vue 2D ;
+    - ✅ brique 1 (logique) réécrite : paramètre Slot Release, Hold Time, Reclaim Radius ; par slot : Color, Occupied, Person Id, Position, Held, Hold Remaining, Joined, Left ; personnes sans slot en file (ordre d'arrivée), un slot libéré va aux dernières arrivées ; noms et couleurs enregistrés dans le projet (clé « slots ») ;
+    - ✅ compilation 0 erreur (exe du 27/10 22:54), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok pour les tests ». **Brique 1 (logique des slots) validée** ;
+    - ✅ brique 2 (interface), code : bandeau Player Slots sous la vue de dessus (titre + « n / N free », une puce par slot : pastille pleine / anneau, nom, « #id » / « held 4.2 s » / « — », bordure en pointillés si held, boutons - / +) ; clic = Inspector, double clic = renommer, clic droit = Rename, Set color..., Enabled, choix du mode ; vue 2D : étiquette du slot (couleur du slot, nom + #id) qui suit la personne, cercle en pointillés de rayon Reclaim Radius à l'emplacement réservé avec nom, temps restant et arc qui se vide (∞ si Hold Time = 0) ; gros chiffre (nombre de personnes) retiré des zones ;
+    - ❌ 1er essai de liens bloqué (LNK1104) : Chataigne attendait la réponse à « enregistrer ? » à la fermeture → Vincent a répondu, compilation terminée ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:05), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok pour les tests ». **Brique 2 (interface des slots) validée** ;
+    - 💬 Vincent : les modes s'appellent « SwapSlots » entre nous ; le choix du mode doit être une liste déroulante dans l'UI, pas dans le clic droit ; clic sur une personne → tous ses paramètres et valeurs dans l'Inspector ;
+    - ✅ code : liste déroulante du mode dans le bandeau (retirée du clic droit) ; clic sur une personne (vue de dessus, liste People, rail) → sélection (Inspector), personne surlignée ; Values > People > Person N reçoit Slot, Velocity, Orientation, Height, Age ; les slots sont calculés avant les personnes ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:16), Chataigne relancé par Claude ;
+    - 💬 Vincent : liste déroulante « moche » → 4 propositions (A puce déroulante, B puce compacte avec icône + menu expliqué, C texte cliquable, D interrupteur) ; choix **B**, placée **tout à gauche** du bandeau ;
+    - ✅ code : ComboBox JUCE remplacée par une puce dessinée (icône flèche en pointillés = Next person, cercle en pointillés = Hold spot ; nom court ; chevron ; survol éclairci) ; menu : nom complet + explication grise + coche ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:21), Chataigne relancé par Claude ;
+    - 💬 Vincent : assigner vite un slot à un id depuis le Tracking Monitor → proposition : 3 gestes (glisser-déposer, clavier 1–9 / 0, clic droit) + règle d'échange ; validés. Et : une petite section « Shortcuts » qui se déplie au survol ou au clic, avec les raccourcis importants (pavé numérique pour les slots) ;
+    - ✅ brique 1, code : `PlayerSlots::assignByHand` (échange si la personne avait un slot, sinon l'occupant perd le slot et attend ; Left / Joined déclenchés) et `releaseByHand` (la personne reste sans slot jusqu'à sa sortie de la scène ou une assignation à la main) ; clic droit sur une personne → Assign slot ▸ (slots colorés, état, touche) / Release slot ; personne sélectionnée : 1–9 (pavé numérique aussi) = slot N, 0 / Suppr / Retour arrière = libérer ; puce « Shortcuts » à droite de l'en-tête : liste dépliée au survol, épinglée par un clic (Player slots, Zones, Free shape drawing) ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:53), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Brique 1 (assignation à la main, clavier, clic droit, Shortcuts) validée** ;
+    - ✅ brique 2, code : glisser-déposer d'une personne (point de la vue, ligne People, rail) sur une puce de slot, ou d'une puce sur une personne ; ligne en pointillés de la couleur du slot jusqu'à la souris, cible surlignée, étiquette « Person N -> Slot » ; même règle d'échange (`assignSlot`) ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:59), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Glisser-déposer validé.** Slots de joueurs terminés (branche `feature/player-slots`) ;
+    - ✅ commit local sur `feature/player-slots` (accord de Vincent, 28/10), sans fusion ni push ;
+    - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
+    - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;
 
 ## 💡 Idées
 
