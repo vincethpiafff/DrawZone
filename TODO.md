@@ -344,8 +344,11 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ test Vincent : OK (« ok »). **Set color validé.**
   - ⏭️ demandes de Vincent, groupées (indépendantes, faciles à tester séparément) : clic gauche dans la vue hors zone → tout désélectionner ; flèche de direction sur les personnes en mouvement (vitesse mesurée dans le panneau à partir des positions, en m/s, lissée ; flèche si > 0,15 m/s, longueur = distance parcourue en 0,6 s, 14 à 60 px). Compilation 0 erreur, liens OK après fermeture par Vincent (exe du 27/10 03:17), Chataigne relancé ;
     - ✅ test Vincent : désélection et flèche OK (« tout fonctionne »). **Validé.**
-  - ⬜ restent du découpage : traînée des positions (U4, partie 2), clic sur une zone de la colonne → sélection (U5) ;
   - ✅ commit, fusion dans `develop`, push de `develop` et du tag `v0.1.0` sur le fork (accord de Vincent) ;
+  - ⏭️ 27/10 **lot 2 = U4 (traînée) + U5 (clic sur une zone de la colonne)**, branche `feature/tracking-monitor-ui-2` :
+    - ✅ code : traînée des 2 dernières secondes de chaque personne (1 point / 100 ms, 20 points, s'estompe vers le plus ancien, sous les personnes) ; clic gauche sur une ligne de zone (colonne ou rail) → zone sélectionnée (Inspector). Compilation 0 erreur, liens OK (exe du 27/10 07:20), Chataigne relancé par Claude ;
+    - ✅ test Vincent : traînée, clic dans la colonne et dans le rail OK (« tout fonctionne »). **Lot 2 validé.** Découpage U1 à U5 terminé ;
+    - ✅ commit, fusion dans `develop` et push de `develop` sur le fork (accord de Vincent) ;
 
 ## 💡 Idées
 
