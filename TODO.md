@@ -399,7 +399,25 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 17:16), Chataigne relancé par Claude ;
     - ✅ test Vincent : OK (« ok »). **Menu clic droit de la colonne validé.**
   - ⏸️ 27/10 fin de séance. `feature/zone-antiflicker` commitée localement (non fusionnée, non poussée). `feature/zone-shapes` (partie d'elle) commitée localement (accord de Vincent : « commit juste ») : ellipse, renommage par double clic, menu clic droit dans la colonne. Reprise : polygone ;
-  - ⬜ formes : cercle, puis polygone ;
+  - ⏭️ demande de Vincent : que Claude puisse lui-même reconnecter le serveur MCP « chataigne » à chaque redémarrage de Chataigne (ECONNREFUSED au démarrage de Claude Code car Chataigne n'était pas lancé, et pas de reconnexion automatique ensuite) :
+    - ❌ 27/10 soir : rien de prévu côté Claude Code pour qu'il se reconnecte seul (`/mcp` est une commande de l'utilisateur) ; pas de Node ni de Python sur la machine pour un relais local ;
+    - ❌ premier essai curl : 404 puis « Session protocol version mismatch » → il faut le handshake `initialize` + l'en-tête `MCP-Protocol-Version: 2025-06-18` + `Mcp-Session-Id` ;
+    - ✅ script `D:\DRAWZONE\tools\chataigne-mcp.sh` (hors du dépôt) : appelle directement le serveur MCP de Chataigne par curl, nouvelle session à chaque appel, donc marche après chaque redémarrage sans reconnexion. `list` = liste des outils ; `<outil> '<json>'` = appel. Testé avec `chataigne_diagnostics` : OK ;
+  - ⏭️ forme libre (branche `feature/zone-shapes`). Choix de Vincent : option « Draw free shape », un clic par point, fermeture par clic sur le premier point ou double clic ; trois types de point : normal (Linear), Quadratic (une poignée), Cubic (deux poignées), à changer par clic droit sur le point. Deux briques :
+    - ⏭️ F1 — forme libre à segments droits :
+      - ✅ code : « Shape » → Free Shape ; points rangés dans la zone (Points → Point N → Position, 0–1 dans la boîte Center + Size, enregistrés dans la session) ; appartenance par `Path::contains` + Exit Margin par distance au contour ; passage en Free Shape depuis l'Inspector = 4 coins de la boîte. Tracking Monitor : clic droit sur la scène → « Draw free shape » (clic = point, clic sur le premier point / double clic / Entrée = fermer, Retour arrière = retirer le dernier point, Échap = annuler) ; poignées rondes sur les points, déplaçables (la boîte suit, un seul Ctrl+Z) ; poignées de coin = mise à l'échelle. Pointeurs des courbes (F2) déjà déclarés dans le `.h` ;
+      - ❌ `build_dev.bat` lancé depuis le terminal de Claude : « not recognized » (déjà noté dans BUILDING.md §6) → MSBuild appelé directement ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:22), Chataigne relancé par Claude ;
+      - ✅ test Vincent : « OK pour les tests ». **F1 validée.**
+    - ⏭️ D1 — demande de Vincent : clic droit sur la scène → Draw rectangle / Draw ellipse / Draw free shape (rectangle et ellipse : appuyer, glisser, relâcher) :
+      - ✅ code (`TrackingMonitorPanel` seulement) : « Create zone » gardé, puis Draw rectangle / Draw ellipse / Draw free shape ; aperçu pendant le glissement, Échap = annuler, simple clic sans glisser = rien de créé (< 5 cm) ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:31), Chataigne relancé par Claude ;
+      - 💬 Vincent : ne pas envoyer de messages d'avancement pendant la compilation (« n'arrête pas la compilation pour me dire chaque étape ») → un seul message à la fin ;
+      - ✅ test Vincent : « ok pour ça ». **D1 validée.**
+    - ⏭️ F2 — clic droit sur un point : Linear / Quadratic / Cubic, poignées des courbes :
+      - ✅ code : ZonePoint → Interpolation, Handle In, Handle Out (m, depuis le point) ; contour en courbes (cubique si les deux côtés ont une poignée, quadratique si un seul) ; Quadratic = poignée Out reflétée de l'autre côté. Tracking Monitor : clic droit sur un point → menu Linear / Quadratic / Cubic (un Ctrl+Z) ; au premier passage en courbe, poignées le long de la direction point précédent → suivant ; poignées (losanges) visibles et déplaçables sur la zone sélectionnée ; les poignées suivent la mise à l'échelle par les coins ; clic dans la forme testé sur la courbe (elle peut sortir de la boîte). Enregistré dans la session ;
+      - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:37), Chataigne relancé par Claude ;
+      - ✅ test Vincent : « ok ». **F2 validée.** Formes terminées (rectangle, ellipse, forme libre à courbes). Non commitées ;
   - ⬜ slots de joueurs ;
 
 ## 💡 Idées

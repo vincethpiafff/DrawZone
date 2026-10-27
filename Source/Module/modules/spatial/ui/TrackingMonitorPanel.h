@@ -41,6 +41,7 @@ public:
 	void mouseDrag(const MouseEvent& e) override;
 	void mouseUp(const MouseEvent& e) override;
 	void mouseDoubleClick(const MouseEvent& e) override; // on a zone name : rename it
+	bool keyPressed(const KeyPress& key) override; // while drawing a free shape : Escape cancels, Backspace removes the last point
 
 private:
 	SpatialModule* getSpatialModule();
@@ -82,6 +83,29 @@ private:
 
 	//right click menu on a zone (top view or column), or "Create zone" on the empty scene
 	void showContextMenu(SpatialZone* zone, Point<int> clickPosition, bool canCreate);
+	//right click on a free shape point : Linear / Quadratic / Cubic
+	void showPointMenu(SpatialZone* zone, int pointIndex, Point<int> clickPosition);
+
+	//free shape drawing : each click adds a point, a click on the first point or a double click closes it
+	bool drawingFreeShape = false;
+	Array<Point<float>> drawPoints;	// meters
+	Point<float> drawMouse;			// screen
+	uint32 drawFinishedMs = 0;		// the double click that closes the shape must not open the rename editor
+	void startFreeShapeDrawing();
+	void finishFreeShapeDrawing();
+	void cancelFreeShapeDrawing();
+	void paintFreeShapeDrawing(Graphics& g);
+	Point<float> toMeters(Point<float> screen) const;	// clamped to the scene
+
+	//rectangle / ellipse drawing : press, drag, release
+	int drawingBoxShape = -1;	// SpatialZone::RECTANGLE or ELLIPSE, -1 = not drawing
+	bool boxDragging = false;
+	Point<float> boxStart, boxEnd;	// meters
+	void startBoxDrawing(int boxShape);
+	void finishBoxDrawing();
+	void cancelBoxDrawing();
+	void paintBoxDrawing(Graphics& g);
+	void paintDrawingHelp(Graphics& g, const String& text);
 
 	//inline rename of a zone, opened by a double click on its name (column or top view)
 	TextEditor renameEditor;
@@ -95,8 +119,8 @@ private:
 
 	Rectangle<float> toScreen(Rectangle<float> meters) const;
 
-	//hit test : zone index (topmost first) and corner (0 top left, 1 top right, 2 bottom right, 3 bottom left, -1 inside)
-	struct ZoneHit { int zoneIndex = -1; int corner = -1; };
+	//hit test : zone index (topmost first), corner (0 top left, 1 top right, 2 bottom right, 3 bottom left, -1 inside) and free shape point (-1 none)
+	struct ZoneHit { int zoneIndex = -1; int corner = -1; int pointIndex = -1; int handle = 0; };	// handle of pointIndex : 1 in, 2 out
 	ZoneHit hitTest(Point<float> pos) const;
 
 	int hoveredZone = -1;
@@ -106,6 +130,11 @@ private:
 	Rectangle<float> dragStartBounds;	// meters
 	Point<float> dragStartCenter;
 	Point<float> dragStartSize;
+	int dragPoint = -1;	// free shape point being moved
+	Array<Point<float>> dragStartPointsMeters;
+	Array<Point<float>> dragStartPoints;	// 0-1 in the box, for the undo
+	int dragHandle = 0;	// curve handle being moved (1 in, 2 out) of dragPoint
+	Array<Point<float>> dragStartHandlesIn, dragStartHandlesOut;	// meters from each point
 
 	//copied on each refresh, so painting never touches the network data
 	bool hasModule = false;
@@ -118,7 +147,12 @@ private:
 		WeakReference<ControllableContainer> zone;
 		String name;
 		Rectangle<float> bounds;	// meters
-		bool ellipse = false;	// else rectangle
+		bool ellipse = false;
+		bool freeShape = false;	// neither : rectangle
+		Path outline;				// meters, free shape only
+		Array<Point<float>> points;	// meters, free shape only
+		Array<int> interpolations;	// ZonePoint::Interpolation of each point
+		Array<Point<float>> handlesIn, handlesOut;	// curve control points, meters
 		Colour color;
 		bool enabled = true;
 		bool presence = false;
