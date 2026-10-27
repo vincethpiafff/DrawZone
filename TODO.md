@@ -331,6 +331,21 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ session enregistrée (02:37, le fichier pointe bien sur `zoneA/presence`), Chataigne fermé proprement (code 0), relancé par Claude ;
     - ✅ test Vincent (lu par MCP) : session rouverte, pas d'avertissement, entrées / sorties loguées (02:38:04 → 02:38:08). **Test final v0.1 validé.**
     - ✅ `CHANGELOG.md` (section 0.1.0), `ROADMAP.md`, `CLAUDE.md` à jour ; fusion dans `develop` et tag annoté `v0.1.0` (local, rien poussé) ;
+    - ❌ puis ✅ fusion : `git merge -F -` refusé (« could not read file '-' ») mais la commande suivante a posé le tag sur l'ancien `develop` → tag local supprimé, fusion refaite avec `-m`, tag `v0.1.0` sur le commit de fusion `53221961` ;
+
+- ⏭️ 27/10 **styles d'UI du Tracking Monitor** (demande de Vincent, avant la v0.2) : 3 maquettes (A barre d'état + tableau enrichi, B grande vue + panneau latéral Zones / Personnes, C mode « show » plein écran) + l'actuel, en page de design : https://claude.ai/artifact/UGUXh7g1mcD76V19rrH928. Contrainte : ne changer que le dessin (`paint`, `resized`), pas les données ni les zones. → Vincent choisit : style et vue 2D de la C (sans les cartes du bas) + colonne Zones / People de la B. 2e tour : D1 colonne en liste, D2 colonne en cartes avec l'état de la source dedans, D3 rail repliable (même page, rangée « Round 2 »). → **choix de Vincent : D1 + le repli en rail de D3.** Découpage en briques proposé (U1 à U5). Vincent autorise à regrouper les briques d'UI : **lot 1 = U1 + U2 + U3** (style show, colonne D1, repli en rail), lot 2 = U4 + U5 ensuite. Branche `feature/tracking-monitor-ui` ;
+  - ✅ lot 1 codé (`TrackingMonitorPanel` seulement : dessin, mise en page, bouton de repli, « + Create zone », « Show hidden ») ;
+  - ❌ `build_dev.bat` ne se lance pas depuis le terminal de Claude (« 'C:\Program' is not recognized », souci de guillemets de cmd) → MSBuild appelé directement avec les mêmes options ;
+  - ✅ compilation 0 erreur ; ❌ édition des liens LNK1104 : Chataigne ouvert (exe verrouillé), attendu → fermer Chataigne ;
+  - ✅ Chataigne fermé par Vincent, liens OK (exe du 27/10 03:06), Chataigne relancé par Claude ;
+  - ✅ test Vincent du lot 1 : OK. **Lot 1 validé.**
+  - ⏭️ demande de Vincent : clic droit sur une zone → « Set color... » avec le sélecteur de couleur de Chataigne (`ColorParameterUI` sur la couleur de la zone, annulable par Ctrl+Z). Brique seule (touche à l'édition) ;
+    - ✅ code : entrée « Set color... » (id 5) ; la zone est sélectionnée seule (le sélecteur modifie les éléments sélectionnés), un `ColorParameterUI` invisible au point du clic ouvre le sélecteur ; compilation 0 erreur, liens OK après fermeture par Vincent (exe du 27/10 03:12), Chataigne relancé ;
+    - ✅ test Vincent : OK (« ok »). **Set color validé.**
+  - ⏭️ demandes de Vincent, groupées (indépendantes, faciles à tester séparément) : clic gauche dans la vue hors zone → tout désélectionner ; flèche de direction sur les personnes en mouvement (vitesse mesurée dans le panneau à partir des positions, en m/s, lissée ; flèche si > 0,15 m/s, longueur = distance parcourue en 0,6 s, 14 à 60 px). Compilation 0 erreur, liens OK après fermeture par Vincent (exe du 27/10 03:17), Chataigne relancé ;
+    - ✅ test Vincent : désélection et flèche OK (« tout fonctionne »). **Validé.**
+  - ⬜ restent du découpage : traînée des positions (U4, partie 2), clic sur une zone de la colonne → sélection (U5) ;
+  - ✅ commit, fusion dans `develop`, push de `develop` et du tag `v0.1.0` sur le fork (accord de Vincent) ;
 
 ## 💡 Idées
 

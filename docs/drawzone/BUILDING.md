@@ -137,6 +137,19 @@ start "" "Binaries\App\Chataigne.exe"
 - Première compilation : quelques minutes ; ensuite, incrémentale.
 - `build.bat` fait la même chose avec l'optimisation finale (LTCG, 10 à 20 min
   de plus) : à garder pour les versions publiées.
+- Depuis le terminal de Claude Code (Git Bash), `build_dev.bat` échoue
+  (« 'C:\Program' is not recognized », guillemets de `cmd`). Appeler
+  MSBuild directement, avec les mêmes options :
+
+  ```sh
+  "/c/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe" \
+    Builds/VisualStudio2022/Chataigne.sln -p:Configuration=Release -p:Platform=x64 \
+    -p:PreferredToolArchitecture=x64 -p:WholeProgramOptimization=false \
+    -p:LinkTimeCodeGeneration=Default -m -v:minimal
+  ```
+
+  (`build_dev.bat` copie aussi les DLL mpv à la fin : à relancer depuis un
+  terminal Windows si elles manquent.)
 
 ## 7. Test de validation
 
