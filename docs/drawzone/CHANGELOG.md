@@ -5,6 +5,18 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+### Modifié
+- **Tracking Monitor** restylé (style sombre « show ») : barre d'état sur une
+  ligne, zones occupées lumineuses avec leur compteur, colonne Zones / People
+  à droite (repliable en rail), boutons « + Create zone » et « Show hidden ».
+
+### Ajouté
+- Clic droit sur une zone → « Set color... » (sélecteur de couleur de
+  Chataigne, annulable).
+- Clic gauche dans la vue hors zone : tout désélectionner.
+- Flèche de direction sur les personnes en mouvement (vitesse mesurée dans le
+  panneau, en m/s).
+
 ## [0.1.0] - 2026-10-27
 
 Premier « ça marche ! » : une personne trackée entre dans une zone, un

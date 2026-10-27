@@ -6,7 +6,8 @@
 	Author:  DrawZone
 
 	Dockable panel showing, in real time, the people received by the
-	first Spatial module (id, position, age, speed).
+	first Spatial module and its zones : a top view on the left, a Zones /
+	People column on the right (collapsible to a narrow rail).
 	Refreshed at a fixed rate from a TrackingData snapshot, so the display
 	stays readable whatever the input message rate.
 
@@ -16,6 +17,7 @@
 #pragma once
 
 class SpatialModule;
+class SpatialZone;
 
 class TrackingMonitorPanel :
 	public ShapeShifterContentComponent,
@@ -41,19 +43,41 @@ public:
 
 private:
 	SpatialModule* getSpatialModule();
+	void paintHeader(Graphics& g);
 	void paintTopView(Graphics& g, Rectangle<int> r);
+	void paintColumn(Graphics& g);
+	void paintRail(Graphics& g);
+
+	static Colour getPersonColor(int id);
 
 	static constexpr float handleSize = 8;
 	static const int lineHeight = 18;
+	static const int columnWidth = 240;
+	static const int railWidth = 56;
 
 	//layout, computed in resized()
 	Rectangle<int> headerRect;
 	Rectangle<int> topViewRect;
-	Rectangle<int> tableRect;
+	Rectangle<int> columnRect;
 
+	//column layout, computed in layoutColumn() (depends on the number of zones)
+	void layoutColumn();
+	Rectangle<int> zonesHeaderRect;
+	Array<Rectangle<int>> zoneRowRects;	// one per zone, empty when it does not fit
+	Rectangle<int> peopleRect;
+
+	bool columnCollapsed = false;
+	TextButton collapseButton;
+	TextButton createZoneButton;
 	TextButton showHiddenButton;
+	int numHidden = 0;
 	void showHiddenZones();
+	void createZone();
 	void createZoneAt(Point<float> positionMeters);
+
+	//Chataigne's own color picker on the zone color, opened from the right click menu
+	std::unique_ptr<ColorParameterUI> zoneColorUI;
+	void showZoneColorEditor(SpatialZone* zone, Point<int> position);
 
 	//top view geometry from the last paint, used to convert mouse positions to meters
 	Rectangle<float> sceneScreenRect;
@@ -88,8 +112,23 @@ private:
 		bool enabled = true;
 		bool presence = false;
 		bool hidden = false;
+		bool selected = false;
+		int personCount = 0;
 	};
 	Array<ZoneView> zones;
+	Array<int> personZones;	// zone index for each person of the snapshot, -1 = in no zone
+
+	//motion measured here from the successive positions (independent of the source velocity units)
+	struct Motion
+	{
+		Point<float> lastPosition;	// meters
+		uint32 lastMs = 0;
+		Point<float> velocity;		// meters per second, smoothed
+	};
+	std::map<int, Motion> motions;	// by person id
+	void updateMotions();
+
+	static constexpr float minArrowSpeed = .15f;	// m/s, below that the person is considered still
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingMonitorPanel)
 };
