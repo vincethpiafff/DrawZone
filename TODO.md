@@ -460,6 +460,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ compilation 0 erreur (exe du 27/10 23:59), Chataigne relancé par Claude ;
     - ✅ test Vincent : « ok ». **Glisser-déposer validé.** Slots de joueurs terminés (branche `feature/player-slots`) ;
     - ✅ commit local sur `feature/player-slots` (accord de Vincent, 28/10), sans fusion ni push ;
+    - ✅ fusion locale dans `develop` (accord de Vincent, 28/10) : `--no-ff`, commit `72035834`, intègre toute la pile (zone-antiflicker, zone-shapes, zone-info-layouts, player-slots) ; sans push ;
+    - ✅ CHANGELOG (entrée 0.2.0), ROADMAP (états v0.2 / v0.3 / v0.4, slots par zone reportés) et CLAUDE.md (état v0.2.0, prochaine étape v0.4) ; commit `docs` sur `develop` et tag annoté `v0.2.0` en local (accord de Vincent, 28/10), sans push ;
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;

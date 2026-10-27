@@ -5,17 +5,54 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
-### Modifié
-- **Tracking Monitor** restylé (style sombre « show ») : barre d'état sur une
-  ligne, zones occupées lumineuses avec leur compteur, colonne Zones / People
-  à droite (repliable en rail), boutons « + Create zone » et « Show hidden ».
+## [0.2.0] - 2026-10-28
+
+Zones de toutes formes avec leurs métriques, et slots de joueurs stables
+(« Joueur 1 / Joueur 2 »), le tout piloté depuis le Tracking Monitor.
 
 ### Ajouté
-- Clic droit sur une zone → « Set color... » (sélecteur de couleur de
-  Chataigne, annulable).
-- Clic gauche dans la vue hors zone : tout désélectionner.
-- Flèche de direction sur les personnes en mouvement (vitesse mesurée dans le
-  panneau, en m/s).
+- **Formes de zone** : rectangle, ellipse (cercle si largeur = hauteur) et
+  **forme libre** point par point, avec courbes (Linear / Quadratic / Cubic,
+  poignées déplaçables). Dessin à la souris depuis le clic droit sur la
+  scène : Draw rectangle / ellipse / free shape.
+- **Métriques par zone** (Values) : Entered / Exited, Last Entered Id,
+  Presence Time, Occupancy (avec Capacity), Average Position, Average
+  Distance To Center.
+- **Anti-clignotement** en bord de zone : Exit Margin (m) et Exit Delay (s).
+- **Values > People** : une entrée par personne (Id, Position, Zone,
+  Relative Position, Slot, Velocity, Orientation, Height, Age).
+- **Slots de joueurs** (Player Slots) : chaque personne garde le même slot
+  dans toute la scène. Deux modes « SwapSlots » : *Next Person Takes Slot*
+  (slot libéré aussitôt pour la dernière personne arrivée) et *Hold Spot To
+  Reclaim* (slot réservé là où la personne a été perdue ; la première
+  personne sans slot qui entre dans le cercle le reprend ; Hold Time,
+  Reclaim Radius). Slots renommables et colorés, sauvegardés avec la
+  session ; par slot : Occupied, Person Id, Position, Held, Hold
+  Remaining, Joined, Left.
+- Tracking Monitor :
+  - **cartes de zone** dépliables (occupation, temps, détail des valeurs) ;
+    clic → Inspector avec les paramètres, les Values, puis les Points
+    (repliés) ;
+  - **bandeau Player Slots** sous la vue : puce du mode SwapSlots (menu
+    expliqué), une puce par slot, boutons - / + ;
+  - nom du slot qui suit chaque personne, cercle en pointillés avec le temps
+    restant sur les emplacements réservés ;
+  - **assignation de slot à la main** : glisser-déposer personne ↔ slot,
+    touches 1–9 / 0 (pavé numérique aussi) sur la personne sélectionnée,
+    clic droit → Assign slot / Release slot ; échange si la personne avait
+    déjà un slot ;
+  - liste **Shortcuts** dépliable dans l'en-tête ;
+  - clic sur une personne → ses valeurs dans l'Inspector ;
+  - traînée des 2 dernières secondes et flèche de direction des personnes ;
+  - renommage par double clic, clic droit sur une zone → Duplicate, Delete,
+    Hide, Set color... ; clic dans le vide → tout désélectionner.
+
+### Modifié
+- **Tracking Monitor** restylé (style sombre « show ») : barre d'état sur une
+  ligne, zones occupées lumineuses, colonne Zones / People à droite
+  (repliable en rail), boutons « + Create zone » et « Show hidden ».
+- Le nombre de personnes n'est plus affiché en gros dans les zones de la vue
+  de dessus (il reste sur les cartes).
 
 ## [0.1.0] - 2026-10-27
 

@@ -27,9 +27,11 @@ Chataigne, donc utilisables partout dans le logiciel.
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.1.0 validée** (27/10/2026 : module Spatial, zones
-rectangulaires avec « Presence », Tracking Monitor éditable à la souris).
-**Prochaine étape : v0.2**, zones multiples, métriques, slots de joueurs.
+**État actuel : v0.2.0 validée** (28/10/2026 : zones rectangle / ellipse /
+forme libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
+Tracking Monitor complet).
+**Prochaine étape : v0.4**, entrées PSN et TUIO, multi-sources (la v0.3,
+éditeur 2D, est en grande partie faite dans le Tracking Monitor).
 
 ## 2. Comment travailler avec Vincent
 

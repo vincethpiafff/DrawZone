@@ -9,8 +9,8 @@ et elle donne un outil utilisable tôt.
 | **v0.0** | Outils installés, fork, compilation de Chataigne, réception d'Augmenta Fusion | Chataigne compilé en local qui reçoit Augmenta | ✅ 23/10/2026 |
 | **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ✅ v0.1.0 (27/10/2026) |
 | **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
-| **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | |
-| **v0.4** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
+| **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
+| **v0.4** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | ⬜ ensuite : test de l'interface avec plusieurs scènes, puis deux systèmes (Fusion en OSC + Naostage en PSN) |
 | **v0.5** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | |
 | **v0.6** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
 | **v0.7** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
@@ -53,6 +53,11 @@ OSC de Chataigne.
   récupère son slot). Lié au point dur « instabilité des identifiants ».
 - Chaque slot expose ses paramètres (occupé, position, id Augmenta),
   utilisables dans la State Machine comme les métriques de zone.
+
+Fait en v0.2.0 : slots pour toute la scène, deux modes « SwapSlots » (Next
+Person Takes Slot, Hold Spot To Reclaim), assignation à la main depuis le
+Tracking Monitor. Reportés : slots par zone et autres règles d'attribution
+(la plus proche d'un point, la première entrée dans une zone).
 
 ### v0.3 — éditeur 2D
 
