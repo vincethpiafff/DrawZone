@@ -384,7 +384,21 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
   - ⏭️ anti-clignotement, branche `feature/zone-antiflicker`. Choix de Vincent : **marge + délai de sortie** par zone :
     - ✅ code : « Exit Margin » (m, défaut 0,1 : une fois dedans, on ne sort qu'au-delà du bord + marge) ; « Exit Delay » (s, défaut 0,3 : une personne sortie ou perdue reste comptée pendant ce délai, si elle revient ni Exited ni Entered) ; Average Position calculée sur les personnes vraiment dedans ; People → Zone / Relative Position et Tracking Monitor suivent la même appartenance que la zone (Relative Position bornée à 0–1 dans la marge) ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 12:33), Chataigne relancé par Claude ;
-    - ✅ test Vincent : OK (« ok »). **Anti-clignotement validé.** Branche non commitée, en attente de l'accord de Vincent ;
+    - ✅ test Vincent : OK (« ok »). **Anti-clignotement validé.**
+    - ✅ commit local sur `feature/zone-antiflicker` (accord de Vincent : « commit juste », sans fusion ni push) ;
+  - ⏭️ forme **cercle**, branche `feature/zone-shapes`. Choix de Vincent : **ellipse via Size** (réglage « Shape » Rectangle / Ellipse ; l'ellipse remplit le rectangle Center + Size, cercle si largeur = hauteur ; Relative Position 0–1 dans le carré englobant) :
+    - ✅ code : test d'appartenance elliptique (Exit Margin ajoutée aux demi-axes) ; Tracking Monitor : ellipse dessinée (halo, remplissage, contour), cadre fin + poignées aux coins quand elle est sélectionnée / survolée, clic dans l'ellipse seulement ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 13:44), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Ellipse validée.** Non commitée ;
+  - ⏭️ demande de Vincent : double clic sur le nom d'une zone → renommer (même branche `feature/zone-shapes`) :
+    - ✅ code (`TrackingMonitorPanel` seulement) : double clic sur une ligne de zone de la colonne (pas le rail, sans noms) ou sur le nom en haut à gauche d'une zone dans la vue → champ de texte sur place ; Entrée ou clic ailleurs = valider (annulable par Ctrl+Z), Échap = annuler, nom vide ignoré ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 17:09), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « le rename fonctionne ». **Renommage validé.**
+  - ⏭️ demande de Vincent : clic droit sur une zone de la colonne (et du rail) → même menu que dans la vue (Duplicate, Delete, Hide, Set color...) ; pour une zone cachée, « Show » à la place de « Hide » :
+    - ✅ code (`TrackingMonitorPanel` seulement) : menu déplacé dans `showContextMenu()`, partagé par la vue et la colonne ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 17:16), Chataigne relancé par Claude ;
+    - ✅ test Vincent : OK (« ok »). **Menu clic droit de la colonne validé.**
+  - ⏸️ 27/10 fin de séance. `feature/zone-antiflicker` commitée localement (non fusionnée, non poussée). `feature/zone-shapes` (partie d'elle) commitée localement (accord de Vincent : « commit juste ») : ellipse, renommage par double clic, menu clic droit dans la colonne. Reprise : polygone ;
   - ⬜ formes : cercle, puis polygone ;
   - ⬜ slots de joueurs ;
 

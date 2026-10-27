@@ -12,6 +12,9 @@ SpatialZone::SpatialZone(var params) :
 	BaseItem("Zone 1"),
 	zoneValues("Zone 1")
 {
+	shape = addEnumParameter("Shape", "Rectangle, or ellipse filling the rectangle given by Center and Size (a circle when width = height)");
+	shape->addOption("Rectangle", RECTANGLE)->addOption("Ellipse", ELLIPSE);
+
 	center = addPoint2DParameter("Center", "Center of the zone, in meters from the top left corner of the scene");
 	center->setDefaultPoint(4, 2.25f);
 	center->extendedEditorInvertY = true; //2D editor : y goes down, like the scene (origin top left)
@@ -73,7 +76,18 @@ bool SpatialZone::contains(Point<float> positionMeters, float margin) const
 {
 	Point<float> c = center->getPoint();
 	Point<float> halfSize = size->getPoint() / 2 + Point<float>(margin, margin);
-	return std::abs(positionMeters.x - c.x) <= halfSize.x && std::abs(positionMeters.y - c.y) <= halfSize.y;
+	Point<float> d = positionMeters - c;
+	if (isEllipse())
+	{
+		if (halfSize.x <= 0 || halfSize.y <= 0) return false;
+		return (d.x * d.x) / (halfSize.x * halfSize.x) + (d.y * d.y) / (halfSize.y * halfSize.y) <= 1;
+	}
+	return std::abs(d.x) <= halfSize.x && std::abs(d.y) <= halfSize.y;
+}
+
+bool SpatialZone::isEllipse() const
+{
+	return shape->getValueDataAsEnum<Shape>() == ELLIPSE;
 }
 
 Rectangle<float> SpatialZone::getBounds() const

@@ -27,6 +27,8 @@ public:
 
 	void setSceneSize(Point<float> sceneSize);
 
+	enum Shape { RECTANGLE, ELLIPSE };
+	EnumParameter* shape;
 	Point2DParameter* center;	// meters
 	Point2DParameter* size;		// meters
 	BoolParameter* hiddenInMonitor;
@@ -53,6 +55,7 @@ public:
 	HashMap<int, uint32> lastInsideMs;	// last time each person of idsInside was really inside, for the exit delay
 
 	bool contains(Point<float> positionMeters, float margin = 0) const;
+	bool isEllipse() const;
 	Rectangle<float> getBounds() const;	// meters
 	void updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize);
 

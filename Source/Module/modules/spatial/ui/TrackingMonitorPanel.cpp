@@ -21,12 +21,13 @@ namespace TrackingMonitorStyle
 	const String times = String(CharPointer_UTF8(" \xc3\x97 "));
 
 	//soft halo around an occupied zone
-	inline void drawGlow(Graphics& g, Rectangle<float> r, Colour c)
+	inline void drawGlow(Graphics& g, Rectangle<float> r, Colour c, bool ellipse)
 	{
 		for (int i = 1; i <= 4; i++)
 		{
 			g.setColour(c.withAlpha(.16f / i));
-			g.drawRect(r.expanded(i * 2.0f), 2.0f);
+			if (ellipse) g.drawEllipse(r.expanded(i * 2.0f), 2.0f);
+			else g.drawRect(r.expanded(i * 2.0f), 2.0f);
 		}
 	}
 }
@@ -50,6 +51,11 @@ TrackingMonitorPanel::TrackingMonitorPanel(const String& contentName) :
 	showHiddenButton.setTooltip("Show the zones hidden in this view");
 	showHiddenButton.onClick = [this]() { showHiddenZones(); };
 	addChildComponent(showHiddenButton);
+
+	renameEditor.onReturnKey = [this]() { closeRenameEditor(true); };
+	renameEditor.onFocusLost = [this]() { closeRenameEditor(true); };
+	renameEditor.onEscapeKey = [this]() { closeRenameEditor(false); };
+	addChildComponent(renameEditor);
 
 	startTimerHz(refreshRateHz);
 }
@@ -183,6 +189,7 @@ void TrackingMonitorPanel::timerCallback()
 			zv.name = z->niceName;
 			Point<float> size = z->size->getPoint();
 			zv.bounds = Rectangle<float>(size.x, size.y).withCentre(z->center->getPoint());
+			zv.ellipse = z->isEllipse();
 			zv.color = z->itemColor->getColor();
 			zv.enabled = z->enabled->boolValue();
 			zv.presence = z->presence->boolValue();
@@ -407,18 +414,25 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		Rectangle<float> zr = toScreen(z.bounds).getIntersection(scene.expanded(2));
 		if (zr.isEmpty()) continue;
 
+		//an ellipse is drawn whole (its bounds stay near the scene), clipped to the scene
+		Rectangle<float> er = toScreen(z.bounds);
+		Graphics::ScopedSaveState clipState(g);
+		g.reduceClipRegion(scene.expanded(2).getSmallestIntegerContainer());
+
 		Colour c = z.enabled ? z.color : NORMAL_COLOR;
 		Colour light = c.interpolatedWith(Colours::white, .5f);
 
 		if (z.presence)
 		{
-			drawGlow(g, zr, c);
+			drawGlow(g, z.ellipse ? er : zr, c, z.ellipse);
 			g.setColour(c.withAlpha(.22f));
-			g.fillRect(zr);
+			if (z.ellipse) g.fillEllipse(er);
+			else g.fillRect(zr);
 		}
 
 		g.setColour(z.selected ? HIGHLIGHT_COLOR : c.withAlpha(z.presence ? 1 : .6f));
-		g.drawRect(zr, z.presence || z.selected ? 2.0f : 1.0f);
+		if (z.ellipse) g.drawEllipse(er, z.presence || z.selected ? 2.0f : 1.0f);
+		else g.drawRect(zr, z.presence || z.selected ? 2.0f : 1.0f);
 
 		g.setColour(z.enabled ? light : NORMAL_COLOR);
 		g.setFont(Font(12.0f));
@@ -437,6 +451,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		if (i == hoveredZone || isDragged || z.selected)
 		{
 			g.setColour(z.selected ? HIGHLIGHT_COLOR : c);
+			if (z.ellipse) g.drawRect(zr, 1.0f); //the handles are on this box
 			Rectangle<float> h(handleSize, handleSize);
 			g.fillRect(h.withCentre(zr.getTopLeft()));
 			g.fillRect(h.withCentre(zr.getTopRight()));
@@ -726,7 +741,15 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 			}
 		}
 
-		if (zr.contains(pos))
+		bool inside = zr.contains(pos);
+		if (inside && zones[i].ellipse)
+		{
+			Point<float> d = pos - zr.getCentre();
+			float rx = zr.getWidth() / 2, ry = zr.getHeight() / 2;
+			inside = rx > 0 && ry > 0 && (d.x * d.x) / (rx * rx) + (d.y * d.y) / (ry * ry) <= 1;
+		}
+
+		if (inside)
 		{
 			hit.zoneIndex = i;
 			return hit;
@@ -760,7 +783,13 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 		for (int i = 0; i < zones.size() && i < zoneRowRects.size(); i++)
 		{
 			if (!zoneRowRects[i].contains(e.getPosition())) continue;
-			if (SpatialZone* z = dynamic_cast<SpatialZone*>(zones[i].zone.get())) z->selectThis();
+			SpatialZone* z = dynamic_cast<SpatialZone*>(zones[i].zone.get());
+			if (e.mods.isRightButtonDown())
+			{
+				if (z != nullptr) showContextMenu(z, e.getPosition(), false); //same menu as in the top view
+				return;
+			}
+			if (z != nullptr) z->selectThis();
 			timerCallback();
 			return;
 		}
@@ -772,38 +801,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 	if (e.mods.isRightButtonDown())
 	{
-		PopupMenu m;
-		if (zone != nullptr)
-		{
-			m.addItem(1, "Duplicate");
-			m.addItem(2, "Delete");
-			m.addItem(3, "Hide");
-			m.addItem(5, "Set color...");
-		}
-		else if (sceneScale > 0 && sceneScreenRect.contains(e.position))
-		{
-			m.addItem(4, "Create zone");
-		}
-
-		if (m.getNumItems() == 0) return;
-
-		Point<float> clickMeters = (e.position - sceneScreenRect.getTopLeft()) / sceneScale;
-		Point<int> clickPosition = e.getPosition();
-		WeakReference<ControllableContainer> zoneRef(zone);
-		WeakReference<Component> panelRef(this);
-		m.showMenuAsync(PopupMenu::Options(), [zoneRef, panelRef, clickMeters, clickPosition](int result)
-			{
-				SpatialZone* z = dynamic_cast<SpatialZone*>(zoneRef.get());
-				TrackingMonitorPanel* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
-				switch (result)
-				{
-				case 1: if (z != nullptr) z->duplicate(); break;
-				case 2: if (z != nullptr) z->remove(); break;
-				case 3: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(false, true); break;
-				case 4: if (p != nullptr) p->createZoneAt(clickMeters); break;
-				case 5: if (z != nullptr && p != nullptr) p->showZoneColorEditor(z, clickPosition); break;
-				}
-			});
+		showContextMenu(zone, e.getPosition(), sceneScale > 0 && sceneScreenRect.contains(e.position));
 		return;
 	}
 
@@ -912,4 +910,95 @@ void TrackingMonitorPanel::showZoneColorEditor(SpatialZone* zone, Point<int> pos
 	addChildComponent(zoneColorUI.get());
 	zoneColorUI->setBounds(Rectangle<int>(16, 16).withCentre(position));
 	zoneColorUI->showEditWindow();
+}
+
+void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
+{
+	//double click on a zone name in the column (not the rail, which shows no names)
+	if (columnRect.contains(e.getPosition()))
+	{
+		if (columnCollapsed) return;
+		for (int i = 0; i < zones.size() && i < zoneRowRects.size(); i++)
+		{
+			if (!zoneRowRects[i].contains(e.getPosition())) continue;
+			showRenameEditor(dynamic_cast<SpatialZone*>(zones[i].zone.get()), zoneRowRects[i].withTrimmedLeft(22).withTrimmedRight(36).reduced(0, 3));
+			return;
+		}
+		return;
+	}
+
+	//double click on the name drawn in the top left corner of a zone, same place as in paintTopView()
+	ZoneHit hit = hitTest(e.position);
+	if (hit.zoneIndex < 0) return;
+
+	Rectangle<float> label = toScreen(zones[hit.zoneIndex].bounds).getIntersection(sceneScreenRect.expanded(2)).reduced(5, 3).withHeight(16);
+	if (!label.expanded(0, 3).contains(e.position)) return;
+
+	Rectangle<int> r = label.withWidth(jmax(label.getWidth(), 140.0f)).expanded(2, 3).toNearestInt();
+	showRenameEditor(dynamic_cast<SpatialZone*>(zones[hit.zoneIndex].zone.get()), r.constrainedWithin(topViewRect));
+}
+
+void TrackingMonitorPanel::showRenameEditor(SpatialZone* zone, Rectangle<int> bounds)
+{
+	if (zone == nullptr) return;
+
+	renameZone = zone;
+	renameEditor.setFont(Font(13.0f));
+	renameEditor.setText(zone->niceName, false);
+	renameEditor.setBounds(bounds);
+	renameEditor.setVisible(true);
+	renameEditor.grabKeyboardFocus();
+	renameEditor.selectAll();
+}
+
+void TrackingMonitorPanel::closeRenameEditor(bool apply)
+{
+	//hiding the editor makes it lose focus, which calls this again
+	if (!renameEditor.isVisible()) return;
+	renameEditor.setVisible(false);
+
+	SpatialZone* zone = dynamic_cast<SpatialZone*>(renameZone.get());
+	renameZone = nullptr;
+	String newName = renameEditor.getText().trim();
+	if (!apply || zone == nullptr || newName.isEmpty() || newName == zone->niceName) return;
+
+	zone->setUndoableNiceName(newName);
+	timerCallback();
+}
+
+void TrackingMonitorPanel::showContextMenu(SpatialZone* zone, Point<int> clickPosition, bool canCreate)
+{
+	PopupMenu m;
+	if (zone != nullptr)
+	{
+		bool hidden = zone->hiddenInMonitor->boolValue(); //only possible from the column
+		m.addItem(1, "Duplicate");
+		m.addItem(2, "Delete");
+		m.addItem(hidden ? 6 : 3, hidden ? "Show" : "Hide");
+		m.addItem(5, "Set color...");
+	}
+	else if (canCreate)
+	{
+		m.addItem(4, "Create zone");
+	}
+
+	if (m.getNumItems() == 0) return;
+
+	Point<float> clickMeters = sceneScale > 0 ? (clickPosition.toFloat() - sceneScreenRect.getTopLeft()) / sceneScale : Point<float>();
+	WeakReference<ControllableContainer> zoneRef(zone);
+	WeakReference<Component> panelRef(this);
+	m.showMenuAsync(PopupMenu::Options(), [zoneRef, panelRef, clickMeters, clickPosition](int result)
+		{
+			SpatialZone* z = dynamic_cast<SpatialZone*>(zoneRef.get());
+			TrackingMonitorPanel* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
+			switch (result)
+			{
+			case 1: if (z != nullptr) z->duplicate(); break;
+			case 2: if (z != nullptr) z->remove(); break;
+			case 3: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(false, true); break;
+			case 4: if (p != nullptr) p->createZoneAt(clickMeters); break;
+			case 5: if (z != nullptr && p != nullptr) p->showZoneColorEditor(z, clickPosition); break;
+			case 6: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(true, false); break;
+			}
+		});
 }

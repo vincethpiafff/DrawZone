@@ -40,6 +40,7 @@ public:
 	void mouseDown(const MouseEvent& e) override;
 	void mouseDrag(const MouseEvent& e) override;
 	void mouseUp(const MouseEvent& e) override;
+	void mouseDoubleClick(const MouseEvent& e) override; // on a zone name : rename it
 
 private:
 	SpatialModule* getSpatialModule();
@@ -79,6 +80,15 @@ private:
 	std::unique_ptr<ColorParameterUI> zoneColorUI;
 	void showZoneColorEditor(SpatialZone* zone, Point<int> position);
 
+	//right click menu on a zone (top view or column), or "Create zone" on the empty scene
+	void showContextMenu(SpatialZone* zone, Point<int> clickPosition, bool canCreate);
+
+	//inline rename of a zone, opened by a double click on its name (column or top view)
+	TextEditor renameEditor;
+	WeakReference<ControllableContainer> renameZone;
+	void showRenameEditor(SpatialZone* zone, Rectangle<int> bounds);
+	void closeRenameEditor(bool apply);
+
 	//top view geometry from the last paint, used to convert mouse positions to meters
 	Rectangle<float> sceneScreenRect;
 	float sceneScale = 0;	// pixels per meter, 0 = no top view
@@ -108,6 +118,7 @@ private:
 		WeakReference<ControllableContainer> zone;
 		String name;
 		Rectangle<float> bounds;	// meters
+		bool ellipse = false;	// else rectangle
 		Colour color;
 		bool enabled = true;
 		bool presence = false;
