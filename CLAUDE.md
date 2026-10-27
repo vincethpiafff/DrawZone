@@ -27,8 +27,9 @@ Chataigne, donc utilisables partout dans le logiciel.
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.0.0 validée** (Chataigne compile et reçoit Augmenta Fusion).
-**Prochaine étape : v0.1**, squelette du module Spatial.
+**État actuel : v0.1.0 validée** (27/10/2026 : module Spatial, zones
+rectangulaires avec « Presence », Tracking Monitor éditable à la souris).
+**Prochaine étape : v0.2**, zones multiples, métriques, slots de joueurs.
 
 ## 2. Comment travailler avec Vincent
 

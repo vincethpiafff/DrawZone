@@ -7,7 +7,7 @@ et elle donne un outil utilisable tôt.
 | Version | Contenu | Résultat testable | État |
 |---|---|---|---|
 | **v0.0** | Outils installés, fork, compilation de Chataigne, réception d'Augmenta Fusion | Chataigne compilé en local qui reçoit Augmenta | ✅ 23/10/2026 |
-| **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ⏭️ prochaine |
+| **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ✅ v0.1.0 (27/10/2026) |
 | **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | |
 | **v0.4** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |

@@ -77,7 +77,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 ## ⬜ À faire ensuite
 
-- ⬜ **v0.1 — squelette du module Spatial** :
+- ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
     wiki renvoie vers docs.augmenta.tech, où la page du protocole est
     introuvable. → Ordre des arguments repris du code du plugin officiel
@@ -91,7 +91,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     Vincent le 24/10 (`SpatialModule` hérite de `OSCModule`, liste de
     personnes indépendante d'OSC) ;
   - ✅ créer la branche `feature/spatial-module` (24/10, depuis `develop`) ;
-  - ⏭️ module vide enregistré dans Chataigne, compilé et visible dans le menu :
+  - ✅ module vide enregistré dans Chataigne, compilé et visible dans le menu :
     - ✅ `Source/Module/modules/spatial/SpatialModule.h/.cpp` (hérite de
       `OSCModule`, port d'entrée 12000, sortie 9000) ;
     - ✅ 3 points d'accroche `// DrawZone:` : `ModuleIncludes.h`,
@@ -105,8 +105,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       régénérés, uniquement des ajouts de nos 2 fichiers (77 lignes) ;
     - ✅ compilation `build_dev.bat` : 0 erreur, 1 avertissement du code de Ben
       (C4101), 2 min 26 ;
-    - ⬜ test par Vincent : module visible dans le menu, réception OSC ;
-  - ⏭️ **workflow de test « Claude lance Chataigne et lit les logs »** (24/10) :
+    - ✅ test par Vincent : module visible dans le menu, réception OSC ;
+  - ✅ **workflow de test « Claude lance Chataigne et lit les logs »** (24/10) :
     - ✅ étape 1 — couper tout envoi vers les serveurs de Ben. Trouvé dans le
       code : vérification des mises à jour, envoi des rapports de plantage
       (« Auto send crash log » activé par défaut), statistiques d'usage Matomo
@@ -123,7 +123,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       Save / Load → « Save logs » → fichier créé :
       `%APPDATA%\Chataigne\log_<date>_<heure>.txt` (un par lancement ; les
       messages d'avant la case cochée n'y sont pas) ;
-    - ⏭️ étape 2 bis — **brancher Claude Code sur le serveur MCP de Chataigne**
+    - ✅ étape 2 bis — **brancher Claude Code sur le serveur MCP de Chataigne**
       (travail de Ben déjà compilé dans notre build : `Source/MCP/`,
       `Modules/juce_organicui/mcp/`, doc `Tools/mcp/CLIENTS.md`). Règle :
       Claude en **lecture seule** (profil Inspect), Vincent fait toutes les
@@ -152,7 +152,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
         les logs et `"readOnly": true` (profil Inspect confirmé) ;
       - ✅ `D:\DRAWZONE\.mcp.json` créé (modèle de `Tools/mcp/CLIENTS.md`,
         le jeton n'y est pas écrit : `${CHATAIGNE_MCP_TOKEN}`) ;
-      - ⏭️ Vincent relance Claude Code depuis `D:\DRAWZONE`
+      - ✅ Vincent relance Claude Code depuis `D:\DRAWZONE`
         (`claude --continue`), approuve le serveur « chataigne », vérifie
         avec `/mcp`. Chataigne doit être lancé avant ;
       - ❌ 26/10 : Claude Code relancé depuis `D:\DRAWZONE`, serveur
@@ -266,8 +266,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
       6 personnes). Compilation 0 erreur, liens OK (exe du 26/10 21:30),
       Chataigne relancé ;
     - ✅ test Vincent : tout fonctionne. **Brique Z3 validée.**
-  - ⬜ réception Augmenta et liste des personnes ;
-  - ⏭️ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
+  - ✅ réception Augmenta et liste des personnes (briques A, B, C) ;
+  - ✅ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
     attente de validation (modèle existant chez Ben : `FFTAnalyzerManager`
     du module Audio, liste d'éléments dans les paramètres, valeurs
     correspondantes dans Values) :
@@ -324,8 +324,13 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
         (= « Invert Y » du clic droit). Compilation 0 erreur, liens OK
         (exe du 26/10 21:17), Chataigne relancé ;
       - ✅ test Vincent : Invert Y OK. **Brique Z2 validée.**
-      - ⬜ test Vincent ;
-  - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.
+  - ✅ 27/10 test final v0.1 avec Augmenta Fusion, puis tag `v0.1.0`.
+    - ✅ Chataigne lancé par Claude (exe du 26/10 21:30), MCP à l'écoute sur 42002 ;
+    - ✅ test Vincent (lu par MCP) : Action de State Machine sur « Presence », Log a message en TRUE / FALSE, alternance entrée / sortie correcte (02:33:45 → 02:33:49) ;
+    - ✅ avertissement « Link is broken : /modules/spatial/values/zones/zoneDETEST/presence » (02:31:34, après un renommage de Vincent) : test refait, zone renommée « ZONE A » (lu par MCP), le lien tient, entrées / sorties toujours loguées (02:35 → 02:36), pas de nouvel avertissement. Non reproduit ;
+    - ✅ session enregistrée (02:37, le fichier pointe bien sur `zoneA/presence`), Chataigne fermé proprement (code 0), relancé par Claude ;
+    - ✅ test Vincent (lu par MCP) : session rouverte, pas d'avertissement, entrées / sorties loguées (02:38:04 → 02:38:08). **Test final v0.1 validé.**
+    - ✅ `CHANGELOG.md` (section 0.1.0), `ROADMAP.md`, `CLAUDE.md` à jour ; fusion dans `develop` et tag annoté `v0.1.0` (local, rien poussé) ;
 
 ## 💡 Idées
 
