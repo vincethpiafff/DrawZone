@@ -124,11 +124,15 @@ private:
 		Point<float> lastPosition;	// meters
 		uint32 lastMs = 0;
 		Point<float> velocity;		// meters per second, smoothed
+		Array<Point<float>> trail;	// recent positions in meters, oldest first
+		uint32 lastTrailMs = 0;
 	};
 	std::map<int, Motion> motions;	// by person id
 	void updateMotions();
 
 	static constexpr float minArrowSpeed = .15f;	// m/s, below that the person is considered still
+	static const int trailStepMs = 100;			// one trail point every 100 ms...
+	static const int trailLength = 20;			// ...kept for 2 s
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingMonitorPanel)
 };

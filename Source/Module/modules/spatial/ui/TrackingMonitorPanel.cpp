@@ -251,6 +251,14 @@ void TrackingMonitorPanel::updateMotions()
 			}
 		}
 
+		//trail sampled at a fixed step, whatever the refresh calls
+		if (m.trail.isEmpty() || now - m.lastTrailMs >= (uint32)trailStepMs)
+		{
+			m.trail.add(meters);
+			if (m.trail.size() > trailLength) m.trail.remove(0);
+			m.lastTrailMs = now;
+		}
+
 		updated[p.id] = m;
 	}
 
@@ -430,6 +438,24 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 			g.fillRect(h.withCentre(zr.getTopRight()));
 			g.fillRect(h.withCentre(zr.getBottomRight()));
 			g.fillRect(h.withCentre(zr.getBottomLeft()));
+		}
+	}
+
+	//Trails : last 2 s of each person, fading toward the oldest point
+	for (auto& p : snapshot.persons)
+	{
+		auto it = motions.find(p.id);
+		if (it == motions.end() || it->second.trail.size() < 2) continue;
+
+		auto& trail = it->second.trail;
+		Colour c = getPersonColor(p.id);
+		for (int i = 1; i < trail.size(); i++)
+		{
+			Point<float> a = scene.getTopLeft() + trail[i - 1] * scale;
+			Point<float> b = scene.getTopLeft() + trail[i] * scale;
+			float age = (float)i / trail.size(); //0 = oldest, 1 = newest
+			g.setColour(c.withAlpha(.05f + .45f * age));
+			g.drawLine(Line<float>(a, b), 1.0f + 2.0f * age);
 		}
 	}
 
@@ -711,6 +737,19 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 {
+	//click on a zone of the column or the rail : select it (shown in the Inspector)
+	if (columnRect.contains(e.getPosition()))
+	{
+		for (int i = 0; i < zones.size() && i < zoneRowRects.size(); i++)
+		{
+			if (!zoneRowRects[i].contains(e.getPosition())) continue;
+			if (SpatialZone* z = dynamic_cast<SpatialZone*>(zones[i].zone.get())) z->selectThis();
+			timerCallback();
+			return;
+		}
+		return;
+	}
+
 	ZoneHit hit = hitTest(e.position);
 	SpatialZone* zone = hit.zoneIndex >= 0 ? dynamic_cast<SpatialZone*>(zones[hit.zoneIndex].zone.get()) : nullptr;
 
