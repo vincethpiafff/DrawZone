@@ -350,6 +350,39 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ test Vincent : traînée, clic dans la colonne et dans le rail OK (« tout fonctionne »). **Lot 2 validé.** Découpage U1 à U5 terminé ;
     - ✅ commit, fusion dans `develop` et push de `develop` sur le fork (accord de Vincent) ;
 
+- ⏭️ 27/10 **v0.2**. Choix de Vincent : métriques d'abord, puis position relative ; position / distance = **personne la plus proche du centre** (la moyenne viendra en plus, plus tard) ; taux d'occupation = **personnes / capacité** (paramètre « Capacity » par zone, plafonné à 100 %). Découpage, une brique par test :
+  - Tableau des valeurs présenté à Vincent ; ajouts validés : « Last Entered Id » (dans M1) ; zone vide → la position relative **garde sa dernière valeur** ;
+  - ⏭️ M1 — déclencheurs « Entered » / « Exited » par zone, un par personne qui entre / sort (suivi des ids présents dans la zone, pas seulement du compte) + « Last Entered Id » (mis à jour juste avant « Entered ») :
+    - ✅ code (`SpatialZone` seulement, branche `feature/zone-metrics`) ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 07:35), Chataigne relancé par Claude ;
+    - ✅ test Vincent : Entered / Exited / Last Entered Id OK. **M1 validé.** (Vincent demande que Claude relance Chataigne lui-même à chaque fois que c'est utile.)
+  - ⏭️ M2 — « Presence Time » (s depuis que la zone est occupée, 0 quand vide) :
+    - ✅ code (`SpatialZone`) : départ du chrono quand la zone passe de vide à occupée (liste des ids, pas la valeur Presence qui peut revenir d'une session enregistrée) ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 07:40), Chataigne relancé par Claude ;
+    - ✅ test Vincent : Presence Time OK. **M2 validé.**
+  - ⏭️ M3 — « Capacity » + « Occupancy » (%) :
+    - ✅ code (`SpatialZone`) : réglage « Capacity » (défaut 4, min 1, sous Center / Size) ; valeur « Occupancy » de 0 à 1 (= 0–100 %, barre dans Chataigne), plafonnée à 1 ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 07:44) ; lancement interrompu, puis Chataigne relancé par Claude à la demande de Vincent ;
+    - 💬 Vincent : « compilations de plus en plus longues ? » → non, c'est la modification de `SpatialZone.h` (inclus par ~10 gros fichiers du unity build) qui recompile beaucoup ; un `.cpp` seul recompile un seul fichier. Piste : déclarer d'avance dans le `.h` les valeurs des briques suivantes ;
+    - ✅ test Vincent : Capacity / Occupancy OK. **M3 validé.**
+  - ⏭️ P1 — position relative de la personne la plus proche du centre : « Relative Position » (0–1 dans la zone) et « Distance To Center » (m) :
+    - ✅ code (`SpatialZone`) : valeurs gardées quand la zone se vide ; les pointeurs de P2 (« Average Position », « Average Distance To Center ») sont déjà déclarés dans le `.h` pour que P2 ne touche que le `.cpp` (compilation plus courte) ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 07:50), Chataigne relancé par Claude ;
+    - ✅ test Vincent : fonctionne, **mais changement demandé** : la position relative doit être rattachée à la **personne** (id du tracker), pas à la zone ; dans un recouvrement de zones, position relative dans la **zone de recouvrement**. Choix de Vincent : liste par id (Values → People → « Person 12 », créée / supprimée avec la personne) ; valeurs P1 de la zone retirées ; hors zone → **-1, -1** ;
+  - ⏭️ P1b — Values → People → « Person <id> » : Id, Position (m), Zone (nom, « A + B » en recouvrement, vide hors zone), Relative Position (0–1 dans la zone ou dans l'intersection de toutes les zones qui la contiennent, -1 hors zone) :
+    - ✅ code : classe `SpatialPerson` (dans `SpatialModule.h/.cpp`, pas de nouveau fichier donc pas de Projucer), mise à jour à 50 Hz après les zones ; « People » non enregistré dans la session ; Relative Position / Distance To Center retirés de `SpatialZone` ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 08:01), Chataigne relancé par Claude ;
+    - ✅ test Vincent : People, Zone, recouvrement, disparition OK. **P1b validé.**
+  - ⏭️ P2 — moyenne du groupe, sur la zone : « Average Position » (barycentre des personnes présentes, 0–1 dans la zone) et « Average Distance To Center » (m, du barycentre au centre) ; gardées quand la zone se vide (choix de Vincent pour les valeurs de zone) :
+    - ✅ code (`SpatialZone.cpp` seulement, pointeurs déjà déclarés) ;
+    - ✅ demande de Vincent, groupée avec P2 (dessin seulement) : colonne « relative » dans le tableau People du Tracking Monitor, entre « x, y (m) » et « zone » (lue dans Values → People, « - » hors zone) ; colonne de droite élargie de 240 à 340 px (demande de Vincent : « élargir un peu pour que ça reste visible ») ;
+    - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 08:08), Chataigne relancé par Claude ;
+    - ✅ test Vincent : Average Position / Distance et colonne « relative » OK. **P2 validé.** Métriques et positions terminées ;
+  - ⏸️ 27/10 fin de séance. Branche `feature/zone-metrics` **non commitée** (M1, M2, M3, P1b, P2, colonne « relative »), en attente de l'accord de Vincent. Reprise : anti-clignotement ;
+  - ⬜ anti-clignotement (marge d'hystérésis, délai) ;
+  - ⬜ formes : cercle, puis polygone ;
+  - ⬜ slots de joueurs ;
+
 ## 💡 Idées
 
 Idées notées en route, datées, à trier plus tard (roadmap, décision ou abandon).

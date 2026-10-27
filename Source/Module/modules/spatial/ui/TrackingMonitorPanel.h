@@ -52,7 +52,7 @@ private:
 
 	static constexpr float handleSize = 8;
 	static const int lineHeight = 18;
-	static const int columnWidth = 240;
+	static const int columnWidth = 340;
 	static const int railWidth = 56;
 
 	//layout, computed in resized()
@@ -117,6 +117,7 @@ private:
 	};
 	Array<ZoneView> zones;
 	Array<int> personZones;	// zone index for each person of the snapshot, -1 = in no zone
+	Array<Point<float>> personRelativePositions;	// for each person of the snapshot, from Values > People, -1 = in no zone
 
 	//motion measured here from the successive positions (independent of the source velocity units)
 	struct Motion
