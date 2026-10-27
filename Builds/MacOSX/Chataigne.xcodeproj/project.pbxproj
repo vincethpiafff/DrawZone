@@ -576,6 +576,7 @@
 		8C8099BE9B4E2B85CB08A13E /* Buttplug.png */ /* Buttplug.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Buttplug.png; path = ../../Resources/Modules/Buttplug.png; sourceTree = SOURCE_ROOT; };
 		8CDCEB4DC37C0C926A7AA482 /* Security.framework */ /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		8CE35DBB1F5287A5AFF59CFE /* juce_dmx */ /* juce_dmx */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_dmx; path = ../../Modules/juce_dmx; sourceTree = SOURCE_ROOT; };
+		8D048454857E588A988A0B6C /* PlayerSlots.cpp */ /* PlayerSlots.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PlayerSlots.cpp; path = ../../Source/Module/modules/spatial/PlayerSlots.cpp; sourceTree = SOURCE_ROOT; };
 		8D12442FA5A06DC1B43331FF /* SequenceModule.h */ /* SequenceModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SequenceModule.h; path = ../../Source/Module/modules/sequence/SequenceModule.h; sourceTree = SOURCE_ROOT; };
 		8D2519CFCC320AA3F66BFB7D /* ScriptCondition.h */ /* ScriptCondition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ScriptCondition.h; path = ../../Source/Common/Processor/Action/Condition/conditions/ScriptCondition/ScriptCondition.h; sourceTree = SOURCE_ROOT; };
 		8D3AFD7B0479583F5D50856C /* GenericAppCommand.cpp */ /* GenericAppCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = GenericAppCommand.cpp; path = ../../Source/Module/modules/generic/commands/GenericAppCommand.cpp; sourceTree = SOURCE_ROOT; };
@@ -606,6 +607,7 @@
 		923AE5135E5069CB080C5867 /* AudioModule.cpp */ /* AudioModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioModule.cpp; path = ../../Source/Module/modules/audio/AudioModule.cpp; sourceTree = SOURCE_ROOT; };
 		924F69042DF19AFE009C084A /* ColorMappingLayer.cpp */ /* ColorMappingLayer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ColorMappingLayer.cpp; path = ../../Source/TimeMachine/Sequence/layers/mapping/color/ColorMappingLayer.cpp; sourceTree = SOURCE_ROOT; };
 		939053390E079C53D7BB813C /* HeavyMModule.h */ /* HeavyMModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HeavyMModule.h; path = ../../Source/Module/modules/osc/heavym/HeavyMModule.h; sourceTree = SOURCE_ROOT; };
+		9391971DFF057072FA0322B0 /* PlayerSlots.h */ /* PlayerSlots.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PlayerSlots.h; path = ../../Source/Module/modules/spatial/PlayerSlots.h; sourceTree = SOURCE_ROOT; };
 		93D205C2FA1058AA0F5FD66F /* CurveMapFilter.cpp */ /* CurveMapFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CurveMapFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/CurveMapFilter.cpp; sourceTree = SOURCE_ROOT; };
 		93E3633923505621F586C26E /* Wiimote.png */ /* Wiimote.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Wiimote.png; path = ../../Resources/Modules/Wiimote.png; sourceTree = SOURCE_ROOT; };
 		95C64D903232B2A1F6952497 /* ButtplugModule.h */ /* ButtplugModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ButtplugModule.h; path = ../../Source/Module/modules/buttplug/ButtplugModule.h; sourceTree = SOURCE_ROOT; };
@@ -2315,6 +2317,8 @@
 		818B647A3216F9728281D915 /* spatial */ = {
 			isa = PBXGroup;
 			children = (
+				8D048454857E588A988A0B6C,
+				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
 				8E608A91450F6B0C21AEF7C6,

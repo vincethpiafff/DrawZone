@@ -1434,6 +1434,8 @@
                   file="Source/Module/modules/posistagenet/PosiStageNetModule.h"/>
           </GROUP>
           <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F501}" name="spatial">
+            <FILE id="dzPsCp" name="PlayerSlots.cpp" compile="0" resource="0" file="Source/Module/modules/spatial/PlayerSlots.cpp"/>
+            <FILE id="dzPsHd" name="PlayerSlots.h" compile="0" resource="0" file="Source/Module/modules/spatial/PlayerSlots.h"/>
             <FILE id="dzSpCp" name="SpatialModule.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialModule.cpp"/>
             <FILE id="dzSpHd" name="SpatialModule.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialModule.h"/>

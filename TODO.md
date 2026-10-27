@@ -77,6 +77,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 ## ⬜ À faire ensuite
 
+- ⬜ **Étape de test importante après la v0.4** (demande de Vincent, 27/10/2026) : vérifier le comportement de l'interface (Tracking Monitor, zones, slots) avec **plusieurs scènes**, puis avec **deux systèmes de tracking** en même temps (par exemple Augmenta Fusion en OSC + Naostage en PSN).
+
 - ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
     wiki renvoie vers docs.augmenta.tech, où la page du protocole est
@@ -430,6 +432,34 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - 💬 Vincent : « c'est ok pour les informations et l'UI » → détails d'interface terminés, retour aux slots de joueurs ;
     - ✅ commit local sur `feature/zone-info-layouts` (accord de Vincent), sans fusion ni push ;
   - ⏭️ slots de joueurs, choix de Vincent : portée **scène** ; perte de tracking : **les deux au choix** (paramètre : libération immédiate ou délai de grâce avec reprise près de la dernière position) ; slots pleins : nouvelle personne **ignorée** (pas de file d'attente) ;
+    - ✅ proposition validée (« ok ») : paramètres Player Slots (Enabled, Slot Count, Release Mode Immediate / Grace Delay, Grace Delay, Rejoin Distance) ; Values > Slots (Free Slots ; par slot : Occupied, Person Id, Position, Joined, Left) ; 2 briques : 1. logique + Values, 2. numéro de slot dans le Tracking Monitor ;
+    - ✅ brique 1, code : `PlayerSlots.h/.cpp` (nouveaux fichiers, inclus par SpatialModule, pas de passage par le Projucer), branche `feature/player-slots` ; plus petit slot libre ; slots pleins → personne ignorée jusqu'à sa sortie de la scène ; en Grace Delay, slot réservé (position figée), reprise sans Left ni Joined par une nouvelle personne à moins de Rejoin Distance, ou par le même id qui revient ;
+    - ✅ compilation 0 erreur (exe du 27/10 22:23), Chataigne relancé par Claude ;
+    - ✅ (28/10) avant le commit : déclarer `PlayerSlots.h/.cpp` dans `Chataigne.jucer` (compile="0", comme les autres fichiers spatial) puis réenregistrer avec le Projucer ; → fait : 2 lignes dans `Chataigne.jucer`, `Projucer --resave` : seuls les projets Xcode (×2) et Visual Studio (×3, .vcxproj + .filters) changent, uniquement des lignes ajoutées ; recompilation OK (rien à refaire), Chataigne relancé ;
+    - 💬 demandes de Vincent avant commit : modes renommés, gestion des slots dans le Tracking Monitor, slots renommables, nom du slot affiché sur la personne dans la vue 2D, emplacement réservé visible dans la vue 2D (plus tard en NDI/Spout) ;
+    - ✅ proposition validée : modes **Next Person Takes Slot** (slot libéré aussitôt, pour la dernière personne arrivée) et **Hold Spot To Reclaim** (slot réservé à la dernière position ; la 1re personne sans slot qui entre dans le cercle Reclaim Radius le reprend ; Hold Time, 0 = sans limite) ; slots renommables avec une couleur ;
+    - ✅ intégration UI : 4 propositions (A colonne, B onglets, C bandeau sous la vue, D fusion avec People) → choix **C** (bandeau de slots façon HUD sous la vue de dessus) ; retirer le gros chiffre (nombre de personnes) en bas à droite des zones dans la vue 2D ;
+    - ✅ brique 1 (logique) réécrite : paramètre Slot Release, Hold Time, Reclaim Radius ; par slot : Color, Occupied, Person Id, Position, Held, Hold Remaining, Joined, Left ; personnes sans slot en file (ordre d'arrivée), un slot libéré va aux dernières arrivées ; noms et couleurs enregistrés dans le projet (clé « slots ») ;
+    - ✅ compilation 0 erreur (exe du 27/10 22:54), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok pour les tests ». **Brique 1 (logique des slots) validée** ;
+    - ✅ brique 2 (interface), code : bandeau Player Slots sous la vue de dessus (titre + « n / N free », une puce par slot : pastille pleine / anneau, nom, « #id » / « held 4.2 s » / « — », bordure en pointillés si held, boutons - / +) ; clic = Inspector, double clic = renommer, clic droit = Rename, Set color..., Enabled, choix du mode ; vue 2D : étiquette du slot (couleur du slot, nom + #id) qui suit la personne, cercle en pointillés de rayon Reclaim Radius à l'emplacement réservé avec nom, temps restant et arc qui se vide (∞ si Hold Time = 0) ; gros chiffre (nombre de personnes) retiré des zones ;
+    - ❌ 1er essai de liens bloqué (LNK1104) : Chataigne attendait la réponse à « enregistrer ? » à la fermeture → Vincent a répondu, compilation terminée ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:05), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok pour les tests ». **Brique 2 (interface des slots) validée** ;
+    - 💬 Vincent : les modes s'appellent « SwapSlots » entre nous ; le choix du mode doit être une liste déroulante dans l'UI, pas dans le clic droit ; clic sur une personne → tous ses paramètres et valeurs dans l'Inspector ;
+    - ✅ code : liste déroulante du mode dans le bandeau (retirée du clic droit) ; clic sur une personne (vue de dessus, liste People, rail) → sélection (Inspector), personne surlignée ; Values > People > Person N reçoit Slot, Velocity, Orientation, Height, Age ; les slots sont calculés avant les personnes ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:16), Chataigne relancé par Claude ;
+    - 💬 Vincent : liste déroulante « moche » → 4 propositions (A puce déroulante, B puce compacte avec icône + menu expliqué, C texte cliquable, D interrupteur) ; choix **B**, placée **tout à gauche** du bandeau ;
+    - ✅ code : ComboBox JUCE remplacée par une puce dessinée (icône flèche en pointillés = Next person, cercle en pointillés = Hold spot ; nom court ; chevron ; survol éclairci) ; menu : nom complet + explication grise + coche ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:21), Chataigne relancé par Claude ;
+    - 💬 Vincent : assigner vite un slot à un id depuis le Tracking Monitor → proposition : 3 gestes (glisser-déposer, clavier 1–9 / 0, clic droit) + règle d'échange ; validés. Et : une petite section « Shortcuts » qui se déplie au survol ou au clic, avec les raccourcis importants (pavé numérique pour les slots) ;
+    - ✅ brique 1, code : `PlayerSlots::assignByHand` (échange si la personne avait un slot, sinon l'occupant perd le slot et attend ; Left / Joined déclenchés) et `releaseByHand` (la personne reste sans slot jusqu'à sa sortie de la scène ou une assignation à la main) ; clic droit sur une personne → Assign slot ▸ (slots colorés, état, touche) / Release slot ; personne sélectionnée : 1–9 (pavé numérique aussi) = slot N, 0 / Suppr / Retour arrière = libérer ; puce « Shortcuts » à droite de l'en-tête : liste dépliée au survol, épinglée par un clic (Player slots, Zones, Free shape drawing) ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:53), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Brique 1 (assignation à la main, clavier, clic droit, Shortcuts) validée** ;
+    - ✅ brique 2, code : glisser-déposer d'une personne (point de la vue, ligne People, rail) sur une puce de slot, ou d'une puce sur une personne ; ligne en pointillés de la couleur du slot jusqu'à la souris, cible surlignée, étiquette « Person N -> Slot » ; même règle d'échange (`assignSlot`) ;
+    - ✅ compilation 0 erreur (exe du 27/10 23:59), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Glisser-déposer validé.** Slots de joueurs terminés (branche `feature/player-slots`) ;
+    - ✅ commit local sur `feature/player-slots` (accord de Vincent, 28/10), sans fusion ni push ;
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;

@@ -10,6 +10,7 @@
 
 #include "TrackingData.cpp"
 #include "SpatialZone.cpp"
+#include "PlayerSlots.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
 
 SpatialModule::SpatialModule() :
@@ -29,6 +30,9 @@ SpatialModule::SpatialModule() :
 	valuesCC.addChildControllableContainer(&zonesValuesCC);
 	peopleValuesCC.saveAndLoadRecursiveData = false; //live data, nothing to save
 	valuesCC.addChildControllableContainer(&peopleValuesCC);
+
+	moduleParams.addChildControllableContainer(&playerSlots);
+	valuesCC.addChildControllableContainer(&playerSlots.slotsValues);
 
 	startTimerHz(zoneUpdateRateHz);
 }
@@ -97,6 +101,7 @@ void SpatialModule::updateZones()
 
 	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons, s.sceneSize);
 
+	playerSlots.update(s.persons, s.sceneSize); //before the people, which show their slot
 	updatePeople(s);
 }
 
@@ -132,6 +137,9 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 		Array<SpatialZone*> zones;
 		for (auto& z : zoneManager.items) if (z->idsInside.contains(p.id)) zones.add(z); //same membership as the zone (with its anti-flicker)
 		sp->update(meters, zones);
+
+		int slotIndex = playerSlots.getSlotIndexForPerson(p.id);
+		sp->updateTracking(p, slotIndex >= 0 ? playerSlots.slots[slotIndex]->niceName : String());
 	}
 }
 
@@ -148,6 +156,26 @@ SpatialPerson::SpatialPerson(int id) :
 	relativePosition->setBounds(-1, -1, 1, 1);
 	relativePosition->setPoint(-1, -1);
 	relativePosition->setControllableFeedbackOnly(true);
+	slotName = addStringParameter("Slot", "Player slot of the person, empty without a slot", "");
+	slotName->setControllableFeedbackOnly(true);
+
+	velocity = addPoint2DParameter("Velocity", "Velocity as sent by the tracking system");
+	velocity->setControllableFeedbackOnly(true);
+	orientation = addFloatParameter("Orientation", "Orientation as sent by the tracking system, in degrees", 0);
+	orientation->setControllableFeedbackOnly(true);
+	height = addFloatParameter("Height", "Height of the person as sent by the tracking system, in meters", 0);
+	height->setControllableFeedbackOnly(true);
+	age = addFloatParameter("Age", "Seconds since the person entered the scene, as sent by the tracking system", 0);
+	age->setControllableFeedbackOnly(true);
+}
+
+void SpatialPerson::updateTracking(const TrackedPerson& p, const String& slot)
+{
+	slotName->setValue(slot);
+	velocity->setPoint(p.velocity);
+	orientation->setValue(p.orientation);
+	height->setValue(p.height);
+	age->setValue(p.age);
 }
 
 void SpatialPerson::update(Point<float> positionMeters, const Array<SpatialZone*>& zones)

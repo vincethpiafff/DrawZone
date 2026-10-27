@@ -49,6 +49,32 @@ namespace TrackingMonitorStyle
 		g.fillRoundedRectangle(r.withWidth(jmax(r.getHeight(), r.getWidth() * jmin(1.0f, value))), r.getHeight() / 2);
 	}
 
+	//SwapSlots mode icons : dashed arrow (Next Person Takes Slot), dashed circle around a dot (Hold Spot To Reclaim)
+	inline void drawSlotModeIcon(Graphics& g, Rectangle<float> r, int mode, Colour c)
+	{
+		const float dashes[] = { 2.5f, 2 };
+		Path shape, dashed;
+		g.setColour(c);
+		if (mode == PlayerSlots::HOLD_SPOT)
+		{
+			shape.addEllipse(r.reduced(1));
+			PathStrokeType(1.3f).createDashedStroke(dashed, shape, dashes, 2);
+			g.fillPath(dashed);
+			g.fillEllipse(Rectangle<float>(4, 4).withCentre(r.getCentre()));
+		}
+		else
+		{
+			float y = r.getCentreY();
+			shape.startNewSubPath(r.getX(), y);
+			shape.lineTo(r.getRight() - 4, y);
+			PathStrokeType(1.5f).createDashedStroke(dashed, shape, dashes, 2);
+			g.fillPath(dashed);
+			Path head;
+			head.addTriangle(r.getRight(), y, r.getRight() - 5, y - 4, r.getRight() - 5, y + 4);
+			g.fillPath(head);
+		}
+	}
+
 	inline void drawGlow(Graphics& g, const Path& p, Colour c)
 	{
 		for (int i = 1; i <= 4; i++)
@@ -79,6 +105,16 @@ TrackingMonitorPanel::TrackingMonitorPanel(const String& contentName) :
 	showHiddenButton.onClick = [this]() { showHiddenZones(); };
 	addChildComponent(showHiddenButton);
 
+	slotMinusButton.setButtonText("-");
+	slotMinusButton.setTooltip("Remove the last player slot");
+	slotMinusButton.onClick = [this]() { changeSlotCount(-1); };
+	addChildComponent(slotMinusButton);
+
+	slotPlusButton.setButtonText("+");
+	slotPlusButton.setTooltip("Add a player slot");
+	slotPlusButton.onClick = [this]() { changeSlotCount(1); };
+	addChildComponent(slotPlusButton);
+
 	renameEditor.onReturnKey = [this]() { closeRenameEditor(true); };
 	renameEditor.onFocusLost = [this]() { closeRenameEditor(true); };
 	renameEditor.onEscapeKey = [this]() { closeRenameEditor(false); };
@@ -96,12 +132,51 @@ void TrackingMonitorPanel::resized()
 
 	r.reduce(8, 8);
 	headerRect = r.removeFromTop(24);
+	shortcutsRect = headerRect.removeFromRight(104).reduced(0, 1);
+	headerRect.removeFromRight(10);
 	r.removeFromTop(8);
+
+	slotBarRect = r.removeFromBottom(slotBarHeight);
+	r.removeFromBottom(8);
 
 	//not enough room : no top view, the column still shows zones and people
 	topViewRect = r.getWidth() > 80 && r.getHeight() > 80 ? r : Rectangle<int>();
 
 	layoutColumn();
+	layoutSlotBar();
+}
+
+void TrackingMonitorPanel::layoutSlotBar()
+{
+	slotChipRects.clearQuick();
+
+	Rectangle<int> b = slotBarRect.reduced(6, 6);
+	slotModeRect = b.removeFromLeft(126);
+	b.removeFromLeft(10);
+	slotPlusButton.setBounds(b.removeFromRight(24));
+	b.removeFromRight(3);
+	slotMinusButton.setBounds(b.removeFromRight(24));
+	b.removeFromRight(8);
+	slotBarLabelRect = b.removeFromLeft(96);
+	b.removeFromLeft(4);
+
+	//chips share the width, never narrower than 72 px : the ones that do not fit are not shown
+	const int gap = 6;
+	int n = slots.size();
+	int w = n > 0 ? jlimit(72, 170, (b.getWidth() - gap * (n - 1)) / n) : 0;
+	for (int i = 0; i < n; i++)
+	{
+		if (b.getWidth() < w)
+		{
+			slotChipRects.add(Rectangle<int>());
+			continue;
+		}
+		slotChipRects.add(b.removeFromLeft(w));
+		b.removeFromLeft(gap);
+	}
+
+	slotMinusButton.setVisible(hasModule);
+	slotPlusButton.setVisible(hasModule);
 }
 
 void TrackingMonitorPanel::layoutColumn()
@@ -215,6 +290,7 @@ void TrackingMonitorPanel::timerCallback()
 	hasModule = sm != nullptr;
 
 	zones.clearQuick();
+	slots.clearQuick();
 	personZones.clearQuick();
 	personRelativePositions.clearQuick();
 
@@ -259,6 +335,29 @@ void TrackingMonitorPanel::timerCallback()
 			zones.add(zv);
 		}
 
+		selectedPersonId = -1;
+		for (auto& pp : sm->people) if (pp.second->isSelected) selectedPersonId = pp.first;
+
+		PlayerSlots& ps = sm->playerSlots;
+		slotsEnabled = ps.enabled->boolValue();
+		slotReleaseMode = (int)ps.releaseMode->getValueDataAsEnum<PlayerSlots::ReleaseMode>();
+		freeSlots = ps.freeSlots->intValue();
+		reclaimRadius = ps.reclaimRadius->floatValue();
+		holdTime = ps.holdTime->floatValue();
+		for (auto& s : ps.slots)
+		{
+			SlotView sv;
+			sv.slot = s;
+			sv.name = s->niceName;
+			sv.color = s->color->getColor();
+			sv.occupied = s->occupied->boolValue();
+			sv.held = s->isHeld();
+			sv.personId = s->personId->intValue();
+			sv.position = s->position->getPoint();
+			sv.holdRemaining = s->holdRemaining->floatValue();
+			slots.add(sv);
+		}
+
 		//first enabled zone containing each person, same test as the zones themselves
 		for (auto& p : snapshot.persons)
 		{
@@ -290,7 +389,14 @@ void TrackingMonitorPanel::timerCallback()
 	for (auto& z : zones) if (z.hidden) numHidden++;
 
 	layoutColumn();
+	layoutSlotBar();
 	repaint();
+}
+
+int TrackingMonitorPanel::getSlotIndexForPerson(int id) const
+{
+	for (int i = 0; i < slots.size(); i++) if (slots[i].occupied && !slots[i].held && slots[i].personId == id) return i;
+	return -1;
 }
 
 void TrackingMonitorPanel::updateMotions()
@@ -342,6 +448,8 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	g.fillAll(panelBg);
 	sceneScale = 0; //set again by paintTopView if the top view is visible
+	personRowRects.clearQuick();
+	personRowIds.clearQuick();
 
 	if (!hasModule)
 	{
@@ -353,6 +461,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	paintHeader(g);
 	if (!topViewRect.isEmpty()) paintTopView(g, topViewRect);
+	paintSlotBar(g);
 
 	g.setColour(columnBg);
 	g.fillRect(columnRect);
@@ -361,6 +470,69 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	if (columnCollapsed) paintRail(g);
 	else paintColumn(g);
+
+	if (slotDragging) paintSlotDrag(g);
+	paintShortcuts(g); //last : the unfolded list goes over everything
+}
+
+Point<float> TrackingMonitorPanel::getPersonScreenPosition(int id) const
+{
+	if (sceneScale > 0)
+	{
+		for (auto& p : snapshot.persons)
+			if (p.id == id) return Point<float>(sceneScreenRect.getX() + p.position.x * sceneScreenRect.getWidth(), sceneScreenRect.getY() + p.position.y * sceneScreenRect.getHeight());
+	}
+	for (int i = 0; i < personRowIds.size(); i++) if (personRowIds[i] == id) return personRowRects[i].getCentre().toFloat();
+	return slotDragStart;
+}
+
+void TrackingMonitorPanel::paintSlotDrag(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	//drop target under the mouse : a slot chip when dragging a person, a person when dragging a chip
+	int targetSlot = slotDragSlot >= 0 ? slotDragSlot : getSlotChipAt(slotDragMouse.toInt());
+	int targetPerson = slotDragPersonId >= 0 ? slotDragPersonId : getPersonAt(slotDragMouse);
+	bool valid = targetSlot >= 0 && targetPerson >= 0;
+
+	Colour c = slotDragSlot >= 0 ? slots[slotDragSlot].color : (targetSlot >= 0 ? slots[targetSlot].color : getPersonColor(slotDragPersonId));
+	Point<float> from = slotDragSlot >= 0 ? slotChipRects[slotDragSlot].getCentre().toFloat() : getPersonScreenPosition(slotDragPersonId);
+
+	//link from the dragged item to the mouse
+	Path link, dashed;
+	link.startNewSubPath(from);
+	link.lineTo(slotDragMouse);
+	const float dashes[] = { 6, 4 };
+	PathStrokeType(2.0f).createDashedStroke(dashed, link, dashes, 2);
+	g.setColour(c.withAlpha(valid ? 1.0f : .6f));
+	g.fillPath(dashed);
+	g.fillEllipse(Rectangle<float>(8, 8).withCentre(slotDragMouse));
+
+	if (!valid) return;
+
+	//highlight the drop target
+	if (slotDragSlot < 0)
+	{
+		g.setColour(c);
+		g.drawRoundedRectangle(slotChipRects[targetSlot].toFloat().expanded(2), 5, 2);
+	}
+	else
+	{
+		g.setColour(c);
+		g.drawEllipse(Rectangle<float>(34, 34).withCentre(getPersonScreenPosition(targetPerson)), 2.5f);
+	}
+
+	//what the drop will do
+	String text = "Person " + String(targetPerson) + "  ->  " + slots[targetSlot].name;
+	Font f(12.0f, Font::bold);
+	Rectangle<float> tag = Rectangle<float>(f.getStringWidthFloat(text) + 16, 20).withPosition(slotDragMouse.translated(12, -26));
+	g.setColour(c.darker(.6f).withAlpha(.9f));
+	g.fillRoundedRectangle(tag, 10);
+	g.setColour(c);
+	g.drawRoundedRectangle(tag, 10, 1.2f);
+	g.setFont(f);
+	g.setColour(Colours::white);
+	g.drawText(text, tag, Justification::centred, false);
 }
 
 void TrackingMonitorPanel::paintHeader(Graphics& g)
@@ -504,14 +676,6 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		g.setFont(Font(12.0f));
 		g.drawText(z.name, zr.reduced(5, 3).withHeight(16), Justification::topLeft, true);
 
-		//person count, large when the zone is big enough on screen
-		if (zr.getHeight() > 50 && zr.getWidth() > 40)
-		{
-			g.setColour(z.presence ? light : TEXT_COLOR.withAlpha(.25f));
-			g.setFont(Font(jmin(30.0f, zr.getHeight() / 3), Font::bold));
-			g.drawText(String(z.personCount), zr.reduced(6, 2), Justification::bottomRight);
-		}
-
 		//resize handles on the selected zone, the zone under the mouse or the one being edited
 		bool isDragged = dragZone != nullptr && dragZone.get() == z.zone.get();
 		if (i == hoveredZone || isDragged || z.selected)
@@ -568,6 +732,40 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 	if (drawingFreeShape) paintFreeShapeDrawing(g);
 	if (drawingBoxShape >= 0) paintBoxDrawing(g);
 
+	//Held slots : dashed circle where the person was lost, anyone without a slot walking in takes it back
+	for (auto& s : slots)
+	{
+		if (!s.held) continue;
+
+		Point<float> centre = scene.getTopLeft() + s.position * scale;
+		float radius = jmax(10.0f, reclaimRadius * scale);
+		Rectangle<float> circle = Rectangle<float>(radius * 2, radius * 2).withCentre(centre);
+
+		g.setColour(s.color.withAlpha(.1f));
+		g.fillEllipse(circle);
+
+		Path ring, dashed;
+		ring.addEllipse(circle);
+		const float dashes[] = { 5, 4 };
+		PathStrokeType(1.5f).createDashedStroke(dashed, ring, dashes, 2);
+		g.setColour(s.color.withAlpha(.8f));
+		g.fillPath(dashed);
+
+		//time left : an arc that empties, full circle when held until reclaimed
+		float ratio = s.holdRemaining < 0 || holdTime <= 0 ? 1.0f : jlimit(0.0f, 1.0f, s.holdRemaining / holdTime);
+		Path arc;
+		arc.addCentredArc(centre.x, centre.y, radius + 4, radius + 4, 0, 0, MathConstants<float>::twoPi * ratio, true);
+		g.setColour(s.color);
+		g.strokePath(arc, PathStrokeType(2.5f, PathStrokeType::curved, PathStrokeType::rounded));
+
+		String timeText = s.holdRemaining < 0 ? String(CharPointer_UTF8("\xe2\x88\x9e")) : formatTime(s.holdRemaining);
+		g.setFont(Font(12.0f, Font::bold));
+		g.drawText(s.name, Rectangle<float>(160, 16).withCentre(centre.translated(0, -7)), Justification::centred);
+		g.setFont(Font(11.0f));
+		g.setColour(s.color.interpolatedWith(Colours::white, .4f));
+		g.drawText(timeText, Rectangle<float>(160, 14).withCentre(centre.translated(0, 8)), Justification::centred);
+	}
+
 	//Trails : last 2 s of each person, fading toward the oldest point
 	for (auto& p : snapshot.persons)
 	{
@@ -613,8 +811,411 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		g.fillEllipse(Rectangle<float>(28, 28).withCentre(pos));
 		g.setColour(c);
 		g.fillEllipse(Rectangle<float>(14, 14).withCentre(pos));
-		g.drawText(String(p.id), Rectangle<float>(pos.x + 10, pos.y - 20, 40, 16), Justification::centredLeft);
+		if (p.id == selectedPersonId)
+		{
+			g.setColour(HIGHLIGHT_COLOR);
+			g.drawEllipse(Rectangle<float>(32, 32).withCentre(pos), 1.5f);
+			g.setColour(c);
+		}
+
+		//player slot : label with the slot name in its color, the id small next to it
+		int slotIndex = getSlotIndexForPerson(p.id);
+		if (slotIndex < 0)
+		{
+			g.setFont(Font(13.0f, Font::bold));
+			g.drawText(String(p.id), Rectangle<float>(pos.x + 10, pos.y - 20, 40, 16), Justification::centredLeft);
+			continue;
+		}
+
+		auto& s = slots.getReference(slotIndex);
+		Font nameFont(12.0f, Font::bold);
+		Font idFont(10.0f);
+		String idText = "#" + String(p.id);
+		float nameW = nameFont.getStringWidthFloat(s.name);
+		float idW = idFont.getStringWidthFloat(idText);
+		Rectangle<float> label(pos.x + 10, pos.y - 26, nameW + idW + 18, 18);
+
+		g.setColour(s.color.darker(.6f).withAlpha(.85f));
+		g.fillRoundedRectangle(label, 9);
+		g.setColour(s.color);
+		g.drawRoundedRectangle(label, 9, 1.2f);
+		g.setFont(nameFont);
+		g.setColour(Colours::white);
+		g.drawText(s.name, label.withTrimmedLeft(7).withWidth(nameW + 2), Justification::centredLeft, false);
+		g.setFont(idFont);
+		g.setColour(Colours::white.withAlpha(.6f));
+		g.drawText(idText, label.withTrimmedLeft(nameW + 11).withWidth(idW + 2), Justification::centredLeft, false);
 	}
+}
+
+void TrackingMonitorPanel::paintSlotBar(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	if (slotBarRect.isEmpty()) return;
+
+	g.setColour(columnBg);
+	g.fillRoundedRectangle(slotBarRect.toFloat(), 4);
+
+	//SwapSlots mode chip : icon, short name, chevron
+	if (!slotModeRect.isEmpty())
+	{
+		Rectangle<float> mf = slotModeRect.toFloat();
+		g.setColour(slotModeHovered ? rowBg.brighter(.15f) : rowBg);
+		g.fillRoundedRectangle(mf, 4);
+		g.setColour(slotModeHovered ? TEXT_COLOR.withAlpha(.5f) : borderColor);
+		g.drawRoundedRectangle(mf.reduced(.5f), 4, 1);
+
+		Colour iconColor = slotsEnabled ? HIGHLIGHT_COLOR : NORMAL_COLOR;
+		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(mf.getX() + 15, mf.getCentreY())), slotReleaseMode, iconColor);
+
+		Rectangle<float> chevron = Rectangle<float>(8, 5).withCentre(Point<float>(mf.getRight() - 12, mf.getCentreY()));
+		Path p;
+		p.addTriangle(chevron.getX(), chevron.getY(), chevron.getRight(), chevron.getY(), chevron.getCentreX(), chevron.getBottom());
+		g.setColour(dimText);
+		g.fillPath(p);
+
+		g.setFont(Font(12.0f, Font::bold));
+		g.setColour(TEXT_COLOR);
+		g.drawText(slotReleaseMode == PlayerSlots::HOLD_SPOT ? "Hold spot" : "Next person", mf.withTrimmedLeft(28).withTrimmedRight(20), Justification::centredLeft, true);
+	}
+
+	g.setFont(Font(11.0f));
+	g.setColour(dimText);
+	g.drawText("PLAYER SLOTS", slotBarLabelRect.withHeight(slotBarLabelRect.getHeight() / 2 + 2), Justification::bottomLeft);
+	g.drawText(slotsEnabled ? String(freeSlots) + " / " + String(slots.size()) + " free" : String("Disabled"),
+		slotBarLabelRect.withTrimmedTop(slotBarLabelRect.getHeight() / 2 + 2), Justification::topLeft);
+
+	for (int i = 0; i < slots.size() && i < slotChipRects.size(); i++)
+	{
+		Rectangle<int> chip = slotChipRects[i];
+		if (chip.isEmpty()) continue;
+
+		auto& s = slots.getReference(i);
+		bool selected = s.slot != nullptr && s.slot->isSelected;
+		Colour c = slotsEnabled ? s.color : NORMAL_COLOR;
+		Rectangle<float> cf = chip.toFloat();
+
+		//taken : tinted with the slot color ; held : dashed border ; free : plain
+		g.setColour(s.occupied && !s.held ? rowBg.overlaidWith(c.withAlpha(.22f)) : rowBg);
+		g.fillRoundedRectangle(cf, 4);
+		if (selected)
+		{
+			g.setColour(HIGHLIGHT_COLOR);
+			g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+		}
+		else if (s.held)
+		{
+			Path border, dashed;
+			border.addRoundedRectangle(cf.reduced(.5f), 4);
+			const float dashes[] = { 4, 3 };
+			PathStrokeType(1.0f).createDashedStroke(dashed, border, dashes, 2);
+			g.setColour(c.withAlpha(.8f));
+			g.fillPath(dashed);
+		}
+		else if (s.occupied)
+		{
+			g.setColour(c.withAlpha(.5f));
+			g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+		}
+
+		//dot : full when taken, ring when free or held
+		Rectangle<float> dot = Rectangle<float>(10, 10).withCentre(Point<float>(cf.getX() + 12, cf.getCentreY()));
+		g.setColour(c);
+		if (s.occupied && !s.held) g.fillEllipse(dot);
+		else g.drawEllipse(dot.reduced(.5f), 1.5f);
+
+		String state = !s.occupied ? String(CharPointer_UTF8("\xe2\x80\x94"))
+			: s.held ? (s.holdRemaining < 0 ? String(CharPointer_UTF8("held \xe2\x88\x9e")) : "held " + formatTime(s.holdRemaining))
+			: "#" + String(s.personId);
+
+		Rectangle<int> text = chip.withTrimmedLeft(22).withTrimmedRight(6);
+		g.setFont(Font(11.0f));
+		g.setColour(s.occupied ? TEXT_COLOR : dimText);
+		int stateW = jmin(text.getWidth() / 2, (int)Font(11.0f).getStringWidthFloat(state) + 4);
+		g.drawText(state, text.removeFromRight(stateW), Justification::centredRight, false);
+		g.setFont(Font(12.0f, Font::bold));
+		g.setColour(s.occupied ? Colours::white : TEXT_COLOR);
+		g.drawText(s.name, text, Justification::centredLeft, true);
+	}
+}
+
+int TrackingMonitorPanel::getPersonAt(Point<float> pos) const
+{
+	for (int i = 0; i < personRowRects.size(); i++) if (personRowRects[i].contains(pos.toInt())) return personRowIds[i];
+
+	if (sceneScale <= 0 || !sceneScreenRect.contains(pos)) return -1;
+
+	//top view : the dot, a bit larger than drawn ; the last drawn (on top) first
+	for (int i = snapshot.persons.size() - 1; i >= 0; i--)
+	{
+		auto& p = snapshot.persons.getReference(i);
+		Point<float> screen(sceneScreenRect.getX() + p.position.x * sceneScreenRect.getWidth(), sceneScreenRect.getY() + p.position.y * sceneScreenRect.getHeight());
+		if (screen.getDistanceFrom(pos) <= 10) return p.id;
+	}
+	return -1;
+}
+
+void TrackingMonitorPanel::selectPerson(int id)
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+	auto it = sm->people.find(id);
+	if (it != sm->people.end()) it->second->selectThis();
+	grabKeyboardFocus(); //keys 1-9 / 0 assign its slot
+	timerCallback();
+}
+
+void TrackingMonitorPanel::assignSlot(int personId, int slotIndex)
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	if (slotIndex < 0) sm->playerSlots.releaseByHand(personId);
+	else
+	{
+		Point<float> meters;
+		for (auto& p : snapshot.persons) if (p.id == personId) meters = Point<float>(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
+		sm->playerSlots.assignByHand(personId, meters, slotIndex);
+	}
+	timerCallback();
+}
+
+void TrackingMonitorPanel::showPersonMenu(int personId, Point<int> clickPosition)
+{
+	int current = getSlotIndexForPerson(personId);
+
+	PopupMenu slotsMenu;
+	for (int i = 0; i < slots.size(); i++)
+	{
+		auto& s = slots.getReference(i);
+		String state = !s.occupied ? "free" : (s.held ? "held" : "#" + String(s.personId));
+		String key = i < 9 ? "   [" + String(i + 1) + "]" : String();
+		slotsMenu.addColouredItem(100 + i, s.name + "   " + state + key, s.color, slotsEnabled && i != current, i == current);
+	}
+
+	PopupMenu m;
+	m.addSectionHeader("Person " + String(personId));
+	m.addSubMenu("Assign slot", slotsMenu, slotsEnabled && !slots.isEmpty());
+	m.addItem(1, "Release slot   [0]", current >= 0);
+
+	WeakReference<Component> panelRef(this);
+	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(Rectangle<int>(1, 1).withPosition(localPointToGlobal(clickPosition))), [panelRef, personId](int result)
+		{
+			TrackingMonitorPanel* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
+			if (p == nullptr || result <= 0) return;
+			p->assignSlot(personId, result == 1 ? -1 : result - 100);
+		});
+}
+
+Rectangle<int> TrackingMonitorPanel::getShortcutsPanelRect() const
+{
+	return Rectangle<int>(shortcutsRect.getRight() - 340, shortcutsRect.getBottom() + 6, 340, 292);
+}
+
+void TrackingMonitorPanel::mouseExit(const MouseEvent&)
+{
+	if (!shortcutsHovered && !slotModeHovered) return;
+	shortcutsHovered = slotModeHovered = false;
+	repaint();
+}
+
+void TrackingMonitorPanel::paintShortcuts(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	//chip : keyboard icon, label, chevron
+	bool open = shortcutsPinned || shortcutsHovered;
+	Rectangle<float> cf = shortcutsRect.toFloat();
+	g.setColour(open ? rowBg.brighter(.15f) : rowBg);
+	g.fillRoundedRectangle(cf, 4);
+	g.setColour(shortcutsPinned ? HIGHLIGHT_COLOR : (open ? TEXT_COLOR.withAlpha(.5f) : borderColor));
+	g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+
+	Rectangle<float> kb = Rectangle<float>(16, 11).withCentre(Point<float>(cf.getX() + 14, cf.getCentreY()));
+	g.setColour(dimText);
+	g.drawRoundedRectangle(kb, 2, 1.2f);
+	for (int i = 0; i < 3; i++) g.fillRect(Rectangle<float>(kb.getX() + 3 + i * 4, kb.getY() + 3, 2, 1.5f));
+	g.fillRect(Rectangle<float>(kb.getX() + 4, kb.getY() + 7, 8, 1.5f));
+
+	g.setFont(Font(12.0f));
+	g.setColour(TEXT_COLOR);
+	g.drawText("Shortcuts", cf.withTrimmedLeft(28).withTrimmedRight(16), Justification::centredLeft, true);
+	Rectangle<float> chevron = Rectangle<float>(8, 5).withCentre(Point<float>(cf.getRight() - 10, cf.getCentreY()));
+	Path cp;
+	if (open) cp.addTriangle(chevron.getX(), chevron.getBottom(), chevron.getRight(), chevron.getBottom(), chevron.getCentreX(), chevron.getY());
+	else cp.addTriangle(chevron.getX(), chevron.getY(), chevron.getRight(), chevron.getY(), chevron.getCentreX(), chevron.getBottom());
+	g.setColour(dimText);
+	g.fillPath(cp);
+
+	if (!open) return;
+
+	//unfolded list, over the top view
+	struct Line { const char* keys; const char* action; };
+	const char* sections[] = { "PLAYER SLOTS", "ZONES", "FREE SHAPE DRAWING" };
+	const Line slotLines[] = { { "Click a person", "select it (Inspector)" }, { "1 - 9  (numpad too)", "assign slot 1 - 9" }, { "0  /  Del", "release its slot" }, { "Right click a person", "assign / release slot" } };
+	const Line zoneLines[] = { { "Double click a name", "rename (zone or slot)" }, { "Right click the scene", "create / draw a zone" }, { "Right click a zone", "duplicate, delete, color..." } };
+	const Line drawLines[] = { { "Enter / double click", "close the shape" }, { "Backspace", "remove the last point" }, { "Esc", "cancel" } };
+
+	Rectangle<int> panel = getShortcutsPanelRect();
+	g.setColour(Colours::black.withAlpha(.35f));
+	g.fillRoundedRectangle(panel.toFloat().translated(0, 3), 6);
+	g.setColour(columnBg);
+	g.fillRoundedRectangle(panel.toFloat(), 6);
+	g.setColour(borderColor);
+	g.drawRoundedRectangle(panel.toFloat().reduced(.5f), 6, 1);
+
+	Rectangle<int> r = panel.reduced(12, 8);
+	auto drawSection = [&](const char* title, const Line* lines, int numLines)
+	{
+		g.setFont(Font(10.0f));
+		g.setColour(dimText);
+		g.drawText(title, r.removeFromTop(18), Justification::centredLeft);
+		for (int i = 0; i < numLines; i++)
+		{
+			Rectangle<int> row = r.removeFromTop(20);
+			Rectangle<int> keyR = row.removeFromLeft(150);
+			Font keyFont(11.0f, Font::bold);
+			g.setFont(keyFont);
+			Rectangle<float> keyChip = keyR.toFloat().withWidth(keyFont.getStringWidthFloat(lines[i].keys) + 12).reduced(0, 2);
+			g.setColour(rowBg);
+			g.fillRoundedRectangle(keyChip, 3);
+			g.setColour(TEXT_COLOR);
+			g.drawText(lines[i].keys, keyChip, Justification::centred, false);
+			g.setFont(Font(12.0f));
+			g.setColour(TEXT_COLOR.withAlpha(.8f));
+			g.drawText(lines[i].action, row, Justification::centredLeft, true);
+		}
+		r.removeFromTop(6);
+	};
+
+	drawSection(sections[0], slotLines, 4);
+	drawSection(sections[1], zoneLines, 3);
+	drawSection(sections[2], drawLines, 3);
+}
+
+//one SwapSlots mode in the menu : icon, full name and a short explanation
+class SlotModeMenuItem :
+	public PopupMenu::CustomComponent
+{
+public:
+	SlotModeMenuItem(int mode, bool ticked) : mode(mode), ticked(ticked) {}
+
+	int mode;
+	bool ticked;
+
+	void getIdealSize(int& idealWidth, int& idealHeight) override
+	{
+		idealWidth = 300;
+		idealHeight = 44;
+	}
+
+	void paint(Graphics& g) override
+	{
+		using namespace TrackingMonitorStyle;
+
+		Rectangle<float> r = getLocalBounds().toFloat().reduced(3, 2);
+		if (isItemHighlighted())
+		{
+			g.setColour(HIGHLIGHT_COLOR.withAlpha(.15f));
+			g.fillRoundedRectangle(r, 4);
+		}
+
+		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(r.getX() + 16, r.getY() + 14)), mode, HIGHLIGHT_COLOR);
+
+		Rectangle<float> text = r.withTrimmedLeft(32).withTrimmedRight(24);
+		g.setFont(Font(13.0f, Font::bold));
+		g.setColour(TEXT_COLOR);
+		g.drawText(mode == PlayerSlots::HOLD_SPOT ? "Hold spot to reclaim" : "Next person takes slot", text.withHeight(24), Justification::centredLeft, true);
+		g.setFont(Font(11.0f));
+		g.setColour(dimText);
+		g.drawText(mode == PlayerSlots::HOLD_SPOT ? "Kept where lost, walk in to take it back" : "Freed at once for the last person who arrived",
+			text.withTrimmedTop(22), Justification::topLeft, true);
+
+		if (ticked)
+		{
+			g.setColour(HIGHLIGHT_COLOR);
+			Path tick;
+			Point<float> c(r.getRight() - 12, r.getY() + 14);
+			tick.startNewSubPath(c.x - 5, c.y);
+			tick.lineTo(c.x - 1.5f, c.y + 4);
+			tick.lineTo(c.x + 5, c.y - 4);
+			g.strokePath(tick, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+		}
+	}
+};
+
+void TrackingMonitorPanel::showSlotModeMenu()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	PopupMenu m;
+	m.addCustomItem(PlayerSlots::NEXT_PERSON + 1, std::make_unique<SlotModeMenuItem>(PlayerSlots::NEXT_PERSON, slotReleaseMode == PlayerSlots::NEXT_PERSON));
+	m.addCustomItem(PlayerSlots::HOLD_SPOT + 1, std::make_unique<SlotModeMenuItem>(PlayerSlots::HOLD_SPOT, slotReleaseMode == PlayerSlots::HOLD_SPOT));
+
+	WeakReference<ControllableContainer> slotsRef(&sm->playerSlots);
+	WeakReference<Component> panelRef(this);
+	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(slotModeRect)), [slotsRef, panelRef](int result)
+		{
+			PlayerSlots* p = dynamic_cast<PlayerSlots*>(slotsRef.get());
+			if (p == nullptr || result <= 0) return;
+			EnumParameter* mode = p->releaseMode;
+			String key = result - 1 == PlayerSlots::HOLD_SPOT ? "Hold Spot To Reclaim" : "Next Person Takes Slot";
+			if (key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
+			if (TrackingMonitorPanel* panel = dynamic_cast<TrackingMonitorPanel*>(panelRef.get())) panel->repaint();
+		});
+}
+
+int TrackingMonitorPanel::getSlotChipAt(Point<int> pos) const
+{
+	for (int i = 0; i < slotChipRects.size(); i++) if (slotChipRects[i].contains(pos)) return i;
+	return -1;
+}
+
+void TrackingMonitorPanel::changeSlotCount(int delta)
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+	IntParameter* count = sm->playerSlots.slotCount;
+	int newCount = jlimit((int)count->minimumValue, (int)count->maximumValue, count->intValue() + delta);
+	if (newCount != count->intValue()) count->setUndoableValue(count->intValue(), newCount);
+	timerCallback();
+}
+
+void TrackingMonitorPanel::showSlotMenu(int slotIndex, Point<int> clickPosition)
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+	PlayerSlots& ps = sm->playerSlots;
+	PlayerSlot* slot = slotIndex >= 0 && slotIndex < ps.slots.size() ? ps.slots[slotIndex] : nullptr;
+
+	PopupMenu m;
+	if (slot != nullptr)
+	{
+		m.addItem(1, "Rename");
+		m.addItem(2, "Set color...");
+		m.addSeparator();
+	}
+	m.addItem(3, "Enabled", true, ps.enabled->boolValue());
+
+	WeakReference<ControllableContainer> slotRef(slot);
+	WeakReference<ControllableContainer> slotsRef(&ps);
+	WeakReference<Component> panelRef(this);
+	Rectangle<int> chip = slotIndex >= 0 && slotIndex < slotChipRects.size() ? slotChipRects[slotIndex] : Rectangle<int>();
+	m.showMenuAsync(PopupMenu::Options(), [slotRef, slotsRef, panelRef, clickPosition, chip](int result)
+		{
+			PlayerSlot* s = dynamic_cast<PlayerSlot*>(slotRef.get());
+			PlayerSlots* p = dynamic_cast<PlayerSlots*>(slotsRef.get());
+			TrackingMonitorPanel* panel = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
+			if (p == nullptr) return;
+			switch (result)
+			{
+			case 1: if (s != nullptr && panel != nullptr) panel->showRenameEditor(s, chip.withTrimmedLeft(20).withSizeKeepingCentre(jmax(chip.getWidth() - 20, 120), 24)); break;
+			case 2: if (s != nullptr && panel != nullptr) panel->showColorEditor(s, s->color, clickPosition); break;
+			case 3: p->enabled->setUndoableValue(p->enabled->boolValue(), !p->enabled->boolValue()); break;
+			}
+		});
 }
 
 void TrackingMonitorPanel::paintColumn(Graphics& g)
@@ -764,8 +1365,15 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 
 		Rectangle<int> row = r.removeFromTop(26);
 		r.removeFromTop(3);
-		g.setColour(rowBg);
+		personRowRects.add(row);
+		personRowIds.add(p.id);
+		g.setColour(p.id == selectedPersonId ? HIGHLIGHT_COLOR.withAlpha(.12f) : rowBg);
 		g.fillRoundedRectangle(row.toFloat(), 3);
+		if (p.id == selectedPersonId)
+		{
+			g.setColour(HIGHLIGHT_COLOR);
+			g.drawRoundedRectangle(row.toFloat().reduced(.5f), 3, 1);
+		}
 
 		Rectangle<int> cells = row.reduced(8, 0);
 		Rectangle<int> idR = cells.removeFromLeft(36);
@@ -862,6 +1470,13 @@ void TrackingMonitorPanel::paintRail(Graphics& g)
 
 		Rectangle<float> cell = r.removeFromTop(26).toFloat().withSizeKeepingCentre(26, 26);
 		r.removeFromTop(6);
+		personRowRects.add(cell.toNearestInt());
+		personRowIds.add(p.id);
+		if (p.id == selectedPersonId)
+		{
+			g.setColour(HIGHLIGHT_COLOR);
+			g.drawEllipse(cell.expanded(5), 1.5f);
+		}
 
 		int zoneIndex = i < personZones.size() ? personZones[i] : -1;
 		if (zoneIndex >= 0 && zoneIndex < zones.size())
@@ -977,6 +1592,22 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 		return;
 	}
 
+	bool modeHovered = slotModeRect.contains(e.getPosition());
+	if (modeHovered != slotModeHovered)
+	{
+		slotModeHovered = modeHovered;
+		repaint(slotModeRect);
+	}
+
+	//shortcuts list : open while the mouse is on the chip or on the list itself
+	bool overShortcuts = shortcutsRect.contains(e.getPosition()) || (shortcutsHovered && getShortcutsPanelRect().contains(e.getPosition()));
+	if (overShortcuts != shortcutsHovered)
+	{
+		shortcutsHovered = overShortcuts;
+		repaint();
+	}
+	if (overShortcuts) return;
+
 	ZoneHit hit = hitTest(e.position);
 
 	if (hit.zoneIndex != hoveredZone)
@@ -1021,6 +1652,53 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 		drawPoints.add(toMeters(e.position));
 		repaint();
+		return;
+	}
+
+	//click on a person (top view, column or rail) : its parameters and values in the Inspector
+	//(right click : Assign slot / Release slot)
+	//but first the shortcuts chip : a click keeps the list open ; clicks on the open list do nothing else
+	if (shortcutsRect.contains(e.getPosition()))
+	{
+		shortcutsPinned = !shortcutsPinned;
+		repaint();
+		return;
+	}
+	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
+
+	int personId = getPersonAt(e.position);
+	if (personId >= 0)
+	{
+		selectPerson(personId);
+		if (e.mods.isRightButtonDown()) showPersonMenu(personId, e.getPosition());
+		else
+		{
+			//may become a drag onto a slot chip
+			slotDragPersonId = personId;
+			slotDragStart = slotDragMouse = e.position;
+		}
+		return;
+	}
+
+	//slots strip : click selects the slot (Inspector), right click opens the slots menu
+	if (slotBarRect.contains(e.getPosition()))
+	{
+		if (slotModeRect.contains(e.getPosition()))
+		{
+			showSlotModeMenu();
+			return;
+		}
+
+		int chipIndex = getSlotChipAt(e.getPosition());
+		if (e.mods.isRightButtonDown()) showSlotMenu(chipIndex, e.getPosition());
+		else if (chipIndex >= 0 && slots[chipIndex].slot != nullptr)
+		{
+			slots[chipIndex].slot->selectThis();
+			//may become a drag onto a person
+			slotDragSlot = chipIndex;
+			slotDragStart = slotDragMouse = e.position;
+		}
+		timerCallback();
 		return;
 	}
 
@@ -1092,6 +1770,14 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 {
+	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
+	{
+		slotDragMouse = e.position;
+		if (!slotDragging && slotDragStart.getDistanceFrom(e.position) > 5) slotDragging = true;
+		if (slotDragging) repaint();
+		return;
+	}
+
 	if (drawingBoxShape >= 0)
 	{
 		if (!boxDragging) return;
@@ -1160,6 +1846,19 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
 {
+	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
+	{
+		int personId = slotDragPersonId >= 0 ? slotDragPersonId : getPersonAt(e.position);
+		int slotIndex = slotDragSlot >= 0 ? slotDragSlot : getSlotChipAt(e.getPosition());
+		bool dropped = slotDragging && personId >= 0 && slotIndex >= 0;
+
+		slotDragPersonId = slotDragSlot = -1;
+		slotDragging = false;
+		if (dropped) assignSlot(personId, slotIndex);
+		repaint();
+		return;
+	}
+
 	if (drawingBoxShape >= 0)
 	{
 		if (boxDragging) finishBoxDrawing();
@@ -1224,16 +1923,20 @@ void TrackingMonitorPanel::createZone()
 void TrackingMonitorPanel::showZoneColorEditor(SpatialZone* zone, Point<int> position)
 {
 	if (zone == nullptr) return;
+	showColorEditor(zone, zone->itemColor, position);
+}
 
+void TrackingMonitorPanel::showColorEditor(Inspectable* owner, ColorParameter* color, Point<int> position)
+{
 	//one picker at a time : a click outside closes the open one first
 	if (zoneColorUI != nullptr && zoneColorUI->colorEditor != nullptr) return;
 
-	//the picker edits the selected items, so select this zone only
-	zone->selectThis();
+	//the picker edits the selected items, so select this zone or slot only
+	owner->selectThis();
 
 	//invisible ColorParameterUI at the click position : it opens the picker there
 	//and makes the whole edit a single undo step when the picker closes
-	zoneColorUI.reset(zone->itemColor->createColorParamUI());
+	zoneColorUI.reset(color->createColorParamUI());
 	addChildComponent(zoneColorUI.get());
 	zoneColorUI->setBounds(Rectangle<int>(16, 16).withCentre(position));
 	zoneColorUI->showEditWindow();
@@ -1242,6 +1945,15 @@ void TrackingMonitorPanel::showZoneColorEditor(SpatialZone* zone, Point<int> pos
 void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 {
 	if (drawingFreeShape || drawingBoxShape >= 0 || Time::getMillisecondCounter() - drawFinishedMs < 500) return;
+
+	//double click on a slot chip : rename the slot
+	int chipIndex = getSlotChipAt(e.getPosition());
+	if (chipIndex >= 0)
+	{
+		Rectangle<int> chip = slotChipRects[chipIndex];
+		showRenameEditor(slots[chipIndex].slot.get(), chip.withTrimmedLeft(20).withSizeKeepingCentre(jmax(chip.getWidth() - 20, 120), 24));
+		return;
+	}
 
 	//double click on a zone name in the column (not the rail, which shows no names)
 	if (columnRect.contains(e.getPosition()))
@@ -1270,7 +1982,7 @@ void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 	showRenameEditor(dynamic_cast<SpatialZone*>(zones[hit.zoneIndex].zone.get()), r.constrainedWithin(topViewRect));
 }
 
-void TrackingMonitorPanel::showRenameEditor(SpatialZone* zone, Rectangle<int> bounds)
+void TrackingMonitorPanel::showRenameEditor(ControllableContainer* zone, Rectangle<int> bounds)
 {
 	if (zone == nullptr) return;
 
@@ -1289,7 +2001,7 @@ void TrackingMonitorPanel::closeRenameEditor(bool apply)
 	if (!renameEditor.isVisible()) return;
 	renameEditor.setVisible(false);
 
-	SpatialZone* zone = dynamic_cast<SpatialZone*>(renameZone.get());
+	ControllableContainer* zone = renameZone.get();	// a zone or a player slot
 	renameZone = nullptr;
 	String newName = renameEditor.getText().trim();
 	if (!apply || zone == nullptr || newName.isEmpty() || newName == zone->niceName) return;
@@ -1533,7 +2245,17 @@ bool TrackingMonitorPanel::keyPressed(const KeyPress& key)
 		return true;
 	}
 
-	if (!drawingFreeShape) return false;
+	if (!drawingFreeShape)
+	{
+		//selected person : 1-9 (or the numeric keypad) assigns the slot, 0 / Delete removes it
+		if (selectedPersonId < 0) return false;
+		int k = key.getKeyCode();
+		int digit = k >= '0' && k <= '9' ? k - '0' : (k >= KeyPress::numberPad0 && k <= KeyPress::numberPad9 ? k - KeyPress::numberPad0 : -1);
+		if (digit >= 1) assignSlot(selectedPersonId, digit - 1);
+		else if (digit == 0 || key == KeyPress::deleteKey || key == KeyPress::backspaceKey) assignSlot(selectedPersonId, -1);
+		else return false;
+		return true;
+	}
 
 	if (key == KeyPress::escapeKey) cancelFreeShapeDrawing();
 	else if (key == KeyPress::returnKey) finishFreeShapeDrawing();
