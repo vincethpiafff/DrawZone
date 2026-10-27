@@ -1,0 +1,61 @@
+/*
+  ==============================================================================
+
+	SpatialModule.h
+	Created: 24 Oct 2026
+	Author:  DrawZone
+
+	Spatial module: receives tracked people (Augmenta OSC for now)
+	and will expose interaction zones as Chataigne parameters.
+	Inherits OSCModule to reuse its OSC receiver and senders (see D12).
+
+  ==============================================================================
+*/
+
+#pragma once
+
+#include "TrackingData.h"
+#include "SpatialZone.h"
+
+class SpatialModule :
+	public OSCModule,
+	public Timer,
+	public BaseManager<SpatialZone>::ManagerListener
+{
+public:
+	SpatialModule();
+	~SpatialModule();
+
+	//a person not updated for this long is removed (missed /object/leave)
+	static const uint32 personTimeoutMs = 1000;
+	//no message at all for this long : the source is silent, the list is emptied
+	static const uint32 sourceTimeoutMs = 1000;
+	//zones are evaluated on the message thread at this rate
+	static const int zoneUpdateRateHz = 50;
+
+	TrackingData trackingData;
+
+	IntParameter* personCount;
+
+	BaseManager<SpatialZone> zoneManager;
+	ControllableContainer zonesValuesCC;
+	Point<float> zonesSceneSize;	//scene size last applied to the zone bounds
+
+	void processMessageInternal(const OSCMessage& msg) override;
+	void processAugmentaPerson(const OSCMessage& msg);
+
+	void updateZones();
+	void timerCallback() override;
+
+	void itemAdded(SpatialZone* zone) override;
+	void itemsAdded(Array<SpatialZone*> zones) override;
+	void itemRemoved(SpatialZone* zone) override;
+	void itemsRemoved(Array<SpatialZone*> zones) override;
+
+	static SpatialModule* create() { return new SpatialModule(); }
+	virtual String getDefaultTypeString() const override { return "Spatial"; }
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialModule)
+};
+
+#include "ui/TrackingMonitorPanel.h"

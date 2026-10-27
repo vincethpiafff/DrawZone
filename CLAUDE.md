@@ -27,13 +27,16 @@ Chataigne, donc utilisables partout dans le logiciel.
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.0.0 validée** (Chataigne compile et reçoit Augmenta Fusion).
-**Prochaine étape : v0.1**, squelette du module Spatial.
+**État actuel : v0.1.0 validée** (27/10/2026 : module Spatial, zones
+rectangulaires avec « Presence », Tracking Monitor éditable à la souris).
+**Prochaine étape : v0.2**, zones multiples, métriques, slots de joueurs.
 
 ## 2. Comment travailler avec Vincent
 
 - **Répondre en français.** Le code, les noms de fichiers, les commits et les
-  commentaires dans le code sont en anglais.
+  commentaires dans le code sont en anglais. **Tout ce qui est visible dans
+  Chataigne** (noms de modules, paramètres, valeurs, panneaux, menus,
+  messages de log) est aussi **en anglais** (règle de Vincent, 26/10/2026).
 - Vincent n'est pas développeur C++. Il lit le code et comprend la logique
   (il pratique Python). Expliquer ce qu'on fait et pourquoi, simplement.
 - **Étape par étape.** Une étape à la fois, attendre sa validation avant la
@@ -134,7 +137,17 @@ code dans `Source/Module/modules/spatial/`.
     un ticket ou une PR (cela le notifie ou ajoute un lien chez lui) ;
   - les GitHub Actions restent désactivées sur le fork (Settings → Actions →
     General → « Disable actions ») ;
-  - « Sync fork » sur `master` est sans risque : il récupère, il n'envoie rien.
+  - « Sync fork » sur `master` est sans risque : il récupère, il n'envoie rien ;
+  - un build DrawZone n'envoie rien aux serveurs de Ben : bloc `// DrawZone:`
+    dans `Source/Main.cpp` (mises à jour, rapports de plantage, statistiques
+    Matomo, conversion en ligne des fichiers). À garder lors des fusions avec
+    upstream, et à étendre si Ben ajoute un nouvel envoi.
+- **Fins de ligne** : les fichiers de Ben mélangent parfois CRLF et LF dans un
+  même fichier (ex. `Source/Main.cpp`), et le `.jucer` est en CRLF. Après
+  chaque modification d'un fichier de Ben, `git diff --stat` doit montrer
+  uniquement nos lignes. Ne pas utiliser `sed` de Git Bash (il convertit) ;
+  l'outil d'édition peut aussi uniformiser : vérifier, et sinon insérer
+  à l'octet près avec `perl -0777 -pi`.
 - Commits au format Conventional Commits, en anglais :
   `feat(spatial): ...`, `fix(...)`, `docs(...)`, `chore(build): ...`.
 - Versions SemVer propres à DrawZone avec tags annotés (`v0.1.0`…), et

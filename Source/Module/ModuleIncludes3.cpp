@@ -51,3 +51,6 @@
 
 #include "modules/posistagenet/PosiStageNetModule.cpp"
 #include "modules/posistagenet/commands/PosiStageNetCommand.cpp"
+
+// DrawZone: Spatial module
+#include "modules/spatial/SpatialModule.cpp"

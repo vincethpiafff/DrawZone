@@ -1,9 +1,10 @@
 # Notes : protocole Augmenta
 
 État : **protocole OSC v2 recoupé** (24/10/2026) entre la doc Augmenta, le
-code du plugin officiel Unreal et nos observations du 23/10. Reste à
-vérifier en direct : `/object/enter`, `/object/update` en détail, et le sens
-de l'axe Y.
+code du plugin officiel Unreal et nos observations du 23/10.
+**26/10/2026** : `/object/update` décodé par le module Spatial (id,
+centroïde) et le sens des axes vérifiés en direct dans le Tracking Monitor.
+Reste à vérifier : `/object/enter`.
 
 ## Sources
 
@@ -92,7 +93,8 @@ Fréquence : environ 10 messages `/scene` par seconde. Scène simulée :
 ## Points à vérifier en direct (v0.1)
 
 - Fusion envoie-t-il bien `/object/enter` ? (non observé le 23/10)
-- Sens de l'axe Y : origine en haut à gauche d'après la doc, à vérifier en
-  déplaçant une personne dans Fusion.
+- ✅ Sens des axes (26/10/2026, Vincent, personne déplacée dans Fusion et
+  suivie dans la vue de dessus du Tracking Monitor) : **origine en haut à
+  gauche, x vers la droite, y vers le bas**, conforme à la doc.
 - Une personne perdue puis retrouvée change-t-elle d'id ? (voir « Points
   durs » de la ROADMAP)

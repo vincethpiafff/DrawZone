@@ -50,6 +50,14 @@ void ChataigneApplication::initialiseInternal(const String& commandLine)
 
 	CrashDumpUploader::getInstance()->init("http://benjamin.kuperberg.fr/chataigne/support/crash_report.php",ImageCache::getFromMemory(BinaryData::crash_png, BinaryData::crash_pngSize));
 
+	// DrawZone: a DrawZone build must never send anything to upstream servers
+	// (update check, crash reports, usage analytics, online file conversion)
+	AppUpdater::getInstance()->setURLs("", "", "Chataigne");
+	CrashDumpUploader::getInstance()->remoteURL = URL();
+	MatomoAnalytics::getInstance()->baseURL = URL();
+	MatomoAnalytics::getInstance()->hasAlreadyShownWarning = true;
+	engine->convertURL = "";
+
 	//DashboardManager::getInstance()->setupDownloadURL("http://benjamin.kuperberg.fr/download/dashboard/dashboard.php?folder=dashboard");
 
 	ShapeShifterManager::getInstance()->setDefaultFileData(BinaryData::default_chalayout);

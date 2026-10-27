@@ -77,7 +77,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 ## ⬜ À faire ensuite
 
-- ⬜ **v0.1 — squelette du module Spatial** :
+- ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
     wiki renvoie vers docs.augmenta.tech, où la page du protocole est
     introuvable. → Ordre des arguments repris du code du plugin officiel
@@ -90,11 +90,247 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
   - ✅ décider : récepteur OSC de Chataigne réutilisé → **D12** validée par
     Vincent le 24/10 (`SpatialModule` hérite de `OSCModule`, liste de
     personnes indépendante d'OSC) ;
-  - ⬜ créer la branche `feature/spatial-module` ;
-  - ⬜ module vide enregistré dans Chataigne, compilé et visible dans le menu ;
-  - ⬜ réception Augmenta et liste des personnes ;
-  - ⬜ une zone rectangle + booléen « présence » ;
-  - ⬜ test avec Augmenta Fusion, puis tag `v0.1.0`.
+  - ✅ créer la branche `feature/spatial-module` (24/10, depuis `develop`) ;
+  - ✅ module vide enregistré dans Chataigne, compilé et visible dans le menu :
+    - ✅ `Source/Module/modules/spatial/SpatialModule.h/.cpp` (hérite de
+      `OSCModule`, port d'entrée 12000, sortie 9000) ;
+    - ✅ 3 points d'accroche `// DrawZone:` : `ModuleIncludes.h`,
+      `ModuleIncludes3.cpp`, `ModuleFactory.cpp` (catégorie « DrawZone ») ;
+    - ❌ puis ✅ ajout au `.jucer` : un `sed` de Git Bash a converti tout le
+      fichier en LF (≈4000 lignes modifiées). → Fichier restauré
+      (`git checkout`), insertion refaite avec l'outil d'édition : 6 lignes.
+      Leçon : ne jamais modifier le `.jucer` (CRLF) avec `sed` ;
+    - ❌ puis ✅ Projucer `--resave` : lancé directement, il rend la main avant
+      d'avoir fini (rien régénéré). → `Start-Process -Wait` : 8 exports
+      régénérés, uniquement des ajouts de nos 2 fichiers (77 lignes) ;
+    - ✅ compilation `build_dev.bat` : 0 erreur, 1 avertissement du code de Ben
+      (C4101), 2 min 26 ;
+    - ✅ test par Vincent : module visible dans le menu, réception OSC ;
+  - ✅ **workflow de test « Claude lance Chataigne et lit les logs »** (24/10) :
+    - ✅ étape 1 — couper tout envoi vers les serveurs de Ben. Trouvé dans le
+      code : vérification des mises à jour, envoi des rapports de plantage
+      (« Auto send crash log » activé par défaut), statistiques d'usage Matomo
+      (au démarrage, à l'arrêt, au plantage, toutes les 5 min), conversion en
+      ligne des anciens fichiers `.noisette` (le fichier entier est envoyé).
+      → Bloc `// DrawZone:` de 8 lignes dans `Source/Main.cpp`, après les
+      lignes de Ben (sans les modifier) : adresses vidées. Les simples
+      lectures (page d'accueil, liste des modules communautaires, aide) sont
+      gardées. ❌ puis ✅ : `Main.cpp` mélange CRLF et LF ; l'outil d'édition
+      avait tout converti en CRLF → fichier restauré, insertion à l'octet près
+      avec `perl`. Compilation : 0 erreur, 0 avertissement ;
+    - ✅ étape 2 — Claude lance Chataigne en arrière-plan (console captée,
+      notification si arrêt ou plantage). Vincent a coché Preferences →
+      Save / Load → « Save logs » → fichier créé :
+      `%APPDATA%\Chataigne\log_<date>_<heure>.txt` (un par lancement ; les
+      messages d'avant la case cochée n'y sont pas) ;
+    - ✅ étape 2 bis — **brancher Claude Code sur le serveur MCP de Chataigne**
+      (travail de Ben déjà compilé dans notre build : `Source/MCP/`,
+      `Modules/juce_organicui/mcp/`, doc `Tools/mcp/CLIENTS.md`). Règle :
+      Claude en **lecture seule** (profil Inspect), Vincent fait toutes les
+      actions en utilisateur.
+      - ✅ Preferences → MCP : client « Claude Code », Access = Inspect,
+        Advanced execution décoché, Enabled coché. Serveur à l'écoute sur
+        `127.0.0.1:42002` (vérifié) ;
+      - ✅ test `curl` sans jeton : HTTP 401 « Authentication required »
+        (le serveur répond et exige bien un jeton) ;
+      - ❌ jeton dans la variable utilisateur `CHATAIGNE_MCP_TOKEN` :
+        1er essai, variable absente du registre (lieu d'exécution de `setx`
+        inconnu) ; 2e essai, la variable contenait le texte d'exemple de la
+        consigne `<colle le jeton ici>` (consigne ambiguë de Claude) ;
+        3e essai, longueur 0. Un jeton valide fait **64 caractères**.
+      - 26/10 : on abandonne `setx`, nouvelle méthode : **Claude lit le
+        presse-papier** (`Get-Clipboard`), donc plus d'erreur de
+        copier-coller. Séance interrompue (redémarrage du PC) avant la copie ;
+      - ✅ 26/10 : jeton lu dans le presse-papier (64 caractères, jamais
+        affiché), enregistré dans la variable utilisateur
+        `CHATAIGNE_MCP_TOKEN` et dans `D:\DRAWZONE\.secrets\chataigne_mcp_token.txt`
+        (hors dépôt) ;
+      - ❌ puis ✅ test HTTP : `initialize` → 200 (Chataigne 1.10.5b6), mais
+        `tools/list` → 404. Cause : chaque requête doit renvoyer l'en-tête
+        `Mcp-Session-Id` donné par `initialize` (règle du protocole MCP).
+        → Avec l'en-tête : 20 outils listés, `chataigne_diagnostics` renvoie
+        les logs et `"readOnly": true` (profil Inspect confirmé) ;
+      - ✅ `D:\DRAWZONE\.mcp.json` créé (modèle de `Tools/mcp/CLIENTS.md`,
+        le jeton n'y est pas écrit : `${CHATAIGNE_MCP_TOKEN}`) ;
+      - ✅ Vincent relance Claude Code depuis `D:\DRAWZONE`
+        (`claude --continue`), approuve le serveur « chataigne », vérifie
+        avec `/mcp`. Chataigne doit être lancé avant ;
+      - ❌ 26/10 : Claude Code relancé depuis `D:\DRAWZONE`, serveur
+        « chataigne » reconnu, mais connexion refusée (`ECONNREFUSED`).
+        Cause : Chataigne n'était pas lancé (aucun processus, port 42002
+        fermé). → Lancer Chataigne, puis `/mcp` → reconnecter « chataigne » ;
+      - ✅ 26/10 : Claude lance Chataigne en arrière-plan ; port 42002 ouvert
+        au bout de 25 s (le serveur répond) ;
+      - ✅ 26/10 : Vincent `/mcp` → Reconnect. Outils `mcp__chataigne__*`
+        disponibles dans Claude Code ; `chataigne_project` lit la session
+        (vide, non enregistrée) et `chataigne_diagnostics` les logs, avec
+        `"readOnly": true`. **Étape 2 bis terminée.** Règle : Claude n'appelle
+        que les outils de lecture (project, diagnostics, inspect, browse,
+        observe…) ;
+    - ✅ 26/10 étape 3 — vérifié par Claude via MCP (lecture seule) :
+      module « Spatial » présent (`/modules/spatial`, catégorie DrawZone),
+      il reçoit Fusion sur 12000 (~50 messages/s : `/object/update`,
+      `/object/update/extra`, `/scene`, `/fusion`) ; 1 personne (id 1,
+      x≈0.60, y≈0.34, immobile), scène 8 × 4,5 m. Aucune alerte.
+      « Values » vide : normal, l'OSCModule de base ne crée pas de valeurs
+      (c'est le module OSC générique qui a « Auto Add ») → à faire à
+      l'étape suivante. « Log Incoming » activé = logs très chargés ;
+  - ✅ 26/10 **fenêtre « Tracking Monitor »** (demande de Vincent, avant la
+    suite) : voir en temps réel, sans log qui défile, les personnes reçues
+    (id, coordonnées…) par le système d'entrée. Plan proposé, en attente
+    de validation :
+    - ✅ brique A — décoder Augmenta dans le module Spatial et tenir une
+      liste de personnes **indépendante du protocole** (PSN/TUIO plus tard
+      rempliront la même liste). Plan validé par Vincent (colonnes OK,
+      brique C OK) :
+      - ✅ code : `TrackingData.h/.cpp` (liste verrouillée, écrite par le
+        fil réseau, lue par l'interface), `SpatialModule` décode `/scene`,
+        `/object/enter|update|leave`, retire une personne sans nouvelles
+        depuis 1 s, valeur « Person Count » dans Values ;
+      - ✅ `.jucer` (+3 lignes, CRLF via `perl`) puis Projucer `--resave` :
+        uniquement des ajouts ;
+      - ❌ puis ✅ compilation : `build_dev.bat` ne se lance pas depuis le
+        terminal de Claude (« not recognized », guillemets cmd imbriqués)
+        → MSBuild appelé directement depuis PowerShell, mêmes options.
+        Compilation 0 erreur (seul C4101 de Ben) ; ❌ édition de liens
+        LNK1104 : `Chataigne.exe` verrouillé car Chataigne est ouvert ;
+      - ✅ Chataigne fermé → édition de liens OK (exe du 26/10 19:55),
+        Chataigne relancé en arrière-plan par Claude ;
+      - ✅ test 1 : module recréé, `/mcp` Reconnect ; via MCP,
+        `/modules/spatial/values/personCount` = 1 (lecture seule) avec la
+        personne simulée de Fusion ;
+      - ✅ test 2 (Vincent) : ajout / retrait de personnes simulées dans
+        Fusion, « Person Count » suit ;
+      - ✅ décision de Vincent : **source muette (> 1 s sans message) → la
+        liste se vide**. Avant, le nettoyage ne tournait qu'à la réception
+        de `/scene`, donc les personnes restaient si Fusion s'arrêtait.
+        → `Timer` de 200 ms dans `SpatialModule` + `removeAllIfSilent()`.
+        Compilation 0 erreur ; édition de liens en attente (Chataigne ouvert) ;
+      - ✅ édition de liens OK (exe du 26/10 20:10), Chataigne relancé ;
+      - ✅ test 3 (Vincent) : Fusion coupé → « Person Count » repasse à 0,
+        Fusion relancé → le compte remonte. **Brique A validée.**
+        Vincent préfère tester tout de suite plutôt que grouper avec la
+        brique B : **étape par étape, pas d'écritures groupées** ;
+    - ✅ brique B — panneau « Tracking Monitor » (menu des fenêtres de
+      Chataigne) : en-tête source / état / messages/s / scène, puis tableau
+      id, x, y (normalisé et mètres), âge, vitesse, rafraîchi ~10 fois/s ;
+      - ✅ code : `spatial/ui/TrackingMonitorPanel.h/.cpp` (premier module
+        Spatial trouvé, copie de la liste 10 fois/s puis dessin) ; includes
+        dans nos fichiers `SpatialModule.h/.cpp` ; `Source/MainComponent.cpp`
+        +2 lignes `// DrawZone:` (perl, fins de ligne conservées) ;
+      - ❌ puis ✅ `FontOptions` (API JUCE 8) n'existe pas dans notre JUCE 7
+        → `Font(taille)` comme dans le code de Ben (corrigé avant compilation) ;
+      - ✅ `.jucer` (+6 lignes, sous-groupe `ui`) + Projucer : uniquement
+        des ajouts ; compilation 0 erreur, liens en attente (Chataigne ouvert) ;
+      - ✅ liens OK (exe du 26/10 20:19), Chataigne relancé ;
+      - ✅ test (Vincent) : menu Windows → « Tracking Monitor » : en-tête,
+        tableau qui suit Fusion, « Silent source » + liste vide quand Fusion
+        est coupé. **Brique B validée.**
+    - ✅ 26/10 commits **locaux** (accord de Vincent, rien poussé) sur
+      `feature/spatial-module` : `bf1aaf99` chore (envois vers Ben coupés),
+      `fdbf448c` feat(spatial) (module + briques A et B), `0380aaa5` docs ;
+    - ✅ brique C — petite vue de dessus avec les points (validée par
+      Vincent le 26/10) :
+      - ✅ code : `paintTopView()` dans `TrackingMonitorPanel` (aucun
+        nouveau fichier, pas de Projucer) : scène aux bonnes proportions,
+        origine en haut à gauche, grille 1 m, graduations en mètres,
+        un point coloré + id par personne ; vue au-dessus du tableau
+        (60 % de la hauteur, le tableau garde au moins 5 lignes) ;
+      - ✅ compilation 0 erreur ; liens OK (exe du 26/10 20:36),
+        Chataigne relancé ;
+      - ✅ test (Vincent) : points conformes à Fusion, déplacements dans le
+        bon sens. **Axe Y vérifié : origine en haut à gauche, y vers le
+        bas** (noté dans `augmenta-protocol.md`). **Brique C validée.**
+      - ✅ commits locaux `5dccf7c6` feat(spatial) (vue de dessus) et
+        `3f6be380` docs (rien poussé) ;
+  - ✅ 26/10 brique Z3 (demande de Vincent) : **éditer les zones à la
+    souris dans le Tracking Monitor** (glisser = déplacer, 4 poignées aux
+    angles = redimensionner ; clic droit Duplicate / Delete / Hide, ajoutés
+    en cours par Vincent). C'est le cœur de la v0.3 (« éditeur 2D ») :
+    - ✅ code : test de clic (poignées puis intérieur, zone du dessus en
+      premier), curseurs, poignées sur la zone survolée, un seul pas
+      d'annulation par glissement (Ctrl+Z), zone sélectionnée dans
+      l'Inspector au clic ; « Hide » = nouveau paramètre « Hidden » (la
+      zone détecte toujours), « Show hidden zones » au clic droit dans le
+      vide ; une zone dupliquée n'est plus recentrée ;
+    - ✅ règle de Vincent ajoutée à `CLAUDE.md` : tout ce qui est visible
+      dans Chataigne est en anglais ;
+    - ✅ compilation 0 erreur (exe du 26/10 21:22), Chataigne relancé ;
+    - ✅ test Vincent : déplacement, poignées, Ctrl+Z, Duplicate, Delete,
+      Hide, Show hidden zones : tout fonctionne ;
+    - ✅ retours de Vincent, codés : bouton « Show hidden zones (N) » sous
+      la vue 2D (visible s'il y a des zones masquées) au lieu du clic
+      droit ; clic droit dans la scène hors zone → « Create zone » (centrée
+      sur le clic) ; vue 2D centrée et agrandie (mise en page calculée
+      dans `resized()` : en-tête, vue, bouton, tableau de hauteur fixe
+      6 personnes). Compilation 0 erreur, liens OK (exe du 26/10 21:30),
+      Chataigne relancé ;
+    - ✅ test Vincent : tout fonctionne. **Brique Z3 validée.**
+  - ✅ réception Augmenta et liste des personnes (briques A, B, C) ;
+  - ✅ 26/10 une zone rectangle + booléen « présence ». Plan proposé, en
+    attente de validation (modèle existant chez Ben : `FFTAnalyzerManager`
+    du module Audio, liste d'éléments dans les paramètres, valeurs
+    correspondantes dans Values) :
+    - ✅ brique Z1 — liste « Zones » dans les paramètres du module (centre
+      et taille en mètres) ; par zone, dans Values : « Presence » et
+      « Person Count ». Liste validée par Vincent :
+      - ✅ code : `SpatialZone.h/.cpp` (BaseItem), `zoneManager` dans
+        `moduleParams` (sauvegardé avec la session), valeurs dans
+        Values → Zones → <nom de zone> ; zones calculées sur le fil
+        principal à 50 Hz (le minuteur passe de 200 ms à 20 ms) ;
+      - ✅ `.jucer` + Projucer (ajouts seulement), compilation 0 erreur,
+        liens OK (exe du 26/10 20:48), Chataigne relancé ;
+      - ❌ Chataigne fermé par erreur juste après la relance (code 0, pas
+        de plantage dans le log) → relancé ;
+      - ✅ test (Vincent) : ajout de zone, présence, renommage, suppression ;
+      - ✅ test sauvegarde / réouverture (Vincent) : la zone revient
+        (`D:\DRAWZONE\ChataigneProject\TEST_ZONES.noisette`, nouveau
+        dossier de Vincent pour les sessions de test, hors Git).
+        **Brique Z1 validée.** Commit local `264f2b48` (rien poussé) ;
+    - ✅ brique Z2 — zones dessinées dans la vue de dessus du Tracking
+      Monitor (remplie quand présence) :
+      - ✅ code : chaque zone a une couleur (« Color » de l'élément,
+        aléatoire à la création) ; le panneau copie les zones 10 fois/s et
+        les dessine sous les personnes (contour + nom, remplie si
+        présence, grisée si désactivée). Compilation 0 erreur, liens OK
+        (exe du 26/10 20:58), Chataigne relancé ;
+      - ❌ test Vincent : **plantage** en changeant la taille de la zone.
+        Lu par MCP : crash dans `paintTopView` → `drawText` ; taille de la
+        zone = **22 369 624 m** (glisser sur le champ fait exploser la
+        valeur, car j'avais mis une borne quasi infinie `INT32_MAX`) →
+        rectangle de >1 milliard de pixels, le moteur de dessin de JUCE
+        plante. Correction : bornes finies (centre ±1000 m, taille
+        0–1000 m, `SpatialZone::maxMeters`) + zone découpée à la scène
+        avant dessin ;
+      - ❌ compilation : C1041, `Chataigne.pdb` verrouillé : Chataigne est
+        encore ouvert dans son gestionnaire de crash (il lit le .pdb pour
+        la pile d'appels) → fermer Chataigne puis recompiler ;
+      - ✅ demande de Vincent : **les bornes d'une zone suivent la scène
+        reçue** (Fusion 8 × 4,5 m → centre 0–8 / 0–4,5, taille ≤ 8 × 4,5).
+        `SpatialZone::setSceneSize()`, appliqué quand `/scene` change de
+        taille et à la création ; 1000 m tant que la scène n'est pas reçue ;
+        une nouvelle zone démarre au centre de la scène. Effet de bord :
+        si la scène rétrécit, les zones trop grandes sont recadrées ;
+      - ❌ puis ✅ recompilation : MSBuild répond « à jour » sans rien
+        recompiler (exe resté à 20:58) — la compilation ratée par C1041
+        a faussé son suivi. → `.obj` du projet supprimés, recompilation
+        complète en 3 min 26 (seuls avertissements : ceux de Ben, C4101 et
+        C4206). Exe du 26/10 21:10, Chataigne relancé ;
+      - ✅ test (Vincent) : plus de plantage, bornes = scène, zone dessinée
+        et remplie, nouvelle zone au centre ;
+      - ❌ éditeur graphique 2D de « Center » (Inspector) : y vers le haut,
+        alors que la scène a y vers le bas (Screenshot_4). → option de
+        Chataigne `extendedEditorInvertY` activée par défaut sur Center
+        (= « Invert Y » du clic droit). Compilation 0 erreur, liens OK
+        (exe du 26/10 21:17), Chataigne relancé ;
+      - ✅ test Vincent : Invert Y OK. **Brique Z2 validée.**
+  - ✅ 27/10 test final v0.1 avec Augmenta Fusion, puis tag `v0.1.0`.
+    - ✅ Chataigne lancé par Claude (exe du 26/10 21:30), MCP à l'écoute sur 42002 ;
+    - ✅ test Vincent (lu par MCP) : Action de State Machine sur « Presence », Log a message en TRUE / FALSE, alternance entrée / sortie correcte (02:33:45 → 02:33:49) ;
+    - ✅ avertissement « Link is broken : /modules/spatial/values/zones/zoneDETEST/presence » (02:31:34, après un renommage de Vincent) : test refait, zone renommée « ZONE A » (lu par MCP), le lien tient, entrées / sorties toujours loguées (02:35 → 02:36), pas de nouvel avertissement. Non reproduit ;
+    - ✅ session enregistrée (02:37, le fichier pointe bien sur `zoneA/presence`), Chataigne fermé proprement (code 0), relancé par Claude ;
+    - ✅ test Vincent (lu par MCP) : session rouverte, pas d'avertissement, entrées / sorties loguées (02:38:04 → 02:38:08). **Test final v0.1 validé.**
+    - ✅ `CHANGELOG.md` (section 0.1.0), `ROADMAP.md`, `CLAUDE.md` à jour ; fusion dans `develop` et tag annoté `v0.1.0` (local, rien poussé) ;
 
 ## 💡 Idées
 
@@ -106,6 +342,20 @@ Format : `- 💡 JJ/MM/AAAA — idée (contexte, qui l'a proposée)`.
   détectées, avec une règle d'attribution (ex. la première personne détectée
   prend et garde le slot 1). → Intégrée à la roadmap en **v0.2**, après les
   métriques de zone.
+- 💡 26/10/2026 — **Tracking Monitor plus « user friendly »** (Vincent) :
+  la fenêtre fonctionne (en-tête, vue de dessus, tableau) mais son
+  affichage est à retravailler plus tard. Pistes à trier : choix du module
+  si plusieurs Spatial, vue et tableau redimensionnables, zoom, flèche de
+  vitesse, défilement du tableau, colonnes au choix (hauteur, orientation…),
+  personne survolée ↔ ligne du tableau. À faire « dans un temps plus
+  lointain », pas en v0.1.
+- 💡 26/10/2026 — **Vue 2D des zones envoyée en Spout / NDI** (Vincent) :
+  sortie vidéo de la vue de dessus (zones + personnes), récupérable dans
+  Smode, TouchDesigner, etc., pour voir les zones dans l'espace de
+  projection. Déjà présent dans notre base : module `NDIOutModule`
+  (`Source/Module/modules/video/`) et module `juce_sharedtexture`
+  (Spout, `Modules/`). À étudier : rendu hors écran de la vue, résolution
+  et calage sur la scène (1 px = x cm), fond transparent ou non.
 
 ## Rappels
 
