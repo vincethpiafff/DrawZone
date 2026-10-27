@@ -68,6 +68,14 @@ private:
 	Array<Rectangle<int>> zoneRowRects;	// one per zone, empty when it does not fit
 	Rectangle<int> peopleRect;
 
+	//zone cards : name, count and occupancy bar ; the arrow unfolds the detail of the values
+	static const int cardHeight = 50;
+	static const int detailLineHeight = 18;
+	static const int numDetailLines = 5;
+	Array<WeakReference<ControllableContainer>> expandedZones;
+	bool isExpanded(ControllableContainer* zone) const;
+	static Rectangle<int> getCardArrowRect(Rectangle<int> card);
+
 	bool columnCollapsed = false;
 	TextButton collapseButton;
 	TextButton createZoneButton;
@@ -159,6 +167,14 @@ private:
 		bool hidden = false;
 		bool selected = false;
 		int personCount = 0;
+
+		//live values shown on the zone cards
+		int capacity = 1;
+		float occupancy = 0;		// 0-1
+		float presenceTime = 0;		// seconds
+		int lastEnteredId = -1;
+		Point<float> averagePosition;	// 0-1 in the box
+		float averageDistance = 0;	// meters
 	};
 	Array<ZoneView> zones;
 	Array<int> personZones;	// zone index for each person of the snapshot, -1 = in no zone

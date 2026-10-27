@@ -31,6 +31,24 @@ namespace TrackingMonitorStyle
 		}
 	}
 
+	//"12.3 s" under a minute, "2:05" above
+	inline String formatTime(float seconds)
+	{
+		if (seconds < 60) return String(seconds, 1) + " s";
+		int s = (int)seconds;
+		return String(s / 60) + ":" + String(s % 60).paddedLeft('0', 2);
+	}
+
+	//occupancy bar : dark track, filled part in the zone color
+	inline void drawBar(Graphics& g, Rectangle<float> r, float value, Colour c)
+	{
+		g.setColour(Colour(0xff2e2e2e));
+		g.fillRoundedRectangle(r, r.getHeight() / 2);
+		if (value <= 0) return;
+		g.setColour(c);
+		g.fillRoundedRectangle(r.withWidth(jmax(r.getHeight(), r.getWidth() * jmin(1.0f, value))), r.getHeight() / 2);
+	}
+
 	inline void drawGlow(Graphics& g, const Path& p, Colour c)
 	{
 		for (int i = 1; i <= 4; i++)
@@ -130,13 +148,14 @@ void TrackingMonitorPanel::layoutColumn()
 
 		for (int i = 0; i < zones.size(); i++)
 		{
-			//keep room for the buttons under the list
-			if (c.getHeight() < 28 + 4 + 26)
+			//one card per zone, taller when unfolded ; keep room for the buttons under the list
+			int h = cardHeight + (isExpanded(zones[i].zone.get()) ? numDetailLines * detailLineHeight + 6 : 0);
+			if (c.getHeight() < h + 4 + 26)
 			{
 				zoneRowRects.add(Rectangle<int>());
 				continue;
 			}
-			zoneRowRects.add(c.removeFromTop(28));
+			zoneRowRects.add(c.removeFromTop(h));
 			c.removeFromTop(4);
 		}
 
@@ -176,6 +195,18 @@ SpatialModule* TrackingMonitorPanel::getSpatialModule()
 Colour TrackingMonitorPanel::getPersonColor(int id)
 {
 	return Colour::fromHSV((id * .13f) - (int)(id * .13f), .7f, 1, 1);
+}
+
+bool TrackingMonitorPanel::isExpanded(ControllableContainer* zone) const
+{
+	if (zone == nullptr) return false;
+	for (auto& z : expandedZones) if (z.get() == zone) return true;
+	return false;
+}
+
+Rectangle<int> TrackingMonitorPanel::getCardArrowRect(Rectangle<int> card)
+{
+	return Rectangle<int>(card.getX() + 4, card.getY(), 18, 28);
 }
 
 void TrackingMonitorPanel::timerCallback()
@@ -219,6 +250,12 @@ void TrackingMonitorPanel::timerCallback()
 			zv.hidden = z->hiddenInMonitor->boolValue();
 			zv.selected = z->isSelected;
 			zv.personCount = z->personCount->intValue();
+			zv.capacity = z->capacity->intValue();
+			zv.occupancy = z->occupancy->floatValue();
+			zv.presenceTime = z->presenceTime->floatValue();
+			zv.lastEnteredId = z->lastEnteredId->intValue();
+			zv.averagePosition = z->averagePosition->getPoint();
+			zv.averageDistance = z->averageDistanceToCenter->floatValue();
 			zones.add(zv);
 		}
 
@@ -599,21 +636,42 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 
 		auto& z = zones.getReference(i);
 		Colour c = z.enabled ? z.color : NORMAL_COLOR;
+		Colour light = c.interpolatedWith(Colours::white, .5f);
 		Rectangle<float> rf = row.toFloat();
+		bool expanded = isExpanded(z.zone.get());
 
+		//card background, tinted with the zone color when someone is inside
 		if (!z.hidden)
 		{
-			g.setColour(z.selected ? HIGHLIGHT_COLOR.withAlpha(.12f) : rowBg);
-			g.fillRoundedRectangle(rf, 3);
+			g.setColour(z.selected ? HIGHLIGHT_COLOR.withAlpha(.12f) : (z.presence ? rowBg.overlaidWith(c.withAlpha(.12f)) : rowBg));
+			g.fillRoundedRectangle(rf, 4);
+			if (z.presence && !z.selected)
+			{
+				g.setColour(c.withAlpha(.5f));
+				g.drawRoundedRectangle(rf.reduced(.5f), 4, 1);
+			}
 		}
 		if (z.selected)
 		{
 			g.setColour(HIGHLIGHT_COLOR);
-			g.drawRoundedRectangle(rf.reduced(.5f), 3, 1);
+			g.drawRoundedRectangle(rf.reduced(.5f), 4, 1);
 		}
 
+		Rectangle<int> card = row.reduced(8, 0);
+		Rectangle<int> line1 = card.removeFromTop(28);
+		Rectangle<int> barLine = card.removeFromTop(cardHeight - 28 - 4);
+
+		//unfold arrow
+		Rectangle<int> arrowR = getCardArrowRect(row);
+		Path arrow;
+		arrow.addTriangle(0, 0, 8, 4.5f, 0, 9);
+		arrow.applyTransform(AffineTransform::translation(-4, -4.5f).rotated(expanded ? MathConstants<float>::halfPi : 0).translated(arrowR.toFloat().getCentre()));
+		g.setColour(dimText);
+		g.fillPath(arrow);
+		line1.setLeft(arrowR.getRight());
+
 		//filled glowing dot when occupied, ring when empty
-		Rectangle<float> dot = Rectangle<float>(10, 10).withCentre(Point<float>(rf.getX() + 13, rf.getCentreY()));
+		Rectangle<float> dot = Rectangle<float>(10, 10).withCentre(Point<float>(line1.getX() + 7.0f, (float)line1.getCentreY()));
 		if (z.presence && !z.hidden)
 		{
 			g.setColour(c.withAlpha(.3f));
@@ -626,15 +684,58 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 			g.setColour(z.hidden ? NORMAL_COLOR : c);
 			g.drawEllipse(dot, z.hidden ? 1.0f : 2.0f);
 		}
+		line1.removeFromLeft(20);
 
-		Rectangle<int> textR = row.withTrimmedLeft(26).withTrimmedRight(10);
-		g.setFont(Font(13.0f, z.hidden ? Font::italic : Font::plain));
+		//count / capacity and presence time on the right, name on the left
+		String countText = String(z.personCount) + " / " + String(z.capacity);
+		String timeText = z.presence ? sep + formatTime(z.presenceTime) : String();
+		Font countFont(15.0f, Font::bold), timeFont(13.0f);
+		int countW = (int)countFont.getStringWidthFloat(countText) + 2;
+		int timeW = (int)timeFont.getStringWidthFloat(timeText) + 2;
+
+		g.setFont(timeFont);
+		g.setColour(TEXT_COLOR);
+		g.drawText(timeText, line1.removeFromRight(timeW), Justification::centredRight);
+		g.setFont(countFont);
+		g.setColour(z.presence ? light : dimText);
+		g.drawText(countText, line1.removeFromRight(countW), Justification::centredRight);
+
+		g.setFont(Font(14.0f, z.hidden ? Font::italic : Font::plain));
 		g.setColour(z.hidden || !z.enabled ? dimText : TEXT_COLOR);
-		g.drawText(z.hidden ? z.name + " (hidden)" : z.name, textR.withTrimmedRight(30), Justification::centredLeft, true);
+		g.drawText(z.hidden ? z.name + " (hidden)" : z.name, line1.withTrimmedRight(8), Justification::centredLeft, true);
 
-		g.setFont(Font(13.0f, z.presence ? Font::bold : Font::plain));
-		g.setColour(z.presence ? c.interpolatedWith(Colours::white, .5f) : dimText);
-		g.drawText(String(z.personCount), textR, Justification::centredRight);
+		//full width occupancy bar and percentage
+		Rectangle<int> pctR = barLine.removeFromRight(44);
+		g.setFont(Font(12.0f));
+		g.setColour(z.presence ? TEXT_COLOR : dimText);
+		g.drawText(String(roundToInt(z.occupancy * 100)) + " %", pctR, Justification::centredRight);
+		drawBar(g, barLine.withTrimmedLeft(arrowR.getWidth()).withTrimmedRight(6).toFloat().withSizeKeepingCentre(barLine.getWidth() - arrowR.getWidth() - 6.0f, 6), z.occupancy, c);
+
+		//detail : one value per line, label on the left, value aligned on the right
+		if (expanded)
+		{
+			Rectangle<int> detail = card.withTrimmedTop(2).withTrimmedLeft(arrowR.getWidth());
+			g.setColour(borderColor);
+			g.drawHorizontalLine(detail.getY(), (float)detail.getX(), (float)detail.getRight());
+			detail.removeFromTop(4);
+
+			auto drawDetail = [&](const String& label, const String& value, Colour valueColor)
+			{
+				Rectangle<int> l = detail.removeFromTop(detailLineHeight);
+				g.setFont(Font(12.0f));
+				g.setColour(dimText);
+				g.drawText(label, l, Justification::centredLeft);
+				g.setFont(Font(13.0f));
+				g.setColour(valueColor);
+				g.drawText(value, l, Justification::centredRight);
+			};
+
+			drawDetail("Occupancy", countText + sep + String(roundToInt(z.occupancy * 100)) + " %", TEXT_COLOR);
+			drawDetail("Presence time", z.presence ? formatTime(z.presenceTime) : String("-"), z.presence ? TEXT_COLOR : dimText);
+			drawDetail("Last entered", z.lastEnteredId >= 0 ? "#" + String(z.lastEnteredId) : String("-"), z.lastEnteredId >= 0 ? getPersonColor(z.lastEnteredId) : dimText);
+			drawDetail("Avg position", String(z.averagePosition.x, 2) + " , " + String(z.averagePosition.y, 2), TEXT_COLOR);
+			drawDetail("Avg distance", String(z.averageDistance, 2) + " m", TEXT_COLOR);
+		}
 	}
 
 	//People
@@ -935,6 +1036,14 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 				if (z != nullptr) showContextMenu(z, e.getPosition(), false); //same menu as in the top view
 				return;
 			}
+			if (getCardArrowRect(zoneRowRects[i]).contains(e.getPosition()) && !columnCollapsed)
+			{
+				//unfold / fold the detail of the card
+				if (isExpanded(z)) expandedZones.removeAllInstancesOf(WeakReference<ControllableContainer>(z));
+				else if (z != nullptr) expandedZones.add(z);
+				timerCallback();
+				return;
+			}
 			if (z != nullptr) z->selectThis();
 			timerCallback();
 			return;
@@ -1141,7 +1250,10 @@ void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 		for (int i = 0; i < zones.size() && i < zoneRowRects.size(); i++)
 		{
 			if (!zoneRowRects[i].contains(e.getPosition())) continue;
-			showRenameEditor(dynamic_cast<SpatialZone*>(zones[i].zone.get()), zoneRowRects[i].withTrimmedLeft(22).withTrimmedRight(36).reduced(0, 3));
+			//only on the first line of the card, not on its arrow
+			Rectangle<int> nameR = zoneRowRects[i].withHeight(28).withTrimmedLeft(getCardArrowRect(zoneRowRects[i]).getRight() - zoneRowRects[i].getX() + 20).withTrimmedRight(90);
+			if (!zoneRowRects[i].withHeight(28).contains(e.getPosition()) || getCardArrowRect(zoneRowRects[i]).contains(e.getPosition())) return;
+			showRenameEditor(dynamic_cast<SpatialZone*>(zones[i].zone.get()), nameR.reduced(0, 3));
 			return;
 		}
 		return;

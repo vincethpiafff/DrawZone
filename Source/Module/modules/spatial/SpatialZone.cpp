@@ -67,6 +67,7 @@ SpatialZone::SpatialZone(var params) :
 	hiddenInMonitor = addBoolParameter("Hidden", "Hide this zone in the Tracking Monitor (it still detects people)", false);
 
 	pointsCC.includeInRecursiveSave = false; //saved by getJSONData, the number of points varies
+	pointsCC.editorIsCollapsed = true; //folded at the bottom of the Inspector
 	addChildControllableContainer(&pointsCC);
 
 	setSceneSize(Point<float>());
@@ -361,4 +362,46 @@ void SpatialZone::loadJSONDataInternal(var data)
 		freePoints[i]->handleIn->setPoint((float)pData[3], (float)pData[4]);
 		freePoints[i]->handleOut->setPoint((float)pData[5], (float)pData[6]);
 	}
+}
+
+InspectableEditor* SpatialZone::getEditorInternal(bool isRoot, Array<Inspectable*> inspectables)
+{
+	return new SpatialZoneEditor(this, isRoot);
+}
+
+SpatialZoneEditor::SpatialZoneEditor(SpatialZone* zone, bool isRoot) :
+	BaseItemEditor(Array<BaseItem*>((BaseItem*)zone), isRoot),
+	zone(zone)
+{
+	addValuesEditor(); //the base constructor built the rest
+}
+
+void SpatialZoneEditor::resetAndBuild()
+{
+	BaseItemEditor::resetAndBuild();
+	addValuesEditor();
+}
+
+void SpatialZoneEditor::addValuesEditor()
+{
+	if (zone == nullptr || (canBeCollapsed() && zone->editorIsCollapsed)) return;
+
+	InspectableEditor* valuesEditor = zone->zoneValues.getEditor(false);
+	if (valuesEditor == nullptr) return;
+	if (GenericControllableContainerEditor* ge = dynamic_cast<GenericControllableContainerEditor*>(valuesEditor))
+	{
+		ge->containerLabel.setText("Values", dontSendNotification);
+	}
+
+	//just before the points, so they stay last
+	int index = childEditors.size();
+	for (int i = 0; i < childEditors.size(); i++)
+	{
+		GenericControllableContainerEditor* ge = dynamic_cast<GenericControllableContainerEditor*>(childEditors[i]);
+		if (ge != nullptr && ge->container.get() == &zone->pointsCC) index = i;
+	}
+
+	childEditors.insert(index, valuesEditor);
+	addAndMakeVisible(valuesEditor);
+	resized();
 }

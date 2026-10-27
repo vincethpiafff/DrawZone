@@ -97,7 +97,22 @@ public:
 	var getJSONData(bool includeNonOverriden = false) override;
 	void loadJSONDataInternal(var data) override;
 
+	InspectableEditor* getEditorInternal(bool isRoot, Array<Inspectable*> inspectables = Array<Inspectable*>()) override;
+
 	String getTypeString() const override { return "Zone"; }
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialZone)
+};
+
+//Inspector of a zone : its parameters, then its live values (which live in the module Values), then its points (folded)
+class SpatialZoneEditor :
+	public BaseItemEditor
+{
+public:
+	SpatialZoneEditor(SpatialZone* zone, bool isRoot);
+
+	SpatialZone* zone;
+
+	void resetAndBuild() override;
+	void addValuesEditor();
 };

@@ -417,8 +417,22 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ⏭️ F2 — clic droit sur un point : Linear / Quadratic / Cubic, poignées des courbes :
       - ✅ code : ZonePoint → Interpolation, Handle In, Handle Out (m, depuis le point) ; contour en courbes (cubique si les deux côtés ont une poignée, quadratique si un seul) ; Quadratic = poignée Out reflétée de l'autre côté. Tracking Monitor : clic droit sur un point → menu Linear / Quadratic / Cubic (un Ctrl+Z) ; au premier passage en courbe, poignées le long de la direction point précédent → suivant ; poignées (losanges) visibles et déplaçables sur la zone sélectionnée ; les poignées suivent la mise à l'échelle par les coins ; clic dans la forme testé sur la courbe (elle peut sortir de la boîte). Enregistré dans la session ;
       - ✅ Chataigne fermé par Vincent, compilation 0 erreur, liens OK (exe du 27/10 20:37), Chataigne relancé par Claude ;
-      - ✅ test Vincent : « ok ». **F2 validée.** Formes terminées (rectangle, ellipse, forme libre à courbes). Non commitées ;
-  - ⬜ slots de joueurs ;
+      - ✅ test Vincent : « ok ». **F2 validée.** Formes terminées (rectangle, ellipse, forme libre à courbes) ;
+    - ✅ commit local sur `feature/zone-shapes` (accord de Vincent : « commit juste », sans fusion ni push) ;
+  - ⏸️ slots de joueurs : mis en attente par Vincent (27/10) pour régler d'abord des détails d'interface et de placement des informations ;
+  - ⏭️ demande de Vincent : valeurs des zones en temps réel sous forme de tableau dans le Tracking Monitor, 4 propositions d'agencement à comparer (branche `feature/zone-info-layouts`, partie de `feature/zone-shapes`) :
+    - ✅ code (`TrackingMonitorPanel` seulement, dessin) : bouton « Zone values : … » dans l'en-tête pour basculer entre 1. Cards (3 lignes par zone dans la colonne), 2. Column table (tableau compact dans la colonne), 3. Bottom table (tableau large sous la vue de dessus, toutes les valeurs), 4. On the zones (étiquette sous chaque zone + croix au barycentre) ;
+    - ✅ choix de Vincent : garder les **Cards**, plus lisibles → 4 maquettes texte proposées avant le code (A grille, B une ligne par valeur, C compacte, D compacte dépliable) ; choix : **D avec le détail en B**. Et : clic sur une carte → Inspector = paramètres, puis Values, puis Points (en dernier, repliés) ;
+    - ✅ code : les 3 autres agencements et le bouton de choix retirés (retour au fichier commité puis cartes D seules) ; carte = flèche de dépliage, pastille, nom, « n / cap · temps », barre d'occupation pleine largeur + % ; dépliée : Occupancy, Presence time, Last entered, Avg position, Avg distance (étiquette à gauche, valeur à droite) ; carte teintée de la couleur de la zone quand occupée. Inspector : `SpatialZoneEditor` (dans `SpatialZone.h/.cpp`) ajoute les Values de la zone (titre « Values ») avant les Points ; Points repliés par défaut ;
+    - ❌ compilation : `Array<BaseItem*>(zone)` pris pour le constructeur « tableau terminé par null » (C2678) → `Array<BaseItem*>((BaseItem*)zone)` ;
+    - ✅ Chataigne fermé par Claude, compilation 0 erreur, liens OK (exe du 27/10 21:01), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Cartes D + Inspector (Values, Points repliés) validés.** Non commité ;
+    - 💬 Vincent : « c'est ok pour les informations et l'UI » → détails d'interface terminés, retour aux slots de joueurs ;
+    - ✅ commit local sur `feature/zone-info-layouts` (accord de Vincent), sans fusion ni push ;
+  - ⏭️ slots de joueurs, choix de Vincent : portée **scène** ; perte de tracking : **les deux au choix** (paramètre : libération immédiate ou délai de grâce avec reprise près de la dernière position) ; slots pleins : nouvelle personne **ignorée** (pas de file d'attente) ;
+    - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
+    - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
+    - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;
 
 ## 💡 Idées
 
