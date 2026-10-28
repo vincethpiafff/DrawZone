@@ -77,7 +77,7 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 ## ⬜ À faire ensuite
 
-- ⬜ **Étape de test importante après la v0.4** (demande de Vincent, 27/10/2026) : vérifier le comportement de l'interface (Tracking Monitor, zones, slots) avec **plusieurs scènes**, puis avec **deux systèmes de tracking** en même temps (par exemple Augmenta Fusion en OSC + Naostage en PSN).
+- ⬜ **Étape de test importante avec la v0.6 (viewport 3D)** (demande de Vincent, 27/10/2026, placée avec le viewport 3D le 28/10) : vérifier le comportement de l'interface (Tracking Monitor, zones, slots) avec **plusieurs scènes**, puis avec **deux systèmes de tracking** en même temps (par exemple Augmenta Fusion en OSC + Naostage en PSN).
 
 - ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
@@ -462,6 +462,39 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ commit local sur `feature/player-slots` (accord de Vincent, 28/10), sans fusion ni push ;
     - ✅ fusion locale dans `develop` (accord de Vincent, 28/10) : `--no-ff`, commit `72035834`, intègre toute la pile (zone-antiflicker, zone-shapes, zone-info-layouts, player-slots) ; sans push ;
     - ✅ CHANGELOG (entrée 0.2.0), ROADMAP (états v0.2 / v0.3 / v0.4, slots par zone reportés) et CLAUDE.md (état v0.2.0, prochaine étape v0.4) ; commit `docs` sur `develop` et tag annoté `v0.2.0` en local (accord de Vincent, 28/10), sans push ;
+    - ✅ push vers `origin` (fork, accord de Vincent, 28/10) : `develop` (31a17e7c..0e3f7e27), les 4 branches `feature/*` de la v0.2 et le tag `v0.2.0`. **v0.2.0 publiée.** `upstream` non touché ;
+  - 💬 Vincent (28/10) : NDI / Spout en **v0.4**, le reste décalé → ROADMAP (tableau + section v0.4), README du fork, CLAUDE.md (prochaine étape, émetteur PSN en v0.5), DECISIONS (D13) et l'étape de test multi-scènes / plusieurs systèmes placée avec le viewport 3D (v0.6, demande de Vincent) ; non commité ;
+  - ⏭️ **v0.4 — sortie vidéo NDI / Spout** (branche `feature/video-output`, depuis `develop`) :
+    - ✅ étude : Chataigne a déjà l'émetteur Spout (`juce_sharedtexture`, utilisé par la sortie de la timeline vidéo) et un module « NDI out » (bibliothèque NDI chargée à l'exécution, envoi sur un thread séparé ; `Processing.NDI.Lib.x64.dll` déjà dans `Binaries/App`) ;
+    - ✅ proposition validée : image propre de la vue de dessus calculée par le module (marche Tracking Monitor fermé), bloc « Video Output » (Spout, NDI, Stream Name, FPS, fond, éléments affichés) ; échelle : **Output Area** = Scene (défaut, image = la scène sans bord, taille = scène × Pixels Per Meter, 100 px/m), Custom Area (Origin + Size en m), Fixed Resolution (scène centrée avec bandes) ; formule pixel = (x − origin) × px/m ; tests de réception dans **SMODE** ;
+    - ✅ brique 1, code : dessin de la vue de dessus extrait dans `ui/TopViewRenderer.h/.cpp` (`TopViewModel` = données copiées du module + mouvements ; `TopViewRenderer::paint` avec options grille, noms, ids, traînées, slots, emplacements réservés, sélection) ; le Tracking Monitor l'utilise et ajoute ses poignées, ses aperçus de dessin et les graduations ; style déplacé dans le même fichier ; fichiers déclarés dans le `.jucer` (Projucer : lignes ajoutées seulement) ;
+    - ✅ compilation 0 erreur (exe du 28/10 00:42), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok comme avant ». **Brique 1 validée** ;
+    - ✅ étude Spout : l'émetteur de Chataigne envoie depuis le contexte OpenGL de l'interface (réglage « Use OpenGL Renderer », actif par défaut), qui ne dessine qu'aux rafraîchissements → la sortie demande une image à chaque tick (`triggerRepaint`) ;
+    - ✅ brique 2, code : `SpatialVideoOutput.h/.cpp` (bloc « Video Output » des paramètres du module : Spout, Stream Name, Output Area Scene / Custom Area / Fixed Resolution, Pixels Per Meter, Area Origin, Area Size, Width, Height, FPS, Resolution en lecture seule) ; image calculée sur le thread principal à FPS avec `TopViewRenderer`, recopiée par l'émetteur Spout ; taille limitée à 8192 px ; fichiers déclarés dans le `.jucer` ;
+    - ✅ compilation 0 erreur (exe du 28/10 00:47), Chataigne relancé par Claude ;
+    - ❌ test Vincent dans SMODE : deux sources Spout, « DrawZone » noire et « SpoutLibrary » qui montre bien la vue. Cause probable : l'émetteur partagé de Chataigne ouvre un émetteur Spout 2.006 (`CreateSender`) qui ne reçoit jamais l'image, et l'envoi 2.007 (`SendTexture`) en ouvre un second sous le nom par défaut de la bibliothèque → correction dans notre code (le module de Ben est un sous-module, non modifié) : juste avant l'envoi, si le nom de l'émetteur Spout n'est pas le nôtre, on le libère et on lui donne notre nom (message « [DrawZone] Spout sender ... renamed » dans les logs) ;
+    - ✅ compilation 0 erreur (exe du 28/10 01:00), Chataigne relancé par Claude ;
+    - ❌ test Vincent : 4 sources (DrawZone, DrawZone_1, SpoutLibrary, SpoutLibrary_1) ; logs : 200 renommages « DrawZone_1 → DrawZone » en boucle. Cause : `ReleaseSender` ne ferme pas l'émetteur 2.006 ouvert par `CreateSender`, donc le nom « DrawZone » reste pris et Spout ajoute « _1 » → correctif retiré ;
+    - ✅ nouvelle approche : la sortie n'utilise plus l'émetteur partagé de Chataigne mais **sa propre instance de la bibliothèque Spout** (`GetSpout()`) : `SetSenderName` une fois puis `SendImage` (pixels BGRA de l'image) sur le thread OpenGL de l'interface (`executeOnGLThread`), une image à la fois ; libération sur le thread OpenGL ; ❌ compilation : `juce::gl::GL_BGRA_EXT` est une macro des en-têtes Spout → valeur 0x80E1 ;
+    - ✅ compilation 0 erreur (exe du 28/10 01:07), Chataigne relancé par Claude ;
+    - ✅ test Vincent dans SMODE : « OK », une seule source DrawZone. **Brique 2 (Spout) validée** ;
+    - 💬 Vincent : case à cocher « Spout Output » dans l'en-tête du Tracking Monitor, au style de l'interface ; clic sur « Spout Output » → paramètres dans l'Inspector ;
+    - ✅ code : puce « Spout Output » dans l'en-tête, à gauche de « Shortcuts » (case cochée bleue avec coche quand la sortie est active, bordure bleue, survol éclairci) ; clic sur la case = activer / désactiver (annulable), clic sur le libellé = bloc Video Output dans l'Inspector ;
+    - ✅ compilation 0 erreur (exe du 28/10 01:14), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Intégration Spout clôturée** (28/10) : commit local sur `feature/video-output` (sans fusion ni push) ;
+    - ⬜ prochaine séance : brique 3 = sortie **NDI** (reprendre le chargement de la bibliothèque et le thread d'envoi du module « NDI out » de Chataigne), puis brique 4 = options d'affichage (grille, noms, ids, traînées, slots, emplacements réservés, fond transparent) ; ensuite fusion dans `develop`, CHANGELOG et tag `v0.4.0`, avec l'accord de Vincent ;
+    - ✅ brique 3, code : case « NDI » dans le bloc Video Output (même Stream Name et FPS que Spout) ; bibliothèque NDI chargée comme le module « NDI out » de Chataigne (`VideoNetworkRuntime`) ; envoi sur un thread à part (`NDISender`) qui prend la dernière image, rien n'est envoyé tant que personne ne reçoit ; erreur (runtime absent) affichée dans Resolution ;
+    - ✅ compilation 0 erreur (exe du 28/10 10:25), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Brique 3 (NDI) validée** ;
+    - 💬 Vincent : ajouter NDI dans l'interface, comme Spout ;
+    - ✅ code : puce « NDI Output » dans l'en-tête, entre « Spout Output » et « Shortcuts », même dessin et mêmes clics (case = activer / désactiver, libellé = bloc Video Output dans l'Inspector) ; dessin et clic des deux puces mis en commun (`paintOutputChip`, `handleOutputChipClick`) ;
+    - ✅ compilation 0 erreur (exe du 28/10 10:51), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Puce NDI Output validée** ;
+    - ✅ commit local `e86c85f2` sur `feature/video-output` (accord de Vincent, 28/10), sans fusion ni push ;
+    - ✅ brique 4, code (proposition validée) : sous-bloc « Display » du bloc Video Output : Grid, Zone Names, Person Ids, Trails, Slot Labels, Held Spots, Background (noir par défaut, une seule couleur dans et hors de la scène), Transparent Background (Background grisé) ; image envoyée seulement, Tracking Monitor inchangé ; fond transparent : pixels « dé-prémultipliés » (JUCE stocke l'alpha prémultiplié, Spout et NDI attendent l'alpha droit), NDI en BGRA au lieu de BGRX ;
+    - ✅ compilation 0 erreur (exe du 28/10 12:25), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « super ok ». **Brique 4 (options d'affichage) validée** ;
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;

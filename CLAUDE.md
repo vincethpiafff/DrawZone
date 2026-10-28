@@ -30,7 +30,7 @@ Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 **État actuel : v0.2.0 validée** (28/10/2026 : zones rectangle / ellipse /
 forme libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
 Tracking Monitor complet).
-**Prochaine étape : v0.4**, entrées PSN et TUIO, multi-sources (la v0.3,
+**Prochaine étape : v0.4**, sortie vidéo de la vue 2D en NDI et Spout (la v0.3,
 éditeur 2D, est en grande partie faite dans le Tracking Monitor).
 
 ## 2. Comment travailler avec Vincent
@@ -193,4 +193,4 @@ et, un jour, proposer notre travail à Ben.
 - Module OSC dans Chataigne : port d'entrée 12000 par défaut.
 - Augmenta Fusion : sortie OSC vers `127.0.0.1:12000`.
 - Messages observés et points à vérifier : `docs/drawzone/notes/augmenta-protocol.md`.
-- Pour PSN, il faudra écrire un petit émetteur de test en Python (v0.4).
+- Pour PSN, il faudra écrire un petit émetteur de test en Python (v0.5).

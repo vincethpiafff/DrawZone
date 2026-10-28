@@ -8,83 +8,6 @@
   ==============================================================================
 */
 
-//dark "show" look of the Tracking Monitor
-namespace TrackingMonitorStyle
-{
-	const Colour panelBg(0xff141414);
-	const Colour sceneBg(0xff0c0c0c);
-	const Colour columnBg(0xff1a1a1a);
-	const Colour rowBg(0xff222222);
-	const Colour borderColor(0xff333333);
-	const Colour dimText(0xff9a9a9a);
-	const String sep = String(CharPointer_UTF8(" \xc2\xb7 "));
-	const String times = String(CharPointer_UTF8(" \xc3\x97 "));
-
-	//soft halo around an occupied zone
-	inline void drawGlow(Graphics& g, Rectangle<float> r, Colour c, bool ellipse)
-	{
-		for (int i = 1; i <= 4; i++)
-		{
-			g.setColour(c.withAlpha(.16f / i));
-			if (ellipse) g.drawEllipse(r.expanded(i * 2.0f), 2.0f);
-			else g.drawRect(r.expanded(i * 2.0f), 2.0f);
-		}
-	}
-
-	//"12.3 s" under a minute, "2:05" above
-	inline String formatTime(float seconds)
-	{
-		if (seconds < 60) return String(seconds, 1) + " s";
-		int s = (int)seconds;
-		return String(s / 60) + ":" + String(s % 60).paddedLeft('0', 2);
-	}
-
-	//occupancy bar : dark track, filled part in the zone color
-	inline void drawBar(Graphics& g, Rectangle<float> r, float value, Colour c)
-	{
-		g.setColour(Colour(0xff2e2e2e));
-		g.fillRoundedRectangle(r, r.getHeight() / 2);
-		if (value <= 0) return;
-		g.setColour(c);
-		g.fillRoundedRectangle(r.withWidth(jmax(r.getHeight(), r.getWidth() * jmin(1.0f, value))), r.getHeight() / 2);
-	}
-
-	//SwapSlots mode icons : dashed arrow (Next Person Takes Slot), dashed circle around a dot (Hold Spot To Reclaim)
-	inline void drawSlotModeIcon(Graphics& g, Rectangle<float> r, int mode, Colour c)
-	{
-		const float dashes[] = { 2.5f, 2 };
-		Path shape, dashed;
-		g.setColour(c);
-		if (mode == PlayerSlots::HOLD_SPOT)
-		{
-			shape.addEllipse(r.reduced(1));
-			PathStrokeType(1.3f).createDashedStroke(dashed, shape, dashes, 2);
-			g.fillPath(dashed);
-			g.fillEllipse(Rectangle<float>(4, 4).withCentre(r.getCentre()));
-		}
-		else
-		{
-			float y = r.getCentreY();
-			shape.startNewSubPath(r.getX(), y);
-			shape.lineTo(r.getRight() - 4, y);
-			PathStrokeType(1.5f).createDashedStroke(dashed, shape, dashes, 2);
-			g.fillPath(dashed);
-			Path head;
-			head.addTriangle(r.getRight(), y, r.getRight() - 5, y - 4, r.getRight() - 5, y + 4);
-			g.fillPath(head);
-		}
-	}
-
-	inline void drawGlow(Graphics& g, const Path& p, Colour c)
-	{
-		for (int i = 1; i <= 4; i++)
-		{
-			g.setColour(c.withAlpha(.16f / i));
-			g.strokePath(p, PathStrokeType(i * 4.0f, PathStrokeType::curved));
-		}
-	}
-}
-
 TrackingMonitorPanel::TrackingMonitorPanel(const String& contentName) :
 	ShapeShifterContentComponent(contentName)
 {
@@ -133,6 +56,10 @@ void TrackingMonitorPanel::resized()
 	r.reduce(8, 8);
 	headerRect = r.removeFromTop(24);
 	shortcutsRect = headerRect.removeFromRight(104).reduced(0, 1);
+	headerRect.removeFromRight(8);
+	ndiRect = headerRect.removeFromRight(106).reduced(0, 1);
+	headerRect.removeFromRight(8);
+	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
 	headerRect.removeFromRight(10);
 	r.removeFromTop(8);
 
@@ -267,11 +194,6 @@ SpatialModule* TrackingMonitorPanel::getSpatialModule()
 	return nullptr;
 }
 
-Colour TrackingMonitorPanel::getPersonColor(int id)
-{
-	return Colour::fromHSV((id * .13f) - (int)(id * .13f), .7f, 1, 1);
-}
-
 bool TrackingMonitorPanel::isExpanded(ControllableContainer* zone) const
 {
 	if (zone == nullptr) return false;
@@ -287,103 +209,9 @@ Rectangle<int> TrackingMonitorPanel::getCardArrowRect(Rectangle<int> card)
 void TrackingMonitorPanel::timerCallback()
 {
 	SpatialModule* sm = getSpatialModule();
-	hasModule = sm != nullptr;
-
-	zones.clearQuick();
-	slots.clearQuick();
-	personZones.clearQuick();
-	personRelativePositions.clearQuick();
-
-	if (hasModule)
-	{
-		moduleName = sm->niceName;
-		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
-		snapshot = sm->trackingData.getSnapshot();
-
-		for (auto& z : sm->zoneManager.items)
-		{
-			ZoneView zv;
-			zv.zone = z;
-			zv.name = z->niceName;
-			Point<float> size = z->size->getPoint();
-			zv.bounds = Rectangle<float>(size.x, size.y).withCentre(z->center->getPoint());
-			zv.ellipse = z->isEllipse();
-			zv.freeShape = z->isFreeShape();
-			if (zv.freeShape)
-			{
-				zv.outline = z->getOutline();
-				zv.points = z->getFreePointsMeters();
-				for (int pi = 0; pi < z->freePoints.size(); pi++)
-				{
-					zv.interpolations.add((int)z->freePoints[pi]->getInterpolation());
-					zv.handlesIn.add(z->getHandleMeters(pi, false));
-					zv.handlesOut.add(z->getHandleMeters(pi, true));
-				}
-			}
-			zv.color = z->itemColor->getColor();
-			zv.enabled = z->enabled->boolValue();
-			zv.presence = z->presence->boolValue();
-			zv.hidden = z->hiddenInMonitor->boolValue();
-			zv.selected = z->isSelected;
-			zv.personCount = z->personCount->intValue();
-			zv.capacity = z->capacity->intValue();
-			zv.occupancy = z->occupancy->floatValue();
-			zv.presenceTime = z->presenceTime->floatValue();
-			zv.lastEnteredId = z->lastEnteredId->intValue();
-			zv.averagePosition = z->averagePosition->getPoint();
-			zv.averageDistance = z->averageDistanceToCenter->floatValue();
-			zones.add(zv);
-		}
-
-		selectedPersonId = -1;
-		for (auto& pp : sm->people) if (pp.second->isSelected) selectedPersonId = pp.first;
-
-		PlayerSlots& ps = sm->playerSlots;
-		slotsEnabled = ps.enabled->boolValue();
-		slotReleaseMode = (int)ps.releaseMode->getValueDataAsEnum<PlayerSlots::ReleaseMode>();
-		freeSlots = ps.freeSlots->intValue();
-		reclaimRadius = ps.reclaimRadius->floatValue();
-		holdTime = ps.holdTime->floatValue();
-		for (auto& s : ps.slots)
-		{
-			SlotView sv;
-			sv.slot = s;
-			sv.name = s->niceName;
-			sv.color = s->color->getColor();
-			sv.occupied = s->occupied->boolValue();
-			sv.held = s->isHeld();
-			sv.personId = s->personId->intValue();
-			sv.position = s->position->getPoint();
-			sv.holdRemaining = s->holdRemaining->floatValue();
-			slots.add(sv);
-		}
-
-		//first enabled zone containing each person, same test as the zones themselves
-		for (auto& p : snapshot.persons)
-		{
-			int zoneIndex = -1;
-			for (int i = 0; i < sm->zoneManager.items.size(); i++)
-			{
-				SpatialZone* z = sm->zoneManager.items[i];
-				if (z->idsInside.contains(p.id)) //same membership as the zone (with its anti-flicker)
-				{
-					zoneIndex = i;
-					break;
-				}
-			}
-			personZones.add(zoneIndex);
-
-			//relative position computed by the module (zone or zones overlap)
-			auto it = sm->people.find(p.id);
-			personRelativePositions.add(it != sm->people.end() ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
-		}
-	}
-	else
-	{
-		snapshot = TrackingData::Snapshot();
-	}
-
-	updateMotions();
+	model.update(sm);
+	spoutOn = sm != nullptr && sm->videoOutput.spout->boolValue();
+	ndiOn = sm != nullptr && sm->videoOutput.ndi->boolValue();
 
 	numHidden = 0;
 	for (auto& z : zones) if (z.hidden) numHidden++;
@@ -391,55 +219,6 @@ void TrackingMonitorPanel::timerCallback()
 	layoutColumn();
 	layoutSlotBar();
 	repaint();
-}
-
-int TrackingMonitorPanel::getSlotIndexForPerson(int id) const
-{
-	for (int i = 0; i < slots.size(); i++) if (slots[i].occupied && !slots[i].held && slots[i].personId == id) return i;
-	return -1;
-}
-
-void TrackingMonitorPanel::updateMotions()
-{
-	uint32 now = Time::getMillisecondCounter();
-	std::map<int, Motion> updated; //people who left are dropped
-
-	for (auto& p : snapshot.persons)
-	{
-		Point<float> meters(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
-
-		Motion m;
-		auto it = motions.find(p.id);
-		if (it == motions.end())
-		{
-			m.lastPosition = meters;
-			m.lastMs = now;
-		}
-		else
-		{
-			m = it->second;
-			float dt = (now - m.lastMs) / 1000.0f;
-			if (dt >= .05f) //timerCallback is also called while dragging a zone, keep a meaningful time step
-			{
-				Point<float> v = (meters - m.lastPosition) / dt;
-				m.velocity = m.velocity * .6f + v * .4f;
-				m.lastPosition = meters;
-				m.lastMs = now;
-			}
-		}
-
-		//trail sampled at a fixed step, whatever the refresh calls
-		if (m.trail.isEmpty() || now - m.lastTrailMs >= (uint32)trailStepMs)
-		{
-			m.trail.add(meters);
-			if (m.trail.size() > trailLength) m.trail.remove(0);
-			m.lastTrailMs = now;
-		}
-
-		updated[p.id] = m;
-	}
-
-	motions = updated;
 }
 
 void TrackingMonitorPanel::paint(Graphics& g)
@@ -472,7 +251,58 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	else paintColumn(g);
 
 	if (slotDragging) paintSlotDrag(g);
+	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
+	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintShortcuts(g); //last : the unfolded list goes over everything
+}
+
+Rectangle<int> TrackingMonitorPanel::getOutputBoxRect(Rectangle<int> chip)
+{
+	return Rectangle<int>(14, 14).withCentre(Point<int>(chip.getX() + 13, chip.getCentreY()));
+}
+
+void TrackingMonitorPanel::paintOutputChip(Graphics& g, Rectangle<int> chip, bool on, bool hovered, const String& label)
+{
+	using namespace TrackingMonitorStyle;
+
+	Rectangle<float> cf = chip.toFloat();
+	g.setColour(hovered ? rowBg.brighter(.15f) : rowBg);
+	g.fillRoundedRectangle(cf, 4);
+	g.setColour(on ? HIGHLIGHT_COLOR : (hovered ? TEXT_COLOR.withAlpha(.5f) : borderColor));
+	g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+
+	//check box : filled with a tick when the output is on
+	Rectangle<float> box = getOutputBoxRect(chip).toFloat();
+	if (on)
+	{
+		g.setColour(HIGHLIGHT_COLOR);
+		g.fillRoundedRectangle(box, 3);
+		Path tick;
+		tick.startNewSubPath(box.getX() + 3.5f, box.getCentreY());
+		tick.lineTo(box.getX() + 6, box.getBottom() - 4);
+		tick.lineTo(box.getRight() - 3.5f, box.getY() + 4);
+		g.setColour(Colours::black.withAlpha(.8f));
+		g.strokePath(tick, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+	}
+	else
+	{
+		g.setColour(dimText);
+		g.drawRoundedRectangle(box.reduced(.5f), 3, 1.2f);
+	}
+
+	g.setFont(Font(12.0f));
+	g.setColour(on ? TEXT_COLOR : dimText);
+	g.drawText(label, cf.withTrimmedLeft(26).withTrimmedRight(4), Justification::centredLeft, true);
+}
+
+bool TrackingMonitorPanel::handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output)
+{
+	if (!chip.contains(pos)) return false;
+
+	if (getOutputBoxRect(chip).expanded(4).contains(pos)) output->setUndoableValue(output->boolValue(), !output->boolValue());
+	else if (SpatialModule* sm = getSpatialModule()) sm->videoOutput.selectThis();
+	timerCallback();
+	return true;
 }
 
 Point<float> TrackingMonitorPanel::getPersonScreenPosition(int id) const
@@ -601,80 +431,25 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 	sceneScreenRect = scene;
 	sceneScale = scale;
 
-	g.setColour(sceneBg);
-	g.fillRect(scene);
-
-	//1 m grid, labels thinned out when the meters get too small on screen
+	//meter labels around the scene, thinned out when the meters get too small on screen
 	int labelStep = 1;
 	while (labelStep * scale < 24) labelStep *= 2;
 
 	g.setFont(Font(11.0f));
-	for (int i = 0; i <= (int)size.x; i++)
-	{
-		float x = scene.getX() + i * scale;
-		g.setColour(NORMAL_COLOR.withAlpha(.18f));
-		g.drawVerticalLine((int)x, scene.getY(), scene.getBottom());
-		if (i % labelStep == 0)
-		{
-			g.setColour(TEXT_COLOR.withAlpha(.45f));
-			g.drawText(String(i), Rectangle<float>(x - 15, scene.getY() - labelSize, 30, (float)labelSize), Justification::centred);
-		}
-	}
+	g.setColour(TEXT_COLOR.withAlpha(.45f));
+	for (int i = 0; i <= (int)size.x; i += labelStep)
+		g.drawText(String(i), Rectangle<float>(scene.getX() + i * scale - 15, scene.getY() - labelSize, 30, (float)labelSize), Justification::centred);
+	for (int i = 0; i <= (int)size.y; i += labelStep)
+		g.drawText(String(i), Rectangle<float>(scene.getX() - labelSize * 2, scene.getY() + i * scale - 8, (float)labelSize * 2 - 4, 16), Justification::centredRight);
 
-	for (int i = 0; i <= (int)size.y; i++)
-	{
-		float y = scene.getY() + i * scale;
-		g.setColour(NORMAL_COLOR.withAlpha(.18f));
-		g.drawHorizontalLine((int)y, scene.getX(), scene.getRight());
-		if (i % labelStep == 0)
-		{
-			g.setColour(TEXT_COLOR.withAlpha(.45f));
-			g.drawText(String(i), Rectangle<float>(scene.getX() - labelSize * 2, y - 8, (float)labelSize * 2 - 4, 16), Justification::centredRight);
-		}
-	}
+	//same drawing as the video output, plus the selection and the editing handles
+	TopViewRenderer::Options o;
+	o.selection = true;
 
-	g.setColour(borderColor);
-	g.drawRect(scene, 1);
-
-	//Zones, under the people, glowing when someone is inside
-	for (int i = 0; i < zones.size(); i++)
+	auto zoneHandles = [&](int i, Rectangle<float> zr)
 	{
 		auto& z = zones.getReference(i);
-		if (z.hidden) continue;
-
-		//only draw the part inside the scene : huge coordinates crash the renderer
-		Rectangle<float> zr = toScreen(z.bounds).getIntersection(scene.expanded(2));
-		if (zr.isEmpty()) continue;
-
-		//an ellipse is drawn whole (its bounds stay near the scene), clipped to the scene
-		Rectangle<float> er = toScreen(z.bounds);
-		Path sp = z.outline; //free shape, meters to screen
-		sp.applyTransform(AffineTransform::scale(scale).translated(scene.getX(), scene.getY()));
-		Graphics::ScopedSaveState clipState(g);
-		g.reduceClipRegion(scene.expanded(2).getSmallestIntegerContainer());
-
 		Colour c = z.enabled ? z.color : NORMAL_COLOR;
-		Colour light = c.interpolatedWith(Colours::white, .5f);
-
-		if (z.presence)
-		{
-			if (z.freeShape) drawGlow(g, sp, c);
-			else drawGlow(g, z.ellipse ? er : zr, c, z.ellipse);
-			g.setColour(c.withAlpha(.22f));
-			if (z.freeShape) g.fillPath(sp);
-			else if (z.ellipse) g.fillEllipse(er);
-			else g.fillRect(zr);
-		}
-
-		g.setColour(z.selected ? HIGHLIGHT_COLOR : c.withAlpha(z.presence ? 1 : .6f));
-		float lineWidth = z.presence || z.selected ? 2.0f : 1.0f;
-		if (z.freeShape) g.strokePath(sp, PathStrokeType(lineWidth, PathStrokeType::curved));
-		else if (z.ellipse) g.drawEllipse(er, lineWidth);
-		else g.drawRect(zr, lineWidth);
-
-		g.setColour(z.enabled ? light : NORMAL_COLOR);
-		g.setFont(Font(12.0f));
-		g.drawText(z.name, zr.reduced(5, 3).withHeight(16), Justification::topLeft, true);
 
 		//resize handles on the selected zone, the zone under the mouse or the one being edited
 		bool isDragged = dragZone != nullptr && dragZone.get() == z.zone.get();
@@ -687,7 +462,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 			g.fillRect(h.withCentre(zr.getTopRight()));
 			g.fillRect(h.withCentre(zr.getBottomRight()));
 			g.fillRect(h.withCentre(zr.getBottomLeft()));
-
+	
 			//curve handles of the selected free shape : line from the point, small diamond at the end
 			if (z.selected)
 			{
@@ -708,7 +483,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 					}
 				}
 			}
-
+	
 			//free shape points : round handles, moved one by one (filled when the point is a curve)
 			for (int pi = 0; pi < z.points.size(); pi++)
 			{
@@ -727,125 +502,15 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 				g.drawEllipse(ph, 2.0f);
 			}
 		}
-	}
+	};
 
-	if (drawingFreeShape) paintFreeShapeDrawing(g);
-	if (drawingBoxShape >= 0) paintBoxDrawing(g);
-
-	//Held slots : dashed circle where the person was lost, anyone without a slot walking in takes it back
-	for (auto& s : slots)
+	auto drawingPreviews = [&]()
 	{
-		if (!s.held) continue;
+		if (drawingFreeShape) paintFreeShapeDrawing(g);
+		if (drawingBoxShape >= 0) paintBoxDrawing(g);
+	};
 
-		Point<float> centre = scene.getTopLeft() + s.position * scale;
-		float radius = jmax(10.0f, reclaimRadius * scale);
-		Rectangle<float> circle = Rectangle<float>(radius * 2, radius * 2).withCentre(centre);
-
-		g.setColour(s.color.withAlpha(.1f));
-		g.fillEllipse(circle);
-
-		Path ring, dashed;
-		ring.addEllipse(circle);
-		const float dashes[] = { 5, 4 };
-		PathStrokeType(1.5f).createDashedStroke(dashed, ring, dashes, 2);
-		g.setColour(s.color.withAlpha(.8f));
-		g.fillPath(dashed);
-
-		//time left : an arc that empties, full circle when held until reclaimed
-		float ratio = s.holdRemaining < 0 || holdTime <= 0 ? 1.0f : jlimit(0.0f, 1.0f, s.holdRemaining / holdTime);
-		Path arc;
-		arc.addCentredArc(centre.x, centre.y, radius + 4, radius + 4, 0, 0, MathConstants<float>::twoPi * ratio, true);
-		g.setColour(s.color);
-		g.strokePath(arc, PathStrokeType(2.5f, PathStrokeType::curved, PathStrokeType::rounded));
-
-		String timeText = s.holdRemaining < 0 ? String(CharPointer_UTF8("\xe2\x88\x9e")) : formatTime(s.holdRemaining);
-		g.setFont(Font(12.0f, Font::bold));
-		g.drawText(s.name, Rectangle<float>(160, 16).withCentre(centre.translated(0, -7)), Justification::centred);
-		g.setFont(Font(11.0f));
-		g.setColour(s.color.interpolatedWith(Colours::white, .4f));
-		g.drawText(timeText, Rectangle<float>(160, 14).withCentre(centre.translated(0, 8)), Justification::centred);
-	}
-
-	//Trails : last 2 s of each person, fading toward the oldest point
-	for (auto& p : snapshot.persons)
-	{
-		auto it = motions.find(p.id);
-		if (it == motions.end() || it->second.trail.size() < 2) continue;
-
-		auto& trail = it->second.trail;
-		Colour c = getPersonColor(p.id);
-		for (int i = 1; i < trail.size(); i++)
-		{
-			Point<float> a = scene.getTopLeft() + trail[i - 1] * scale;
-			Point<float> b = scene.getTopLeft() + trail[i] * scale;
-			float age = (float)i / trail.size(); //0 = oldest, 1 = newest
-			g.setColour(c.withAlpha(.05f + .45f * age));
-			g.drawLine(Line<float>(a, b), 1.0f + 2.0f * age);
-		}
-	}
-
-	//People : dot with a halo and the id, arrow toward where they go when moving
-	g.setFont(Font(13.0f, Font::bold));
-	for (auto& p : snapshot.persons)
-	{
-		Point<float> pos(scene.getX() + p.position.x * scene.getWidth(), scene.getY() + p.position.y * scene.getHeight());
-		Colour c = getPersonColor(p.id);
-
-		auto it = motions.find(p.id);
-		if (it != motions.end())
-		{
-			Point<float> v = it->second.velocity;
-			float speed = v.getDistanceFromOrigin();
-			if (speed > minArrowSpeed)
-			{
-				//length = distance covered in 0.6 s, kept readable
-				Point<float> dir = v / speed;
-				float length = jlimit(14.0f, 60.0f, speed * .6f * scale);
-				Point<float> start = pos + dir * 10.0f;
-				g.setColour(c);
-				g.drawArrow(Line<float>(start, start + dir * length), 2.0f, 9.0f, 9.0f);
-			}
-		}
-
-		g.setColour(c.withAlpha(.18f));
-		g.fillEllipse(Rectangle<float>(28, 28).withCentre(pos));
-		g.setColour(c);
-		g.fillEllipse(Rectangle<float>(14, 14).withCentre(pos));
-		if (p.id == selectedPersonId)
-		{
-			g.setColour(HIGHLIGHT_COLOR);
-			g.drawEllipse(Rectangle<float>(32, 32).withCentre(pos), 1.5f);
-			g.setColour(c);
-		}
-
-		//player slot : label with the slot name in its color, the id small next to it
-		int slotIndex = getSlotIndexForPerson(p.id);
-		if (slotIndex < 0)
-		{
-			g.setFont(Font(13.0f, Font::bold));
-			g.drawText(String(p.id), Rectangle<float>(pos.x + 10, pos.y - 20, 40, 16), Justification::centredLeft);
-			continue;
-		}
-
-		auto& s = slots.getReference(slotIndex);
-		Font nameFont(12.0f, Font::bold);
-		Font idFont(10.0f);
-		String idText = "#" + String(p.id);
-		float nameW = nameFont.getStringWidthFloat(s.name);
-		float idW = idFont.getStringWidthFloat(idText);
-		Rectangle<float> label(pos.x + 10, pos.y - 26, nameW + idW + 18, 18);
-
-		g.setColour(s.color.darker(.6f).withAlpha(.85f));
-		g.fillRoundedRectangle(label, 9);
-		g.setColour(s.color);
-		g.drawRoundedRectangle(label, 9, 1.2f);
-		g.setFont(nameFont);
-		g.setColour(Colours::white);
-		g.drawText(s.name, label.withTrimmedLeft(7).withWidth(nameW + 2), Justification::centredLeft, false);
-		g.setFont(idFont);
-		g.setColour(Colours::white.withAlpha(.6f));
-		g.drawText(idText, label.withTrimmedLeft(nameW + 11).withWidth(idW + 2), Justification::centredLeft, false);
-	}
+	TopViewRenderer::paint(g, model, scene, scale, scene.expanded(2), o, zoneHandles, drawingPreviews);
 }
 
 void TrackingMonitorPanel::paintSlotBar(Graphics& g)
@@ -1015,8 +680,8 @@ Rectangle<int> TrackingMonitorPanel::getShortcutsPanelRect() const
 
 void TrackingMonitorPanel::mouseExit(const MouseEvent&)
 {
-	if (!shortcutsHovered && !slotModeHovered) return;
-	shortcutsHovered = slotModeHovered = false;
+	if (!shortcutsHovered && !slotModeHovered && !spoutHovered && !ndiHovered) return;
+	shortcutsHovered = slotModeHovered = spoutHovered = ndiHovered = false;
 	repaint();
 }
 
@@ -1592,6 +1257,20 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 		return;
 	}
 
+	bool overSpout = spoutRect.contains(e.getPosition());
+	if (overSpout != spoutHovered)
+	{
+		spoutHovered = overSpout;
+		repaint(spoutRect);
+	}
+
+	bool overNDI = ndiRect.contains(e.getPosition());
+	if (overNDI != ndiHovered)
+	{
+		ndiHovered = overNDI;
+		repaint(ndiRect);
+	}
+
 	bool modeHovered = slotModeRect.contains(e.getPosition());
 	if (modeHovered != slotModeHovered)
 	{
@@ -1665,6 +1344,13 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 		return;
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
+
+	//Spout / NDI chips : the box turns the output on / off, the rest shows its parameters
+	if (SpatialModule* sm = getSpatialModule())
+	{
+		if (handleOutputChipClick(e.getPosition(), spoutRect, sm->videoOutput.spout)) return;
+		if (handleOutputChipClick(e.getPosition(), ndiRect, sm->videoOutput.ndi)) return;
+	}
 
 	int personId = getPersonAt(e.position);
 	if (personId >= 0)

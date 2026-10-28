@@ -116,3 +116,15 @@ tester, désactiver ou supprimer le module OSC générique sur le port 12000.
 
 **Alternative écartée** : un port ouvert directement par le module Spatial.
 Plus de code, code de Ben en double, aucun gain en v0.1.
+
+## D13 — Sortie vidéo NDI / Spout avant PSN / TUIO (28/10/2026)
+
+**Décision** : la v0.4 devient la sortie vidéo de la vue 2D (vue de dessus
+du Tracking Monitor) en NDI et Spout. Les versions suivantes sont décalées
+d'un cran : PSN / TUIO en v0.5, viewport 3D en v0.6, graphe nodal en v0.7
+et v0.8. Les numéros cités dans les décisions plus anciennes sont ceux de
+l'époque.
+
+**Raison** : choix de Vincent après la v0.2.0. La vue 2D est déjà riche
+(zones, personnes, slots, emplacements réservés) et sert tout de suite en
+spectacle, comme retour visuel ou source vidéo.
