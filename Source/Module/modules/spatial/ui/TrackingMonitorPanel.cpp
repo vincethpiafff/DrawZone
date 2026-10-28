@@ -234,7 +234,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.6f));
 		g.setFont(Font(14.0f));
-		g.drawFittedText("No Spatial module. Add one from Modules > DrawZone > Spatial.", getLocalBounds().reduced(8), Justification::centred, 3);
+		g.drawFittedText("No Cockpit module. Add one from Modules > DrawZone > Cockpit.", getLocalBounds().reduced(8), Justification::centred, 3);
 		return;
 	}
 

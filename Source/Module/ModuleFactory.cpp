@@ -68,8 +68,8 @@ ModuleFactory::ModuleFactory() {
 	defs.add(new ModuleDefinition("System", "Time", &TimeModule::create));
 	defs.add(new ModuleDefinition("System", "OS", &OSModule::create));
 
-	// DrawZone: Spatial module
-	defs.add(new ModuleDefinition("DrawZone", "Spatial", &SpatialModule::create));
+	// DrawZone: Cockpit module (code name : Spatial)
+	defs.add(new ModuleDefinition("DrawZone", "Cockpit", &SpatialModule::create));
 
 	defs.add(new ModuleDefinition("Custom", "Empty", &EmptyModule::create));
 
@@ -275,6 +275,12 @@ ModuleDefinition* ModuleFactory::getDefinitionForType(const String& moduleType)
 File ModuleFactory::getCustomModulesFolder() const
 {
 	return File::getSpecialLocation(File::SpecialLocationType::userDocumentsDirectory).getChildFile("Chataigne/modules");
+}
+
+// DrawZone: sessions saved before the rename still load their "Spatial" module
+Module* ModuleFactory::create(const String& type)
+{
+	return Factory::create(type == "Spatial" ? String("Cockpit") : type);
 }
 
 Module* ModuleFactory::create(BaseFactoryDefinition<Module>* def)

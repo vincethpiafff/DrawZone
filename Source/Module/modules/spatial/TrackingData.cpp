@@ -16,11 +16,12 @@ TrackingData::~TrackingData()
 {
 }
 
-void TrackingData::countMessage()
+void TrackingData::countMessage(const void* source)
 {
 	const ScopedLock sl(lock);
 	uint32 now = Time::getMillisecondCounter();
 	data.lastMessageMs = now;
+	lastSourceMessageMs[source] = now;
 	messageCount++;
 
 	uint32 elapsed = now - rateWindowStartMs;
@@ -39,24 +40,60 @@ void TrackingData::setScene(int frame, Point<float> sceneSize)
 	data.sceneSize = sceneSize;
 }
 
+void TrackingData::setSceneSize(Point<float> sceneSize)
+{
+	const ScopedLock sl(lock);
+	data.sceneSize = sceneSize;
+}
+
+Point<float> TrackingData::getSceneSize()
+{
+	const ScopedLock sl(lock);
+	return data.sceneSize;
+}
+
+bool TrackingData::isIdUsed(int id) const
+{
+	for (auto& p : data.persons) if (p.id == id) return true;
+	return false;
+}
+
 void TrackingData::updatePerson(const TrackedPerson& person)
 {
 	const ScopedLock sl(lock);
 	for (auto& p : data.persons)
 	{
-		if (p.id == person.id)
+		if (p.source == person.source && p.sourceId == person.sourceId)
 		{
+			int id = p.id;
 			p = person;
+			p.id = id;
 			return;
 		}
 	}
-	data.persons.add(person);
+
+	TrackedPerson p = person;
+	p.id = person.sourceId;
+	if (p.id < 0 || isIdUsed(p.id))
+	{
+		//the source id is taken by a person of another source : a free id from 10000
+		while (isIdUsed(nextRemappedId)) nextRemappedId++;
+		p.id = nextRemappedId++;
+	}
+	data.persons.add(p);
 }
 
-void TrackingData::removePerson(int id)
+void TrackingData::removePerson(const void* source, int sourceId)
 {
 	const ScopedLock sl(lock);
-	data.persons.removeIf([id](const TrackedPerson& p) { return p.id == id; });
+	data.persons.removeIf([source, sourceId](const TrackedPerson& p) { return p.source == source && p.sourceId == sourceId; });
+}
+
+void TrackingData::removeSource(const void* source)
+{
+	const ScopedLock sl(lock);
+	data.persons.removeIf([source](const TrackedPerson& p) { return p.source == source; });
+	lastSourceMessageMs.erase(source);
 }
 
 void TrackingData::removeStalePersons(uint32 timeoutMs)
@@ -66,20 +103,27 @@ void TrackingData::removeStalePersons(uint32 timeoutMs)
 	data.persons.removeIf([now, timeoutMs](const TrackedPerson& p) { return now - p.lastUpdateMs > timeoutMs; });
 }
 
-//returns true if people were removed because the source stopped sending
-bool TrackingData::removeAllIfSilent(uint32 timeoutMs)
+//a source that stopped sending loses its people
+bool TrackingData::removeSilentSources(uint32 timeoutMs)
 {
 	const ScopedLock sl(lock);
-	if (data.persons.isEmpty()) return false;
-	if (Time::getMillisecondCounter() - data.lastMessageMs <= timeoutMs) return false;
-	data.persons.clear();
-	return true;
+	uint32 now = Time::getMillisecondCounter();
+	int before = data.persons.size();
+	data.persons.removeIf([this, now, timeoutMs](const TrackedPerson& p)
+		{
+			auto it = lastSourceMessageMs.find(p.source);
+			return it == lastSourceMessageMs.end() || now - it->second > timeoutMs;
+		});
+	return data.persons.size() != before;
 }
 
 void TrackingData::clear()
 {
 	const ScopedLock sl(lock);
+	Point<float> sceneSize = data.sceneSize;
 	data = Snapshot();
+	data.sceneSize = sceneSize;
+	lastSourceMessageMs.clear();
 	messageCount = 0;
 }
 
@@ -87,6 +131,14 @@ int TrackingData::getNumPersons()
 {
 	const ScopedLock sl(lock);
 	return data.persons.size();
+}
+
+int TrackingData::getNumPersons(const void* source)
+{
+	const ScopedLock sl(lock);
+	int n = 0;
+	for (auto& p : data.persons) if (p.source == source) n++;
+	return n;
 }
 
 TrackingData::Snapshot TrackingData::getSnapshot()

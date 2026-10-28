@@ -9,6 +9,7 @@
 */
 
 #include "TrackingData.cpp"
+#include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
@@ -17,13 +18,28 @@
 
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
-	zoneManager("Zones"),
+	sceneCC("Scene"),
+	zoneManager("Zones", SpatialSection::ZONES),
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
 	videoOutput(this)
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
+
+	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Auto : the scene is the Augmenta scene (/scene message). Manual : the scene size is set below, for sources without a scene (PSN, TUIO) or to frame several sources");
+	sceneSizeMode->addOption("Auto (Augmenta)", SCENE_AUTO)->addOption("Manual", SCENE_MANUAL);
+	sceneSizeManual = sceneCC.addPoint2DParameter("Size", "Manual : width and height of the scene, in meters");
+	sceneSizeManual->setBounds(.1f, .1f, 1000, 1000);
+	sceneSizeManual->setDefaultPoint(10, 6);
+
+	//a new module starts with an Augmenta source on its OSC input (sessions without sources too : nothing to load)
+	moduleParams.addChildControllableContainer(&sourceManager);
+	sourceManager.addBaseManagerListener(this);
+	sourceManager.addItem(new AugmentaSource(), var(), false);
+
+	moduleParams.addChildControllableContainer(&sceneCC);
+	updateSceneSize();
 
 	//zones are saved with the module parameters (recursive save)
 	moduleParams.addChildControllableContainer(&zoneManager);
@@ -38,6 +54,8 @@ SpatialModule::SpatialModule() :
 	moduleParams.addChildControllableContainer(&videoOutput);
 	valuesCC.addChildControllableContainer(&playerSlots.slotsValues);
 
+	setupInspectorSections();
+
 	startTimerHz(zoneUpdateRateHz);
 }
 
@@ -45,52 +63,34 @@ SpatialModule::~SpatialModule()
 {
 	stopTimer();
 	zoneManager.removeBaseManagerListener(this);
+	sourceManager.removeBaseManagerListener(this);
 }
 
 void SpatialModule::processMessageInternal(const OSCMessage& msg)
 {
-	trackingData.countMessage();
-
-	//Augmenta OSC protocol v2, see docs/drawzone/notes/augmenta-protocol.md
-	String address = msg.getAddressPattern().toString();
-
-	if (address == "/scene")
-	{
-		if (msg.size() < 4) return;
-		trackingData.setScene(OSCHelpers::getIntArg(msg[0]), Point<float>(OSCHelpers::getFloatArg(msg[2]), OSCHelpers::getFloatArg(msg[3])));
-		trackingData.removeStalePersons(personTimeoutMs);
-	}
-	else if (address == "/object/enter" || address == "/object/update")
-	{
-		processAugmentaPerson(msg);
-	}
-	else if (address == "/object/leave")
-	{
-		if (msg.size() < 2) return;
-		trackingData.removePerson(OSCHelpers::getIntArg(msg[1]));
-	}
-	else
-	{
-		return;
-	}
-
-	personCount->setValue(trackingData.getNumPersons());
+	//the OSC input feeds the first enabled Augmenta source ; locked : a source is not deleted while it parses
+	const ScopedLock sl(sourceManager.items.getLock());
+	if (AugmentaSource* a = sourceManager.getAugmentaSource()) a->processMessage(msg, this);
 }
 
-void SpatialModule::processAugmentaPerson(const OSCMessage& msg)
+void SpatialModule::updateSceneSize()
 {
-	if (msg.size() < 15) return;
+	sceneAuto = sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO;
+	sceneSizeManual->setEnabled(!sceneAuto);
+	if (!sceneAuto) trackingData.setSceneSize(sceneSizeManual->getPoint());
+	else
+	{
+		//back to the Augmenta scene, if one was received
+		const ScopedLock sl(sourceManager.items.getLock());
+		AugmentaSource* a = sourceManager.getAugmentaSource();
+		trackingData.setSceneSize(a != nullptr ? a->augmentaSceneSize : Point<float>());
+	}
+}
 
-	TrackedPerson p;
-	p.id = OSCHelpers::getIntArg(msg[1]);
-	p.age = OSCHelpers::getFloatArg(msg[3]);
-	p.position = Point<float>(OSCHelpers::getFloatArg(msg[4]), OSCHelpers::getFloatArg(msg[5]));
-	p.velocity = Point<float>(OSCHelpers::getFloatArg(msg[6]), OSCHelpers::getFloatArg(msg[7]));
-	p.orientation = OSCHelpers::getFloatArg(msg[8]);
-	p.height = OSCHelpers::getFloatArg(msg[14]);
-	p.lastUpdateMs = Time::getMillisecondCounter();
-
-	trackingData.updatePerson(p);
+void SpatialModule::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
+{
+	OSCModule::onControllableFeedbackUpdateInternal(cc, c);
+	if (c == sceneSizeMode || c == sceneSizeManual) updateSceneSize();
 }
 
 void SpatialModule::updateZones()
@@ -150,8 +150,12 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 SpatialPerson::SpatialPerson(int id) :
 	ControllableContainer("Person " + String(id))
 {
-	personId = addIntParameter("Id", "Id sent by the tracking system", id);
+	personId = addIntParameter("Id", "Id of the person in DrawZone : the id given by its source, or a free id from 10000 when another source already uses it", id);
 	personId->setControllableFeedbackOnly(true);
+	sourceName = addStringParameter("Source", "Tracking system (source) that sees the person", "");
+	sourceName->setControllableFeedbackOnly(true);
+	sourceId = addIntParameter("Source Id", "Id given to the person by its source", id);
+	sourceId->setControllableFeedbackOnly(true);
 	position = addPoint2DParameter("Position", "Position in meters, from the top left corner of the scene");
 	position->setControllableFeedbackOnly(true);
 	zoneName = addStringParameter("Zone", "Zone the person is in, \"A + B\" where zones overlap, empty outside any zone", "");
@@ -163,9 +167,9 @@ SpatialPerson::SpatialPerson(int id) :
 	slotName = addStringParameter("Slot", "Player slot of the person, empty without a slot", "");
 	slotName->setControllableFeedbackOnly(true);
 
-	velocity = addPoint2DParameter("Velocity", "Velocity as sent by the tracking system");
+	velocity = addPoint2DParameter("Velocity", "Velocity in the scene axes (as sent by the tracking system, turned with its source)");
 	velocity->setControllableFeedbackOnly(true);
-	orientation = addFloatParameter("Orientation", "Orientation as sent by the tracking system, in degrees", 0);
+	orientation = addFloatParameter("Orientation", "Orientation in degrees, as sent by the tracking system plus the rotation of its source", 0);
 	orientation->setControllableFeedbackOnly(true);
 	height = addFloatParameter("Height", "Height of the person as sent by the tracking system, in meters", 0);
 	height->setControllableFeedbackOnly(true);
@@ -175,6 +179,8 @@ SpatialPerson::SpatialPerson(int id) :
 
 void SpatialPerson::updateTracking(const TrackedPerson& p, const String& slot)
 {
+	sourceName->setValue(p.sourceName);
+	sourceId->setValue(p.sourceId);
 	slotName->setValue(slot);
 	velocity->setPoint(p.velocity);
 	orientation->setValue(p.orientation);
@@ -210,7 +216,21 @@ void SpatialPerson::update(Point<float> positionMeters, const Array<SpatialZone*
 
 void SpatialModule::timerCallback()
 {
-	if (trackingData.removeAllIfSilent(sourceTimeoutMs)) personCount->setValue(0);
+	//people not updated (missed leave), sources gone silent, disabled sources
+	trackingData.removeStalePersons(personTimeoutMs);
+	trackingData.removeSilentSources(sourceTimeoutMs);
+	{
+		const ScopedLock sl(sourceManager.items.getLock());
+		AugmentaSource* used = sourceManager.getAugmentaSource();
+		for (auto& s : sourceManager.items)
+		{
+			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) a->isUsed = a == used;
+			if (!s->enabled->boolValue()) trackingData.removeSource(s);
+			s->update(this);
+		}
+	}
+	personCount->setValue(trackingData.getNumPersons());
+
 	updateZones();
 }
 
@@ -242,4 +262,91 @@ void SpatialModule::itemRemoved(SpatialZone* zone)
 void SpatialModule::itemsRemoved(Array<SpatialZone*> zones)
 {
 	for (auto& z : zones) zonesValuesCC.removeChildControllableContainer(&z->zoneValues);
+}
+
+void SpatialModule::itemRemoved(SpatialSource* source)
+{
+	trackingData.removeSource(source);
+}
+
+void SpatialModule::itemsRemoved(Array<SpatialSource*> sources)
+{
+	for (auto& s : sources) trackingData.removeSource(s);
+}
+
+void SpatialModule::setupInspectorSections()
+{
+	using namespace SpatialSection;
+	auto chip = [](const String& text, bool on) { Chip c; c.text = text; c.on = on; return c; };
+
+	sourceManager.sectionSummary = [this, chip]()
+		{
+			int n = 0;
+			for (auto& s : sourceManager.items) if (s->enabled->boolValue()) n++;
+			int p = trackingData.getNumPersons();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " source" : " sources"), false), chip(String(p) + " people", p > 0) });
+		};
+
+	zoneManager.sectionSummary = [this, chip]()
+		{
+			int occupied = 0;
+			for (auto& z : zoneManager.items) if (!z->idsInside.isEmpty()) occupied++;
+			int n = zoneManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " zone" : " zones"), false), chip(String(occupied) + " occupied", occupied > 0) });
+		};
+
+	sceneCC.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<GenericControllableContainerEditor>(SCENE, [this, chip]()
+				{
+					Point<float> s = trackingData.getSceneSize();
+					String size = s.x > 0 && s.y > 0 ? String(s.x, 1) + " x " + String(s.y, 1) + " m" : String("no size yet");
+					return Array<Chip>({ chip(sceneAuto ? "Auto" : "Manual", false), chip(size, false) });
+				}, cc, isRoot);
+		};
+
+	playerSlots.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<EnablingControllableContainerEditor>(SLOTS, [this, chip]()
+				{
+					if (!playerSlots.enabled->boolValue()) return Array<Chip>({ chip("Disabled", false) });
+					int n = playerSlots.slotCount->intValue();
+					int taken = n - playerSlots.freeSlots->intValue();
+					return Array<Chip>({ chip(String(n) + (n == 1 ? " slot" : " slots"), false), chip(String(taken) + " taken", taken > 0) });
+				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+		};
+
+	videoOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<GenericControllableContainerEditor>(OUTPUT, [this, chip]()
+				{
+					bool s = videoOutput.spout->boolValue(), n = videoOutput.ndi->boolValue();
+					return Array<Chip>({ chip(s ? "Spout on" : "Spout off", s), chip(n ? "NDI on" : "NDI off", n) });
+				}, cc, isRoot);
+		};
+
+	//the OSC input keeps its network editor (local IPs in the header), with the badge only
+	if (receiveCC != nullptr)
+	{
+		receiveCC->customGetEditorFunc = [](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+			{
+				return new SpatialSectionEditor<EnablingNetworkControllableContainerEditor>(NETWORK, nullptr, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+			};
+	}
+
+	//all folded at creation and at load (Chataigne only saves the folded state)
+	Array<ControllableContainer*> sections { &sourceManager, &sceneCC, &zoneManager, &playerSlots, &videoOutput, receiveCC.get(), outputManager.get(), thruManager.get() };
+	for (auto& cc : sections) if (cc != nullptr) cc->editorIsCollapsed = true;
+
+	//inspector order (Vincent's rule, keep it for the next blocks) :
+	//network inputs, network outputs (OSC, then PSN / TUIO), Sources, Video Output, Scene, Zones, Player Slots
+	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
+	auto& list = moduleParams.controllableContainers;
+	int pos = 0;
+	for (auto& cc : order)
+	{
+		int i = list.indexOf(cc);
+		if (i < 0) continue;
+		list.move(i, pos++);
+	}
 }

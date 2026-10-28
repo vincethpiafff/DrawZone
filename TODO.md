@@ -507,6 +507,36 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;
+  - ⏭️ **v0.5 — entrées PSN et TUIO, multi-sources, transformation par source** (démarrée le 28/10) :
+    - ✅ étude : le module Spatial hérite du module OSC (un seul port, Augmenta) ; `TrackingData` est déjà indépendante du protocole (positions 0–1 + taille de scène venue d'Augmenta) ; Chataigne a un module PosiStageNet (bibliothèque `psn_lib` dans `External/posistagenet`, multicast 236.10.10.10:56565, décodage sur un thread) qui sait aussi **émettre** (Send Mode) → émetteur de test sans Python ; pas de TUIO dans Chataigne (à écrire : OSC sur UDP 3333) ;
+    - ✅ proposition validée par Vincent : **Sources dans le module Spatial** (Augmenta, PSN, TUIO ; port et transformation Offset / Rotation / Scale / Flip par source ; ids uniques entre sources ; Scene Size Auto / Manual) ; **fusion** d'une personne vue par deux systèmes **reportée** (étape à part) ; tests PSN avec le module PSN de Chataigne (Send Mode) pendant le développement, puis **Naostage réel** pour valider ; briques : 1 socle multi-sources, 2 source PSN, 3 source TUIO, 4 Tracking Monitor (couleur et liste des sources), 5 test Augmenta + PSN ;
+    - 💬 Vincent : simulateur Naostage sur leur site (« Enregistrement Demo (KAPTA Simulator) »), téléchargement impossible dans son navigateur ;
+    - ✅ cause : le serveur envoie le fichier (1,8 Go) comme du texte brut (`Content-Type: text/plain`), le navigateur essaie de l'afficher → téléchargé par Claude avec curl : `D:DRAWZONE
+aostageDemo_Festival.kramera` (hors dépôt) ; il se lit dans **Kratos** (logiciel Naostage, Windows : github.com/Naostage/kratos-releases, v1.10.14) : vue Simulator → Open file → lecture ; sortie PSN par un module PSN de Kratos (adresse multicast, port, X / Y / Z Remap ; Kratos a l'axe **Z vertical**, PSN standard a Y vertical → choix du plan du sol prévu dans la source PSN) ; doc : naostage.github.io/Kratos ;
+    - ✅ brique 1, code : `TrackingData` multi-sources (chaque personne garde l'id de sa source s'il est libre, sinon un id libre à partir de 10000 ; silence et suppression par source ; personnes non mises à jour retirées par le minuteur) ; `SpatialSource.h/.cpp` : bloc **Sources** (manager avec fabrique, une source **Augmenta** créée d'office, sessions anciennes comprises), transformation par source (Offset, Rotation, Scale, Flip X / Y ; flip dans la zone Augmenta), Status ; l'entrée OSC du module alimente la première source Augmenta active (sous le verrou du manager) ; bloc **Scene** : Size Mode Auto (Augmenta) / Manual + Size ; Values > People : Source et Source Id ; fichiers déclarés dans le `.jucer` (Projucer : nos lignes seulement) ;
+    - ❌ compilation : `BaseManager` crée ses éléments avec un constructeur sans argument → nom par défaut « Source » ;
+    - ✅ compilation 0 erreur (exe du 28/10 13:02), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Brique 1 (socle multi-sources) validée** ;
+    - 💬 Vincent : ajouter un « reset all parameters » ; l'Inspector du module Spatial devient chargé, settings difficiles à retrouver → propositions d'organisation (onglets ou autre) avec maquettes dans une page web (Claude artifact) ;
+    - ✅ code : trigger **Reset All Parameters** dans chaque source (Offset, Rotation, Scale, Flip remis par défaut) ;
+    - ✅ compilation 0 erreur (exe du 28/10 13:27), Chataigne relancé par Claude ;
+    - ✅ page de propositions publiée (artifact privé, claude.ai/artifact/6A3CCx2aYwFt9BxFsEPJQM) : état actuel + A sections repliées / rangées / colorées avec résumé, B onglets en haut de l'Inspector, C barre d'icônes verticale (façon Blender), D réglages dans un tiroir du Tracking Monitor ; recommandation : A tout de suite, C ensuite ;
+    - 💬 Vincent : choix « A puis C » ; avant de coder, voir plusieurs styles de sections sur l'Inspector complet ;
+    - ✅ étude organicUI : chaque bloc peut avoir sa couleur (`contourColor` de l'éditeur de conteneur) et un éditeur à nous (`customGetEditorFunc`) pour dessiner l'en-tête et le résumé ; repli par défaut avec `editorIsCollapsed` ;
+    - ✅ page des styles publiée (claude.ai/artifact/3Pt4vt4b29zCHGmURNgxi2) : A teinte (natif Chataigne), B liseré + pastille de résumé, C point de couleur + petites majuscules, D badge d'icône + puces d'état (icônes réutilisables pour C) ; recommandation : B ou D ;
+    - 💬 Vincent : choix du style **D** ;
+    - ✅ code : `ui/SpatialSectionEditor.h` : enveloppe générique des éditeurs organicUI (conteneur, enabling, manager, réseau) : badge d'icône à la couleur du bloc, puces d'état à droite (vertes = actif, mises à jour 4 fois par seconde), bordure colorée quand le bloc est ouvert ; `SpatialSectionManager<T>` pour Sources et Zones (le manager de Chataigne ignore `customGetEditorFunc`) ; ordre : Sources, Scene, Zones, Player Slots, Video Output, puis OSC Input / OSC Outputs / Pass-through ; tout replié à la création et au chargement (Chataigne ne sauvegarde que l'état replié) ; OSC Input garde son éditeur réseau (IP dans l'en-tête), badge seul ; OSC Outputs et Pass-through (managers de Ben) gardent leur look ;
+    - ✅ compilation 0 erreur (exe du 28/10), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « très bien ». **Style D validé** (sections A en style D) ;
+    - 💬 Vincent : Reset All Parameters validé (« ok ») ; nouvel ordre de l'Inspector, à garder pour les prochains blocs : OSC Input, OSC Outputs (+ Pass-through), futurs PSN / TUIO (entrées et sorties), Sources, Video Output, Zones, Player Slots ;
+    - ✅ code : ordre appliqué dans `setupInspectorSections()` (tableau `order`) ; Scene, non citée, placée entre Video Output et Zones (à confirmer) ;
+    - ✅ compilation 0 erreur (exe du 28/10 17:05), Chataigne relancé par Claude ;
+    - 💬 Vincent : le module s'appelle désormais **Cockpit** (« aux manettes d'un vaisseau spatial ») ; choix : nom visible seul (le code garde Spatial), anciennes sessions lisibles ;
+    - ✅ code : type de module « Cockpit » (menu Modules > DrawZone > Cockpit, message du Tracking Monitor) ; `ModuleFactory::create(type)` (code de Ben, marqué `// DrawZone:`) charge un ancien type « Spatial » comme Cockpit ;
+    - ✅ compilation 0 erreur (exe du 28/10 17:08), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « tout est ok » (Cockpit dans le menu, TEST_ZONES.noisette rechargé avec ses zones, ordre des blocs) ;
+    - ✅ commit sur `feature/multi-source` ;
+    - ⏭️ brique 2 : source PSN ; barre d'icônes verticale (C) plus tard ;
 
 ## 💡 Idées
 

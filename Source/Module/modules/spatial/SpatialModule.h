@@ -15,6 +15,8 @@
 #pragma once
 
 #include "TrackingData.h"
+#include "ui/SpatialSectionEditor.h"
+#include "SpatialSource.h"
 #include "SpatialZone.h"
 #include "PlayerSlots.h"
 #include "ui/TopViewRenderer.h"
@@ -28,6 +30,8 @@ public:
 	SpatialPerson(int id);
 
 	IntParameter* personId;
+	StringParameter* sourceName;			// source of the person
+	IntParameter* sourceId;				// id given by its source
 	Point2DParameter* position;			// meters, origin top left of the scene
 	StringParameter* zoneName;			// zone(s) the person is in, empty outside
 	Point2DParameter* relativePosition;	// 0-1 in the zone or zones overlap, -1 outside
@@ -48,7 +52,8 @@ public:
 class SpatialModule :
 	public OSCModule,
 	public Timer,
-	public BaseManager<SpatialZone>::ManagerListener
+	public BaseManager<SpatialZone>::ManagerListener,
+	public BaseManager<SpatialSource>::ManagerListener
 {
 public:
 	SpatialModule();
@@ -63,9 +68,24 @@ public:
 
 	TrackingData trackingData;
 
+	//tracking systems (Augmenta, PSN, TUIO...), each with its transform to the scene
+	SpatialSourceManager sourceManager;
+
+	//scene size : from Augmenta /scene (Auto) or set by hand (Manual)
+	enum SceneSizeMode { SCENE_AUTO, SCENE_MANUAL };
+	ControllableContainer sceneCC;
+	EnumParameter* sceneSizeMode;
+	Point2DParameter* sceneSizeManual;
+	std::atomic<bool> sceneAuto { true };	// read by the network threads
+	bool isSceneSizeAuto() const { return sceneAuto; }
+	void updateSceneSize();
+
+	//Inspector : section look (icon badge, state chips), blocks of the session first, network last, all folded
+	void setupInspectorSections();
+
 	IntParameter* personCount;
 
-	BaseManager<SpatialZone> zoneManager;
+	SpatialSectionManager<SpatialZone> zoneManager;
 	ControllableContainer zonesValuesCC;
 	Point<float> zonesSceneSize;	//scene size last applied to the zone bounds
 
@@ -77,7 +97,6 @@ public:
 	SpatialVideoOutput videoOutput;	// top view sent as video (Spout, NDI)
 
 	void processMessageInternal(const OSCMessage& msg) override;
-	void processAugmentaPerson(const OSCMessage& msg);
 
 	void updateZones();
 	void updatePeople(const TrackingData::Snapshot& s);
@@ -88,8 +107,13 @@ public:
 	void itemRemoved(SpatialZone* zone) override;
 	void itemsRemoved(Array<SpatialZone*> zones) override;
 
+	void itemRemoved(SpatialSource* source) override;
+	void itemsRemoved(Array<SpatialSource*> sources) override;
+
+	void onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c) override;
+
 	static SpatialModule* create() { return new SpatialModule(); }
-	virtual String getDefaultTypeString() const override { return "Spatial"; }
+	virtual String getDefaultTypeString() const override { return "Cockpit"; }
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialModule)
 };

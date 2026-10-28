@@ -48,4 +48,5 @@ public:
 	File getCustomModulesFolder() const;
 
 	Module* create(BaseFactoryDefinition<Module> * def) override;
+	Module* create(const String& type) override; // DrawZone: "Spatial" alias
 };
