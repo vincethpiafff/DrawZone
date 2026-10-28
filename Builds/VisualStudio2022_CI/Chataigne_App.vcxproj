@@ -946,10 +946,16 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
@@ -3342,8 +3348,10 @@
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\commands\ButtplugCommand.h"/>

@@ -272,6 +272,7 @@
 		3217E99161A613C57EACAB97 /* NumberComparators.cpp */ /* NumberComparators.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = NumberComparators.cpp; path = ../../Source/Common/Processor/Action/Condition/conditions/StandardCondition/Comparator/comparators/NumberComparators.cpp; sourceTree = SOURCE_ROOT; };
 		3284BC58968CCABCFCEDABCF /* WebSocket Client.png */ /* WebSocket Client.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "WebSocket Client.png"; path = "../../Resources/Modules/WebSocket Client.png"; sourceTree = SOURCE_ROOT; };
 		329DC76E50833986ACFD72D2 /* MultiplexIndexConditionEditor.h */ /* MultiplexIndexConditionEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MultiplexIndexConditionEditor.h; path = ../../Source/Common/Processor/Action/Condition/conditions/MultiplexIndex/ui/MultiplexIndexConditionEditor.h; sourceTree = SOURCE_ROOT; };
+		3307095B648CE969EB3CEAEE /* TopViewRenderer.h */ /* TopViewRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TopViewRenderer.h; path = ../../Source/Module/modules/spatial/ui/TopViewRenderer.h; sourceTree = SOURCE_ROOT; };
 		331643DFCB261592E0B722B9 /* icon.png */ /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = icon.png; path = ../../Resources/icon.png; sourceTree = SOURCE_ROOT; };
 		334608D7C30F294FB4AFA0DD /* PlayAudioFileCommand.cpp */ /* PlayAudioFileCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PlayAudioFileCommand.cpp; path = ../../Source/Module/modules/audio/commands/PlayAudioFileCommand.cpp; sourceTree = SOURCE_ROOT; };
 		33698FA29E16C5EF3535B38B /* ModuleManagerUI.cpp */ /* ModuleManagerUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ModuleManagerUI.cpp; path = ../../Source/Module/ui/ModuleManagerUI.cpp; sourceTree = SOURCE_ROOT; };
@@ -375,6 +376,7 @@
 		4FA5781315A5657F555CCE52 /* MIDICommands.h */ /* MIDICommands.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MIDICommands.h; path = ../../Source/Module/modules/midi/commands/MIDICommands.h; sourceTree = SOURCE_ROOT; };
 		4FA68B3C0FA6694B5F420FA8 /* SpeedFilter.cpp */ /* SpeedFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpeedFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/SpeedFilter.cpp; sourceTree = SOURCE_ROOT; };
 		4FFA30F725B39EC4B8DF6C4A /* PJLinkModuleUI.cpp */ /* PJLinkModuleUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PJLinkModuleUI.cpp; path = ../../Source/Module/modules/tcp/pjlink/ui/PJLinkModuleUI.cpp; sourceTree = SOURCE_ROOT; };
+		50119A43BFEC63CA3CF6B3DE /* SpatialVideoOutput.cpp */ /* SpatialVideoOutput.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialVideoOutput.cpp; path = ../../Source/Module/modules/spatial/SpatialVideoOutput.cpp; sourceTree = SOURCE_ROOT; };
 		5025C5BAF50937621E4ACEA9 /* CustomVariablesModule.cpp */ /* CustomVariablesModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CustomVariablesModule.cpp; path = ../../Source/Module/modules/customvariables/CustomVariablesModule.cpp; sourceTree = SOURCE_ROOT; };
 		50F4C9323D195AD213E37F98 /* ScriptCommand.cpp */ /* ScriptCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ScriptCommand.cpp; path = ../../Source/Module/modules/common/commands/scriptcommands/ScriptCommand.cpp; sourceTree = SOURCE_ROOT; };
 		51284E8F9AF87C3AD6831BB7 /* juce_gui_basics */ /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = ../../JUCE/modules/juce_gui_basics; sourceTree = SOURCE_ROOT; };
@@ -435,6 +437,7 @@
 		6545877641D887408FD7997D /* TrackingMonitorPanel.h */ /* TrackingMonitorPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TrackingMonitorPanel.h; path = ../../Source/Module/modules/spatial/ui/TrackingMonitorPanel.h; sourceTree = SOURCE_ROOT; };
 		658DBFD6B17D26B9F8952B15 /* MultiplexCommands.cpp */ /* MultiplexCommands.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MultiplexCommands.cpp; path = ../../Source/Module/modules/multiplex/commands/MultiplexCommands.cpp; sourceTree = SOURCE_ROOT; };
 		66296EADEC35F9C69CE57E31 /* CommunityModuleInfo.cpp */ /* CommunityModuleInfo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CommunityModuleInfo.cpp; path = ../../Source/Module/Community/CommunityModuleInfo.cpp; sourceTree = SOURCE_ROOT; };
+		662CD5CDBB3C8FAACE99750D /* TopViewRenderer.cpp */ /* TopViewRenderer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TopViewRenderer.cpp; path = ../../Source/Module/modules/spatial/ui/TopViewRenderer.cpp; sourceTree = SOURCE_ROOT; };
 		667CD2CBDF4795AAD86D5AE1 /* Mapping2DLayer.h */ /* Mapping2DLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Mapping2DLayer.h; path = ../../Source/TimeMachine/Sequence/layers/mapping/automation/2d/Mapping2DLayer.h; sourceTree = SOURCE_ROOT; };
 		66A94D900181382D38807D43 /* out.png */ /* out.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = out.png; path = ../../Resources/out.png; sourceTree = SOURCE_ROOT; };
 		66FB3CD683B9EE7A37CC2C5D /* io.c */ /* io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = io.c; path = ../../Source/Module/modules/controller/wiimote/lib/wiiuse/io.c; sourceTree = SOURCE_ROOT; };
@@ -556,6 +559,7 @@
 		8786DC5CC2498585C9729B9C /* Multiplex.h */ /* Multiplex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Multiplex.h; path = ../../Source/Common/Processor/Multiplex/Multiplex.h; sourceTree = SOURCE_ROOT; };
 		8802698D52924F5FAB243444 /* include_juce_audio_utils.mm */ /* include_juce_audio_utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_utils.mm; path = ../../JuceLibraryCode/include_juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
 		8883C7CD4CC4127DC5FA03FE /* include_juce_audio_basics.mm */ /* include_juce_audio_basics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_basics.mm; path = ../../JuceLibraryCode/include_juce_audio_basics.mm; sourceTree = SOURCE_ROOT; };
+		88F108AAE5896865D7741653 /* SpatialVideoOutput.h */ /* SpatialVideoOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialVideoOutput.h; path = ../../Source/Module/modules/spatial/SpatialVideoOutput.h; sourceTree = SOURCE_ROOT; };
 		8919F05F99FD49F984AA5964 /* Mapping2DLayerTimeline.cpp */ /* Mapping2DLayerTimeline.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Mapping2DLayerTimeline.cpp; path = ../../Source/TimeMachine/Sequence/layers/mapping/automation/2d/ui/Mapping2DLayerTimeline.cpp; sourceTree = SOURCE_ROOT; };
 		897F4323631CFAAAD468082A /* prevcue.png */ /* prevcue.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = prevcue.png; path = ../../Resources/prevcue.png; sourceTree = SOURCE_ROOT; };
 		89EB0E2C2935A4F751A7004C /* Processor.cpp */ /* Processor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Processor.cpp; path = ../../Source/Common/Processor/Processor.cpp; sourceTree = SOURCE_ROOT; };
@@ -2321,6 +2325,8 @@
 				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
+				50119A43BFEC63CA3CF6B3DE,
+				88F108AAE5896865D7741653,
 				8E608A91450F6B0C21AEF7C6,
 				52283D92A577DEF4A41D1B2A,
 				856DC9E1B71F7B5BFAD71F34,
@@ -3216,6 +3222,8 @@
 		D28D2F74C0D7EF9E40B5AC4D /* ui */ = {
 			isa = PBXGroup;
 			children = (
+				662CD5CDBB3C8FAACE99750D,
+				3307095B648CE969EB3CEAEE,
 				3209B2CE127190995B03A01D,
 				6545877641D887408FD7997D,
 			);

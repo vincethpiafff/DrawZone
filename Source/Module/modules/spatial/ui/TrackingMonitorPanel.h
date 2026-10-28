@@ -50,7 +50,6 @@ private:
 	void paintColumn(Graphics& g);
 	void paintRail(Graphics& g);
 
-	static Colour getPersonColor(int id);
 
 	static constexpr float handleSize = 8;
 	static const int lineHeight = 18;
@@ -104,6 +103,13 @@ private:
 	Point<float> getPersonScreenPosition(int id) const;	// top view dot, else its row in the column / rail
 	void paintSlotDrag(Graphics& g);
 
+	//"Spout Output" chip in the header : the box turns the output on / off, the label shows its parameters in the Inspector
+	Rectangle<int> spoutRect;
+	bool spoutOn = false;
+	bool spoutHovered = false;
+	static Rectangle<int> getSpoutBoxRect(Rectangle<int> chip);
+	void paintSpoutChip(Graphics& g);
+
 	//"Shortcuts" chip in the header : unfolds the list of shortcuts on hover, pinned open by a click
 	Rectangle<int> shortcutsRect;
 	bool shortcutsHovered = false;
@@ -111,7 +117,6 @@ private:
 	Rectangle<int> getShortcutsPanelRect() const;
 	void paintShortcuts(Graphics& g);
 	void mouseExit(const MouseEvent& e) override;
-	int selectedPersonId = -1;	// shown highlighted
 
 	//zone cards : name, count and occupancy bar ; the arrow unfolds the detail of the values
 	static const int cardHeight = 50;
@@ -190,76 +195,24 @@ private:
 	int dragHandle = 0;	// curve handle being moved (1 in, 2 out) of dragPoint
 	Array<Point<float>> dragStartHandlesIn, dragStartHandlesOut;	// meters from each point
 
-	//copied on each refresh, so painting never touches the network data
-	bool hasModule = false;
-	String moduleName;
-	int localPort = 0;
-	TrackingData::Snapshot snapshot;
-
-	struct ZoneView
-	{
-		WeakReference<ControllableContainer> zone;
-		String name;
-		Rectangle<float> bounds;	// meters
-		bool ellipse = false;
-		bool freeShape = false;	// neither : rectangle
-		Path outline;				// meters, free shape only
-		Array<Point<float>> points;	// meters, free shape only
-		Array<int> interpolations;	// ZonePoint::Interpolation of each point
-		Array<Point<float>> handlesIn, handlesOut;	// curve control points, meters
-		Colour color;
-		bool enabled = true;
-		bool presence = false;
-		bool hidden = false;
-		bool selected = false;
-		int personCount = 0;
-
-		//live values shown on the zone cards
-		int capacity = 1;
-		float occupancy = 0;		// 0-1
-		float presenceTime = 0;		// seconds
-		int lastEnteredId = -1;
-		Point<float> averagePosition;	// 0-1 in the box
-		float averageDistance = 0;	// meters
-	};
-	Array<ZoneView> zones;
-
-	struct SlotView
-	{
-		WeakReference<ControllableContainer> slot;
-		String name;
-		Colour color;
-		bool occupied = false;
-		bool held = false;
-		int personId = -1;
-		Point<float> position;		// meters
-		float holdRemaining = 0;	// seconds, -1 = held until reclaimed
-	};
-	Array<SlotView> slots;
-	bool slotsEnabled = false;
-	int slotReleaseMode = 0;	// PlayerSlots::ReleaseMode
-	int freeSlots = 0;
-	float reclaimRadius = 0;	// meters
-	float holdTime = 0;			// seconds, 0 = until reclaimed
-	int getSlotIndexForPerson(int id) const;	// -1 = no slot
-	Array<int> personZones;	// zone index for each person of the snapshot, -1 = in no zone
-	Array<Point<float>> personRelativePositions;	// for each person of the snapshot, from Values > People, -1 = in no zone
-
-	//motion measured here from the successive positions (independent of the source velocity units)
-	struct Motion
-	{
-		Point<float> lastPosition;	// meters
-		uint32 lastMs = 0;
-		Point<float> velocity;		// meters per second, smoothed
-		Array<Point<float>> trail;	// recent positions in meters, oldest first
-		uint32 lastTrailMs = 0;
-	};
-	std::map<int, Motion> motions;	// by person id
-	void updateMotions();
-
-	static constexpr float minArrowSpeed = .15f;	// m/s, below that the person is considered still
-	static const int trailStepMs = 100;			// one trail point every 100 ms...
-	static const int trailLength = 20;			// ...kept for 2 s
+	//copied on each refresh (see TopViewModel) ; the names below are kept short for the panel code
+	TopViewModel model;
+	using ZoneView = TopViewModel::ZoneView;
+	using SlotView = TopViewModel::SlotView;
+	bool& hasModule = model.hasModule;
+	String& moduleName = model.moduleName;
+	int& localPort = model.localPort;
+	TrackingData::Snapshot& snapshot = model.snapshot;
+	Array<ZoneView>& zones = model.zones;
+	Array<SlotView>& slots = model.slots;
+	bool& slotsEnabled = model.slotsEnabled;
+	int& slotReleaseMode = model.slotReleaseMode;
+	int& freeSlots = model.freeSlots;
+	Array<int>& personZones = model.personZones;
+	Array<Point<float>>& personRelativePositions = model.personRelativePositions;
+	int& selectedPersonId = model.selectedPersonId;
+	int getSlotIndexForPerson(int id) const { return model.getSlotIndexForPerson(id); }
+	static Colour getPersonColor(int id) { return TopViewModel::getPersonColor(id); }
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackingMonitorPanel)
 };

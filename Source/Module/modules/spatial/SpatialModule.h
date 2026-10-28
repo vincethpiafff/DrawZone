@@ -17,6 +17,8 @@
 #include "TrackingData.h"
 #include "SpatialZone.h"
 #include "PlayerSlots.h"
+#include "ui/TopViewRenderer.h"
+#include "SpatialVideoOutput.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
 class SpatialPerson :
@@ -71,6 +73,8 @@ public:
 	std::map<int, SpatialPerson*> people;	// by person id, owned by peopleValuesCC
 
 	PlayerSlots playerSlots;
+
+	SpatialVideoOutput videoOutput;	// top view sent as video (Spout)
 
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);

@@ -11,13 +11,16 @@
 #include "TrackingData.cpp"
 #include "SpatialZone.cpp"
 #include "PlayerSlots.cpp"
+#include "ui/TopViewRenderer.cpp"
+#include "SpatialVideoOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
 
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
 	zoneManager("Zones"),
 	zonesValuesCC("Zones"),
-	peopleValuesCC("People")
+	peopleValuesCC("People"),
+	videoOutput(this)
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
@@ -32,6 +35,7 @@ SpatialModule::SpatialModule() :
 	valuesCC.addChildControllableContainer(&peopleValuesCC);
 
 	moduleParams.addChildControllableContainer(&playerSlots);
+	moduleParams.addChildControllableContainer(&videoOutput);
 	valuesCC.addChildControllableContainer(&playerSlots.slotsValues);
 
 	startTimerHz(zoneUpdateRateHz);

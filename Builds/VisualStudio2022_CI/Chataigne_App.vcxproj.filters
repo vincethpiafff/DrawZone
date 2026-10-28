@@ -2134,11 +2134,17 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
@@ -5289,11 +5295,17 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
