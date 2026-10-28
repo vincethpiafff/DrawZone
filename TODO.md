@@ -79,6 +79,8 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
 
 - ⬜ **Étape de test importante avec la v0.6 (viewport 3D)** (demande de Vincent, 27/10/2026, placée avec le viewport 3D le 28/10) : vérifier le comportement de l'interface (Tracking Monitor, zones, slots) avec **plusieurs scènes**, puis avec **deux systèmes de tracking** en même temps (par exemple Augmenta Fusion en OSC + Naostage en PSN).
 
+- ⬜ **Script Python pour SMODE : exposition automatique des valeurs OSC** (demande de Vincent, 28/10/2026) : à faire **une fois le graphe nodal et les variables de sortie terminés** (v0.7 / v0.8). Écrire un script Python pour SMODE qui crée automatiquement des paramètres SMODE à partir des valeurs OSC envoyées par DrawZone, sans les déclarer une par une à la main. Documentation : https://doc.smode.io/ (à étudier le moment venu : API Python de SMODE, réception OSC, création de paramètres).
+
 - ✅ **v0.1 — squelette du module Spatial** (v0.1.0, 27/10/2026) :
   - ✅ lire la spécification Augmenta (24/10). ❌ puis ✅ : la page « Data » du
     wiki renvoie vers docs.augmenta.tech, où la page du protocole est
