@@ -10,7 +10,7 @@ et elle donne un outil utilisable tôt.
 | **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ✅ v0.1.0 (27/10/2026) |
 | **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
-| **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ⬜ prochaine étape |
+| **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ✅ v0.4.0 (28/10/2026) |
 | **v0.5** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
 | **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ avec, en même temps, le test de l'interface avec plusieurs scènes et plusieurs systèmes de tracking en entrée (ex. Fusion en OSC + Naostage en PSN) |
 | **v0.7** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
@@ -73,9 +73,9 @@ Tracking Monitor. Reportés : slots par zone et autres règles d'attribution
   **NDI** (réseau).
 - Utilisable dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) comme
   retour visuel ou comme source d'un mapping.
-- À étudier : ce que Chataigne sait déjà faire (module `juce_sharedtexture`
-  pour Spout, NDI), la résolution et la cadence du flux, une vue dédiée
-  au rendu (sans les éléments d'édition).
+- ✅ Fait en v0.4.0 : bloc Video Output (Spout, NDI, Output Area, FPS,
+  options d'affichage, fond transparent) et puces dans l'en-tête du
+  Tracking Monitor. Détail dans le CHANGELOG.
 
 Les versions suivantes sont décalées d'un cran : PSN / TUIO en v0.5,
 viewport 3D en v0.6, graphe nodal en v0.7 et v0.8.

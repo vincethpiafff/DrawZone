@@ -27,11 +27,13 @@ Chataigne, donc utilisables partout dans le logiciel.
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.2.0 validée** (28/10/2026 : zones rectangle / ellipse /
-forme libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
-Tracking Monitor complet).
-**Prochaine étape : v0.4**, sortie vidéo de la vue 2D en NDI et Spout (la v0.3,
-éditeur 2D, est en grande partie faite dans le Tracking Monitor).
+**État actuel : v0.4.0 validée** (28/10/2026 : sortie vidéo de la vue de
+dessus en Spout et NDI, après la v0.2.0 : zones rectangle / ellipse / forme
+libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
+Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande partie faite
+dans le Tracking Monitor).
+**Prochaine étape : v0.5**, entrées PSN et TUIO, multi-sources,
+transformation par source.
 
 ## 2. Comment travailler avec Vincent
 

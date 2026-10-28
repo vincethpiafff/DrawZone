@@ -5,6 +5,41 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+## [0.4.0] - 2026-10-28
+
+Sortie vidéo de la vue de dessus (zones, personnes, slots) en Spout et NDI,
+pour la voir dans un logiciel vidéo (Smode, Resolume, TouchDesigner, OBS…).
+
+### Ajouté
+- **Bloc Video Output** dans les paramètres du module Spatial : image propre
+  de la vue de dessus, calculée par le module (marche Tracking Monitor
+  fermé).
+  - **Spout** (même machine ; demande « Use OpenGL Renderer ») et **NDI**
+    (réseau ; demande le runtime NDI), actifs séparément ou ensemble, avec
+    le même Stream Name et le même FPS. Rien n'est envoyé en NDI tant que
+    personne ne reçoit.
+  - **Output Area** : *Scene* (l'image = la scène, taille = scène × Pixels
+    Per Meter, 100 px/m par défaut), *Custom Area* (Area Origin + Area Size
+    en mètres), *Fixed Resolution* (toute la scène centrée dans Width ×
+    Height). Pixel = (mètres − origine) × Pixels Per Meter ; taille limitée à
+    8192 px ; champ Resolution en lecture seule (« 1000 x 600 px, 1 px = 1
+    cm »).
+  - **Display** : Grid, Zone Names, Person Ids, Trails, Slot Labels, Held
+    Spots, Background (noir par défaut) et Transparent Background (alpha
+    droit, NDI en BGRA). N'agit que sur l'image envoyée.
+- Tracking Monitor : puces **Spout Output** et **NDI Output** dans l'en-tête
+  (case = activer / désactiver, libellé = bloc Video Output dans
+  l'Inspector).
+
+### Technique
+- Dessin de la vue de dessus extrait dans `ui/TopViewRenderer`, partagé par
+  le Tracking Monitor et la sortie vidéo.
+- Spout : instance propre de la bibliothèque Spout (`SendImage` sur le thread
+  OpenGL de l'interface) ; l'émetteur partagé de Chataigne créait une
+  seconde source noire.
+- NDI : bibliothèque chargée comme le module « NDI out » de Chataigne
+  (`VideoNetworkRuntime`), envoi sur un thread à part.
+
 ## [0.2.0] - 2026-10-28
 
 Zones de toutes formes avec leurs métriques, et slots de joueurs stables
