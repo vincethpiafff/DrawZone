@@ -28,9 +28,10 @@ La présentation d'origine de Chataigne est dans le [README racine](../README.md
 | v0.1 | Module Spatial : entrée Augmenta, une zone, booléen de présence |
 | v0.2 | Zones multiples et métriques (nombre, durée, occupation…) |
 | v0.3 | Éditeur 2D vue de dessus |
-| v0.4 | Entrées PosiStageNet et TUIO, multi-sources |
-| v0.5 | Viewport 3D |
-| v0.6–0.7 | Éditeur nodal façon Blueprints |
+| v0.4 | Sortie vidéo de la vue 2D en NDI et Spout |
+| v0.5 | Entrées PosiStageNet et TUIO, multi-sources |
+| v0.6 | Viewport 3D |
+| v0.7–0.8 | Éditeur nodal façon Blueprints |
 | v1.0 | Version stable |
 
 Détails : [docs/drawzone/ROADMAP.md](../docs/drawzone/ROADMAP.md)

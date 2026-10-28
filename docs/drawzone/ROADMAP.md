@@ -10,10 +10,11 @@ et elle donne un outil utilisable tôt.
 | **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ✅ v0.1.0 (27/10/2026) |
 | **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
-| **v0.4** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | ⬜ ensuite : test de l'interface avec plusieurs scènes, puis deux systèmes (Fusion en OSC + Naostage en PSN) |
-| **v0.5** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | |
-| **v0.6** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
-| **v0.7** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
+| **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ⬜ prochaine étape |
+| **v0.5** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
+| **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ avec, en même temps, le test de l'interface avec plusieurs scènes et plusieurs systèmes de tracking en entrée (ex. Fusion en OSC + Naostage en PSN) |
+| **v0.7** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
+| **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
 | **v1.0** | Stabilisation | Mode show, sauvegarde robuste, documentation | |
 | **v2.x** | Capteurs bruts et calibration | LiDAR 2D/3D, caméras de profondeur (Orbbec…) | |
 
@@ -64,6 +65,20 @@ Tracking Monitor. Reportés : slots par zone et autres règles d'attribution
 - Panneau vue de dessus dans l'interface Chataigne (organicUI).
 - Dessin et édition des zones à la souris.
 - Affichage en direct des personnes trackées.
+
+### v0.4 — sortie vidéo NDI / Spout (décidé le 28/10/2026)
+
+- La vue de dessus du Tracking Monitor (zones, personnes, slots, emplacements
+  réservés) envoyée en flux vidéo : **Spout** (Windows, même machine) et
+  **NDI** (réseau).
+- Utilisable dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) comme
+  retour visuel ou comme source d'un mapping.
+- À étudier : ce que Chataigne sait déjà faire (module `juce_sharedtexture`
+  pour Spout, NDI), la résolution et la cadence du flux, une vue dédiée
+  au rendu (sans les éléments d'édition).
+
+Les versions suivantes sont décalées d'un cran : PSN / TUIO en v0.5,
+viewport 3D en v0.6, graphe nodal en v0.7 et v0.8.
 
 ## Points durs connus
 
