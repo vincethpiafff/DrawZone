@@ -74,7 +74,7 @@ public:
 
 	PlayerSlots playerSlots;
 
-	SpatialVideoOutput videoOutput;	// top view sent as video (Spout)
+	SpatialVideoOutput videoOutput;	// top view sent as video (Spout, NDI)
 
 	void processMessageInternal(const OSCMessage& msg) override;
 	void processAugmentaPerson(const OSCMessage& msg);

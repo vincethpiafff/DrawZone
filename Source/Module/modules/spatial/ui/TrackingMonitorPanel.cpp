@@ -57,6 +57,8 @@ void TrackingMonitorPanel::resized()
 	headerRect = r.removeFromTop(24);
 	shortcutsRect = headerRect.removeFromRight(104).reduced(0, 1);
 	headerRect.removeFromRight(8);
+	ndiRect = headerRect.removeFromRight(106).reduced(0, 1);
+	headerRect.removeFromRight(8);
 	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
 	headerRect.removeFromRight(10);
 	r.removeFromTop(8);
@@ -209,6 +211,7 @@ void TrackingMonitorPanel::timerCallback()
 	SpatialModule* sm = getSpatialModule();
 	model.update(sm);
 	spoutOn = sm != nullptr && sm->videoOutput.spout->boolValue();
+	ndiOn = sm != nullptr && sm->videoOutput.ndi->boolValue();
 
 	numHidden = 0;
 	for (auto& z : zones) if (z.hidden) numHidden++;
@@ -248,28 +251,29 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	else paintColumn(g);
 
 	if (slotDragging) paintSlotDrag(g);
-	paintSpoutChip(g);
+	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
+	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintShortcuts(g); //last : the unfolded list goes over everything
 }
 
-Rectangle<int> TrackingMonitorPanel::getSpoutBoxRect(Rectangle<int> chip)
+Rectangle<int> TrackingMonitorPanel::getOutputBoxRect(Rectangle<int> chip)
 {
 	return Rectangle<int>(14, 14).withCentre(Point<int>(chip.getX() + 13, chip.getCentreY()));
 }
 
-void TrackingMonitorPanel::paintSpoutChip(Graphics& g)
+void TrackingMonitorPanel::paintOutputChip(Graphics& g, Rectangle<int> chip, bool on, bool hovered, const String& label)
 {
 	using namespace TrackingMonitorStyle;
 
-	Rectangle<float> cf = spoutRect.toFloat();
-	g.setColour(spoutHovered ? rowBg.brighter(.15f) : rowBg);
+	Rectangle<float> cf = chip.toFloat();
+	g.setColour(hovered ? rowBg.brighter(.15f) : rowBg);
 	g.fillRoundedRectangle(cf, 4);
-	g.setColour(spoutOn ? HIGHLIGHT_COLOR : (spoutHovered ? TEXT_COLOR.withAlpha(.5f) : borderColor));
+	g.setColour(on ? HIGHLIGHT_COLOR : (hovered ? TEXT_COLOR.withAlpha(.5f) : borderColor));
 	g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
 
 	//check box : filled with a tick when the output is on
-	Rectangle<float> box = getSpoutBoxRect(spoutRect).toFloat();
-	if (spoutOn)
+	Rectangle<float> box = getOutputBoxRect(chip).toFloat();
+	if (on)
 	{
 		g.setColour(HIGHLIGHT_COLOR);
 		g.fillRoundedRectangle(box, 3);
@@ -287,8 +291,18 @@ void TrackingMonitorPanel::paintSpoutChip(Graphics& g)
 	}
 
 	g.setFont(Font(12.0f));
-	g.setColour(spoutOn ? TEXT_COLOR : dimText);
-	g.drawText("Spout Output", cf.withTrimmedLeft(26).withTrimmedRight(4), Justification::centredLeft, true);
+	g.setColour(on ? TEXT_COLOR : dimText);
+	g.drawText(label, cf.withTrimmedLeft(26).withTrimmedRight(4), Justification::centredLeft, true);
+}
+
+bool TrackingMonitorPanel::handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output)
+{
+	if (!chip.contains(pos)) return false;
+
+	if (getOutputBoxRect(chip).expanded(4).contains(pos)) output->setUndoableValue(output->boolValue(), !output->boolValue());
+	else if (SpatialModule* sm = getSpatialModule()) sm->videoOutput.selectThis();
+	timerCallback();
+	return true;
 }
 
 Point<float> TrackingMonitorPanel::getPersonScreenPosition(int id) const
@@ -666,8 +680,8 @@ Rectangle<int> TrackingMonitorPanel::getShortcutsPanelRect() const
 
 void TrackingMonitorPanel::mouseExit(const MouseEvent&)
 {
-	if (!shortcutsHovered && !slotModeHovered && !spoutHovered) return;
-	shortcutsHovered = slotModeHovered = spoutHovered = false;
+	if (!shortcutsHovered && !slotModeHovered && !spoutHovered && !ndiHovered) return;
+	shortcutsHovered = slotModeHovered = spoutHovered = ndiHovered = false;
 	repaint();
 }
 
@@ -1250,6 +1264,13 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 		repaint(spoutRect);
 	}
 
+	bool overNDI = ndiRect.contains(e.getPosition());
+	if (overNDI != ndiHovered)
+	{
+		ndiHovered = overNDI;
+		repaint(ndiRect);
+	}
+
 	bool modeHovered = slotModeRect.contains(e.getPosition());
 	if (modeHovered != slotModeHovered)
 	{
@@ -1324,17 +1345,11 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
 
-	//Spout chip : the box turns the output on / off, the rest shows its parameters
-	if (spoutRect.contains(e.getPosition()))
+	//Spout / NDI chips : the box turns the output on / off, the rest shows its parameters
+	if (SpatialModule* sm = getSpatialModule())
 	{
-		if (SpatialModule* sm = getSpatialModule())
-		{
-			BoolParameter* spout = sm->videoOutput.spout;
-			if (getSpoutBoxRect(spoutRect).expanded(4).contains(e.getPosition())) spout->setUndoableValue(spout->boolValue(), !spout->boolValue());
-			else sm->videoOutput.selectThis();
-		}
-		timerCallback();
-		return;
+		if (handleOutputChipClick(e.getPosition(), spoutRect, sm->videoOutput.spout)) return;
+		if (handleOutputChipClick(e.getPosition(), ndiRect, sm->videoOutput.ndi)) return;
 	}
 
 	int personId = getPersonAt(e.position);

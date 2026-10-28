@@ -484,6 +484,13 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ compilation 0 erreur (exe du 28/10 01:14), Chataigne relancé par Claude ;
     - ✅ test Vincent : « ok ». **Intégration Spout clôturée** (28/10) : commit local sur `feature/video-output` (sans fusion ni push) ;
     - ⬜ prochaine séance : brique 3 = sortie **NDI** (reprendre le chargement de la bibliothèque et le thread d'envoi du module « NDI out » de Chataigne), puis brique 4 = options d'affichage (grille, noms, ids, traînées, slots, emplacements réservés, fond transparent) ; ensuite fusion dans `develop`, CHANGELOG et tag `v0.4.0`, avec l'accord de Vincent ;
+    - ✅ brique 3, code : case « NDI » dans le bloc Video Output (même Stream Name et FPS que Spout) ; bibliothèque NDI chargée comme le module « NDI out » de Chataigne (`VideoNetworkRuntime`) ; envoi sur un thread à part (`NDISender`) qui prend la dernière image, rien n'est envoyé tant que personne ne reçoit ; erreur (runtime absent) affichée dans Resolution ;
+    - ✅ compilation 0 erreur (exe du 28/10 10:25), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Brique 3 (NDI) validée** ;
+    - 💬 Vincent : ajouter NDI dans l'interface, comme Spout ;
+    - ✅ code : puce « NDI Output » dans l'en-tête, entre « Spout Output » et « Shortcuts », même dessin et mêmes clics (case = activer / désactiver, libellé = bloc Video Output dans l'Inspector) ; dessin et clic des deux puces mis en commun (`paintOutputChip`, `handleOutputChipClick`) ;
+    - ✅ compilation 0 erreur (exe du 28/10 10:51), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « ok ». **Puce NDI Output validée** ;
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;

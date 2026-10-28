@@ -103,12 +103,13 @@ private:
 	Point<float> getPersonScreenPosition(int id) const;	// top view dot, else its row in the column / rail
 	void paintSlotDrag(Graphics& g);
 
-	//"Spout Output" chip in the header : the box turns the output on / off, the label shows its parameters in the Inspector
-	Rectangle<int> spoutRect;
-	bool spoutOn = false;
-	bool spoutHovered = false;
-	static Rectangle<int> getSpoutBoxRect(Rectangle<int> chip);
-	void paintSpoutChip(Graphics& g);
+	//"Spout Output" and "NDI Output" chips in the header : the box turns the output on / off, the label shows its parameters in the Inspector
+	Rectangle<int> spoutRect, ndiRect;
+	bool spoutOn = false, ndiOn = false;
+	bool spoutHovered = false, ndiHovered = false;
+	static Rectangle<int> getOutputBoxRect(Rectangle<int> chip);
+	void paintOutputChip(Graphics& g, Rectangle<int> chip, bool on, bool hovered, const String& label);
+	bool handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output);
 
 	//"Shortcuts" chip in the header : unfolds the list of shortcuts on hover, pinned open by a click
 	Rectangle<int> shortcutsRect;

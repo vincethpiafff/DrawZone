@@ -6,12 +6,17 @@
 	Author:  DrawZone
 
 	Video output of the top view (zones, people, player slots), drawn by
-	TopViewRenderer into an image at a fixed rate, and sent with Spout.
+	TopViewRenderer into an image at a fixed rate, and sent with Spout
+	and / or NDI.
 
 	Spout : our own Spout library instance, fed with the image pixels
 	(SendImage) on the interface OpenGL thread. Chataigne's shared texture
 	sender is not used : it opens a 2.006 sender (CreateSender) that stays
 	black next to the 2.007 one that receives the image (two sources).
+
+	NDI : the runtime loaded by Chataigne's NDI out module
+	(VideoNetworkRuntime). Sending blocks, so it runs on its own thread,
+	which takes the latest image ; nothing is sent while nobody receives.
 
 	Scale : pixel = (meters - area origin) x Pixels Per Meter.
 	Output Area : Scene (the image is exactly the scene), Custom Area (origin
@@ -21,6 +26,8 @@
 */
 
 #pragma once
+
+#include "../video/VideoNetworkRuntime.h"
 
 class SpatialModule;
 
@@ -35,6 +42,7 @@ public:
 	enum OutputArea { SCENE, CUSTOM_AREA, FIXED_RESOLUTION };
 
 	BoolParameter* spout;
+	BoolParameter* ndi;
 	StringParameter* streamName;
 	EnumParameter* outputArea;
 	FloatParameter* pixelsPerMeter;
@@ -63,6 +71,33 @@ private:
 		std::atomic<bool> frameQueued { false };	// one frame at a time on the GL thread
 	};
 	std::shared_ptr<SpoutState> spoutState;
+
+	//NDI sender, on its own thread : sending a frame blocks
+	class NDISender :
+		public Thread
+	{
+	public:
+		NDISender();
+		~NDISender();
+
+		void pushFrame(const Image& image, const String& name, float fps);	// message thread, keeps the latest image only
+		String getError();
+
+	private:
+		std::mutex lock;
+		std::condition_variable signal;
+		Image pending;
+		String wantedName;
+		float frameRate = 30;
+		String error;
+
+		NDIlib_send_instance_t sender = nullptr;	// worker thread only
+		String senderName;
+
+		void run() override;
+		void destroySender();
+	};
+	std::unique_ptr<NDISender> ndiSender;
 
 	OpenGLContext* getGLContext() const;	// the interface context, nullptr without Use OpenGL Renderer
 	void updateSender();

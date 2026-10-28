@@ -13,7 +13,8 @@ SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module) :
 	module(module)
 {
 	spout = addBoolParameter("Spout", "Send the top view (zones, people, player slots) as a Spout texture, for video software on this computer (Smode, Resolume, TouchDesigner...). Needs Use OpenGL Renderer in the preferences", false);
-	streamName = addStringParameter("Stream Name", "Name of the Spout sender", "DrawZone");
+	ndi = addBoolParameter("NDI", "Send the top view as an NDI source on the network (Smode, Resolume, TouchDesigner, OBS...). Needs the NDI runtime", false);
+	streamName = addStringParameter("Stream Name", "Name of the Spout sender and of the NDI source", "DrawZone");
 
 	outputArea = addEnumParameter("Output Area", "Part of the floor in the image. Scene : exactly the scene, its size is Scene x Pixels Per Meter. Custom Area : Area Origin and Area Size, in meters. Fixed Resolution : the whole scene, centered in Width x Height");
 	outputArea->addOption("Scene", SCENE)->addOption("Custom Area", CUSTOM_AREA)->addOption("Fixed Resolution", FIXED_RESOLUTION);
@@ -37,11 +38,12 @@ SpatialVideoOutput::~SpatialVideoOutput()
 {
 	stopTimer();
 	releaseSpout();
+	ndiSender = nullptr;
 }
 
 void SpatialVideoOutput::onContainerParameterChanged(Parameter* p)
 {
-	if (p == spout || p == streamName || p == fps) updateSender();
+	if (p == spout || p == ndi || p == streamName || p == fps) updateSender();
 	if (p == outputArea) updateParametersState();
 }
 
@@ -72,12 +74,19 @@ void SpatialVideoOutput::updateSender()
 			spoutState->lib = GetSpout();
 		}
 #endif
-		startTimerHz(jmax(1, roundToInt(fps->floatValue())));
 	}
+	else releaseSpout();
+
+	if (ndi->boolValue())
+	{
+		if (ndiSender == nullptr) ndiSender.reset(new NDISender());
+	}
+	else ndiSender = nullptr;
+
+	if (spout->boolValue() || ndi->boolValue()) startTimerHz(jmax(1, roundToInt(fps->floatValue())));
 	else
 	{
 		stopTimer();
-		releaseSpout();
 		resolution->setValue("");
 	}
 }
@@ -160,7 +169,9 @@ bool SpatialVideoOutput::computeGeometry(Point<float> sceneSize, int& w, int& h,
 void SpatialVideoOutput::timerCallback()
 {
 	Image image = renderFrame();
-	if (image.isValid() && spout->boolValue()) sendSpout(image);
+	if (!image.isValid()) return;
+	if (spout->boolValue()) sendSpout(image);
+	if (ndiSender != nullptr) ndiSender->pushFrame(image, streamName->stringValue().trim(), fps->floatValue());
 }
 
 Image SpatialVideoOutput::renderFrame()
@@ -186,7 +197,8 @@ Image SpatialVideoOutput::renderFrame()
 
 	String cm = String(100.0f / scale, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
 	resolution->setValue(String(w) + " x " + String(h) + " px, 1 px = " + cm + " cm"
-		+ (spout->boolValue() && getGLContext() == nullptr ? " (Spout needs Use OpenGL Renderer)" : ""));
+		+ (spout->boolValue() && getGLContext() == nullptr ? " (Spout needs Use OpenGL Renderer)" : "")
+		+ (ndiSender != nullptr && ndiSender->getError().isNotEmpty() ? " (" + ndiSender->getError() + ")" : ""));
 
 	return image;
 }
@@ -225,4 +237,112 @@ void SpatialVideoOutput::sendSpout(const Image& image)
 #else
 	ignoreUnused(image);
 #endif
+}
+
+// NDISender
+
+SpatialVideoOutput::NDISender::NDISender() :
+	Thread("DrawZone NDI sender")
+{
+	startThread(Priority::low);
+}
+
+SpatialVideoOutput::NDISender::~NDISender()
+{
+	//run() destroys the sender before returning
+	signalThreadShouldExit();
+	signal.notify_all();
+	stopThread(-1);
+}
+
+void SpatialVideoOutput::NDISender::pushFrame(const Image& image, const String& name, float fps)
+{
+	{
+		const std::lock_guard<std::mutex> l(lock);
+		pending = image;
+		wantedName = name;
+		frameRate = fps;
+	}
+	signal.notify_one();
+}
+
+String SpatialVideoOutput::NDISender::getError()
+{
+	const std::lock_guard<std::mutex> l(lock);
+	return error;
+}
+
+void SpatialVideoOutput::NDISender::run()
+{
+	while (!threadShouldExit())
+	{
+		Image image;
+		String name;
+		float rate = 30;
+		{
+			std::unique_lock<std::mutex> l(lock);
+			signal.wait(l, [this] { return pending.isValid() || threadShouldExit(); });
+			if (threadShouldExit()) break;
+			image = pending;
+			pending = Image();
+			name = wantedName;
+			rate = frameRate;
+		}
+
+		//the source name is fixed at creation : a new name = a new sender
+		if (sender == nullptr || senderName != name)
+		{
+			destroySender();
+			if (name.isEmpty()) continue;
+
+			String e;
+			if (!VideoNetworkRuntime::NDI::get().load()) e = "NDI runtime not found";
+			else
+			{
+				const CharPointer_UTF8 nameUtf8 = name.toUTF8();
+				NDIlib_send_create_t settings;
+				settings.p_ndi_name = nameUtf8.getAddress();
+				settings.p_groups = nullptr;
+				settings.clock_video = false; //paced by our timer
+				settings.clock_audio = false;
+				sender = VideoNetworkRuntime::NDI::get().send_create(&settings);
+				if (sender == nullptr) e = "could not create the NDI source";
+				else senderName = name;
+			}
+
+			{
+				const std::lock_guard<std::mutex> l(lock);
+				error = e;
+			}
+			if (sender == nullptr) continue;
+		}
+
+		//nobody receives : nothing to send
+		if (VideoNetworkRuntime::NDI::get().send_get_no_connections(sender, 0) == 0) continue;
+
+		//ARGB image = B, G, R, A bytes, rows from the top ; black background, so opaque (BGRX)
+		const Image::BitmapData data(image, Image::BitmapData::readOnly);
+		const int frameRateN = jmax(1000, roundToInt(rate * 1000.0f));
+		NDIlib_video_frame_v2_t frame(data.width, data.height,
+			NDIlib_FourCC_video_type_BGRX,
+			frameRateN, 1000,
+			(float)data.width / (float)data.height,
+			NDIlib_frame_format_type_progressive,
+			NDIlib_send_timecode_synthesize,
+			(uint8*)data.getLinePointer(0),
+			data.lineStride);
+
+		//synchronous : the image must stay alive until the call returns
+		VideoNetworkRuntime::NDI::get().send_send_video_v2(sender, &frame);
+	}
+
+	destroySender();
+}
+
+void SpatialVideoOutput::NDISender::destroySender()
+{
+	if (sender == nullptr) return;
+	VideoNetworkRuntime::NDI::get().send_destroy(sender);
+	sender = nullptr;
+	senderName.clear();
 }
