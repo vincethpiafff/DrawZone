@@ -491,6 +491,10 @@ Légende : ✅ validé · ❌ échec (puis corrigé) · ⏭️ en cours · ⬜ �
     - ✅ code : puce « NDI Output » dans l'en-tête, entre « Spout Output » et « Shortcuts », même dessin et mêmes clics (case = activer / désactiver, libellé = bloc Video Output dans l'Inspector) ; dessin et clic des deux puces mis en commun (`paintOutputChip`, `handleOutputChipClick`) ;
     - ✅ compilation 0 erreur (exe du 28/10 10:51), Chataigne relancé par Claude ;
     - ✅ test Vincent : « ok ». **Puce NDI Output validée** ;
+    - ✅ commit local `e86c85f2` sur `feature/video-output` (accord de Vincent, 28/10), sans fusion ni push ;
+    - ✅ brique 4, code (proposition validée) : sous-bloc « Display » du bloc Video Output : Grid, Zone Names, Person Ids, Trails, Slot Labels, Held Spots, Background (noir par défaut, une seule couleur dans et hors de la scène), Transparent Background (Background grisé) ; image envoyée seulement, Tracking Monitor inchangé ; fond transparent : pixels « dé-prémultipliés » (JUCE stocke l'alpha prémultiplié, Spout et NDI attendent l'alpha droit), NDI en BGRA au lieu de BGRX ;
+    - ✅ compilation 0 erreur (exe du 28/10 12:25), Chataigne relancé par Claude ;
+    - ✅ test Vincent : « super ok ». **Brique 4 (options d'affichage) validée** ;
     - ❌ (étape précédente) édition des liens bloquée (LNK1104) : Chataigne encore ouvert → relancée automatiquement après sa fermeture ;
     - ✅ compilation 0 erreur, liens OK (exe du 27/10 20:49), Chataigne relancé par Claude ;
     - 💬 Vincent (2e fois) : aucun message d'étape pendant la compilation → mémoire renforcée : la compilation attend toute seule la fermeture de Chataigne, un seul message final ;

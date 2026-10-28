@@ -53,9 +53,21 @@ public:
 	FloatParameter* fps;
 	StringParameter* resolution;	// read only : "1000 x 600 px, 1 px = 1 cm"
 
+	//what is drawn in the image (the Tracking Monitor is not affected)
+	ControllableContainer display;
+	BoolParameter* showGrid;
+	BoolParameter* showZoneNames;
+	BoolParameter* showPersonIds;
+	BoolParameter* showTrails;
+	BoolParameter* showSlotLabels;
+	BoolParameter* showHeldSpots;
+	ColorParameter* background;
+	BoolParameter* transparentBackground;	// alpha sent, not premultiplied (Spout and NDI expect straight alpha)
+
 	static const int maxSize = 8192;
 
 	void onContainerParameterChanged(Parameter* p) override;
+	void onControllableFeedbackUpdate(ControllableContainer* cc, Controllable* c) override;
 
 private:
 	SpatialModule* module;
@@ -80,13 +92,14 @@ private:
 		NDISender();
 		~NDISender();
 
-		void pushFrame(const Image& image, const String& name, float fps);	// message thread, keeps the latest image only
+		void pushFrame(const Image& image, bool alpha, const String& name, float fps);	// message thread, keeps the latest image only
 		String getError();
 
 	private:
 		std::mutex lock;
 		std::condition_variable signal;
 		Image pending;
+		bool pendingAlpha = false;
 		String wantedName;
 		float frameRate = 30;
 		String error;

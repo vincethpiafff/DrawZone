@@ -10,6 +10,7 @@
 
 SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module) :
 	ControllableContainer("Video Output"),
+	display("Display"),
 	module(module)
 {
 	spout = addBoolParameter("Spout", "Send the top view (zones, people, player slots) as a Spout texture, for video software on this computer (Smode, Resolume, TouchDesigner...). Needs Use OpenGL Renderer in the preferences", false);
@@ -31,6 +32,16 @@ SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module) :
 	resolution->setControllableFeedbackOnly(true);
 	resolution->isSavable = false;
 
+	showGrid = display.addBoolParameter("Grid", "Draw the 1 m grid and the scene border", true);
+	showZoneNames = display.addBoolParameter("Zone Names", "Draw the name of each zone", true);
+	showPersonIds = display.addBoolParameter("Person Ids", "Draw the id of each person", true);
+	showTrails = display.addBoolParameter("Trails", "Draw the recent path of each person", true);
+	showSlotLabels = display.addBoolParameter("Slot Labels", "Draw the player slot name next to each person who has one", true);
+	showHeldSpots = display.addBoolParameter("Held Spots", "Draw the spots held for a player slot (Hold spot mode)", true);
+	background = display.addColorParameter("Background", "Color behind the zones and people", Colours::black);
+	transparentBackground = display.addBoolParameter("Transparent Background", "No background : the image keeps its transparency, to put the view over another image", false);
+	addChildControllableContainer(&display);
+
 	updateParametersState();
 }
 
@@ -47,8 +58,16 @@ void SpatialVideoOutput::onContainerParameterChanged(Parameter* p)
 	if (p == outputArea) updateParametersState();
 }
 
+void SpatialVideoOutput::onControllableFeedbackUpdate(ControllableContainer* cc, Controllable* c)
+{
+	ControllableContainer::onControllableFeedbackUpdate(cc, c);
+	if (c == transparentBackground) updateParametersState();
+}
+
 void SpatialVideoOutput::updateParametersState()
 {
+	background->setEnabled(!transparentBackground->boolValue());
+
 	OutputArea area = outputArea->getValueDataAsEnum<OutputArea>();
 	pixelsPerMeter->setEnabled(area != FIXED_RESOLUTION);
 	areaOrigin->setEnabled(area == CUSTOM_AREA);
@@ -171,7 +190,7 @@ void SpatialVideoOutput::timerCallback()
 	Image image = renderFrame();
 	if (!image.isValid()) return;
 	if (spout->boolValue()) sendSpout(image);
-	if (ndiSender != nullptr) ndiSender->pushFrame(image, streamName->stringValue().trim(), fps->floatValue());
+	if (ndiSender != nullptr) ndiSender->pushFrame(image, transparentBackground->boolValue(), streamName->stringValue().trim(), fps->floatValue());
 }
 
 Image SpatialVideoOutput::renderFrame()
@@ -187,12 +206,33 @@ Image SpatialVideoOutput::renderFrame()
 		return Image();
 	}
 
+	bool transparent = transparentBackground->boolValue();
+	Colour bg = transparent ? Colours::transparentBlack : background->getColor().withAlpha(1.0f);
+
 	Image image(Image::ARGB, w, h, true, SoftwareImageType());
 	{
 		Graphics g(image);
-		g.fillAll(Colours::black);
+		g.fillAll(bg);
 		TopViewRenderer::Options o;
+		o.background = bg;
+		o.grid = showGrid->boolValue();
+		o.zoneNames = showZoneNames->boolValue();
+		o.personIds = showPersonIds->boolValue();
+		o.trails = showTrails->boolValue();
+		o.slots = showSlotLabels->boolValue();
+		o.heldSpots = showHeldSpots->boolValue();
 		TopViewRenderer::paint(g, model, scene, scale, image.getBounds().toFloat(), o);
+	}
+
+	//JUCE images are premultiplied, Spout and NDI receivers expect straight alpha
+	if (transparent)
+	{
+		Image::BitmapData data(image, Image::BitmapData::readWrite);
+		for (int y = 0; y < data.height; y++)
+		{
+			PixelARGB* line = (PixelARGB*)data.getLinePointer(y);
+			for (int x = 0; x < data.width; x++) line[x].unpremultiply();
+		}
 	}
 
 	String cm = String(100.0f / scale, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
@@ -255,11 +295,12 @@ SpatialVideoOutput::NDISender::~NDISender()
 	stopThread(-1);
 }
 
-void SpatialVideoOutput::NDISender::pushFrame(const Image& image, const String& name, float fps)
+void SpatialVideoOutput::NDISender::pushFrame(const Image& image, bool alpha, const String& name, float fps)
 {
 	{
 		const std::lock_guard<std::mutex> l(lock);
 		pending = image;
+		pendingAlpha = alpha;
 		wantedName = name;
 		frameRate = fps;
 	}
@@ -277,6 +318,7 @@ void SpatialVideoOutput::NDISender::run()
 	while (!threadShouldExit())
 	{
 		Image image;
+		bool alpha = false;
 		String name;
 		float rate = 30;
 		{
@@ -284,6 +326,7 @@ void SpatialVideoOutput::NDISender::run()
 			signal.wait(l, [this] { return pending.isValid() || threadShouldExit(); });
 			if (threadShouldExit()) break;
 			image = pending;
+			alpha = pendingAlpha;
 			pending = Image();
 			name = wantedName;
 			rate = frameRate;
@@ -320,11 +363,11 @@ void SpatialVideoOutput::NDISender::run()
 		//nobody receives : nothing to send
 		if (VideoNetworkRuntime::NDI::get().send_get_no_connections(sender, 0) == 0) continue;
 
-		//ARGB image = B, G, R, A bytes, rows from the top ; black background, so opaque (BGRX)
+		//ARGB image = B, G, R, A bytes, rows from the top ; opaque (BGRX) unless the background is transparent
 		const Image::BitmapData data(image, Image::BitmapData::readOnly);
 		const int frameRateN = jmax(1000, roundToInt(rate * 1000.0f));
 		NDIlib_video_frame_v2_t frame(data.width, data.height,
-			NDIlib_FourCC_video_type_BGRX,
+			alpha ? NDIlib_FourCC_video_type_BGRA : NDIlib_FourCC_video_type_BGRX,
 			frameRateN, 1000,
 			(float)data.width / (float)data.height,
 			NDIlib_frame_format_type_progressive,
