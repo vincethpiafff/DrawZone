@@ -20,17 +20,37 @@ void TrackingData::countMessage(const void* source)
 {
 	const ScopedLock sl(lock);
 	uint32 now = Time::getMillisecondCounter();
-	data.lastMessageMs = now;
-	lastSourceMessageMs[source] = now;
-	messageCount++;
+	moduleRate.add(now);
+	sourceRates[source].add(now);
+}
 
-	uint32 elapsed = now - rateWindowStartMs;
+TrackingData::SourceStats TrackingData::getSourceStats(const void* source)
+{
+	const ScopedLock sl(lock);
+	SourceStats s;
+	auto it = sourceRates.find(source);
+	if (it == sourceRates.end()) return s;
+	s.messagesPerSecond = it->second.getRate(Time::getMillisecondCounter());
+	s.lastMessageMs = it->second.lastMessageMs;
+	return s;
+}
+
+void TrackingData::RateCounter::add(uint32 now)
+{
+	lastMessageMs = now;
+	count++;
+	uint32 elapsed = now - windowStartMs;
 	if (elapsed >= 1000)
 	{
-		data.messagesPerSecond = messageCount * 1000.0f / elapsed;
-		messageCount = 0;
-		rateWindowStartMs = now;
+		messagesPerSecond = count * 1000.0f / elapsed;
+		count = 0;
+		windowStartMs = now;
 	}
+}
+
+float TrackingData::RateCounter::getRate(uint32 now) const
+{
+	return lastMessageMs == 0 || now - lastMessageMs > 1000 ? 0 : messagesPerSecond;
 }
 
 void TrackingData::setScene(int frame, Point<float> sceneSize)
@@ -93,7 +113,7 @@ void TrackingData::removeSource(const void* source)
 {
 	const ScopedLock sl(lock);
 	data.persons.removeIf([source](const TrackedPerson& p) { return p.source == source; });
-	lastSourceMessageMs.erase(source);
+	sourceRates.erase(source);
 }
 
 void TrackingData::removeStalePersons(uint32 timeoutMs)
@@ -103,28 +123,14 @@ void TrackingData::removeStalePersons(uint32 timeoutMs)
 	data.persons.removeIf([now, timeoutMs](const TrackedPerson& p) { return now - p.lastUpdateMs > timeoutMs; });
 }
 
-//a source that stopped sending loses its people
-bool TrackingData::removeSilentSources(uint32 timeoutMs)
-{
-	const ScopedLock sl(lock);
-	uint32 now = Time::getMillisecondCounter();
-	int before = data.persons.size();
-	data.persons.removeIf([this, now, timeoutMs](const TrackedPerson& p)
-		{
-			auto it = lastSourceMessageMs.find(p.source);
-			return it == lastSourceMessageMs.end() || now - it->second > timeoutMs;
-		});
-	return data.persons.size() != before;
-}
-
 void TrackingData::clear()
 {
 	const ScopedLock sl(lock);
 	Point<float> sceneSize = data.sceneSize;
 	data = Snapshot();
 	data.sceneSize = sceneSize;
-	lastSourceMessageMs.clear();
-	messageCount = 0;
+	sourceRates.clear();
+	moduleRate = RateCounter();
 }
 
 int TrackingData::getNumPersons()
@@ -145,7 +151,7 @@ TrackingData::Snapshot TrackingData::getSnapshot()
 {
 	const ScopedLock sl(lock);
 	Snapshot s = data;
-	//no message for more than a second : the source is silent, don't show an old rate
-	if (data.lastMessageMs == 0 || Time::getMillisecondCounter() - data.lastMessageMs > 1000) s.messagesPerSecond = 0;
+	s.messagesPerSecond = moduleRate.getRate(Time::getMillisecondCounter());
+	s.lastMessageMs = moduleRate.lastMessageMs;
 	return s;
 }

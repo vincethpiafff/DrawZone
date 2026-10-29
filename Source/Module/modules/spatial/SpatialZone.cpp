@@ -234,7 +234,7 @@ Point<float> SpatialZone::getHandleMeters(int index, bool out) const
 	return pos + (out ? freePoints[index]->getOutOffset() : freePoints[index]->getInOffset());
 }
 
-void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize)
+void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons)
 {
 	uint32 now = Time::getMillisecondCounter();
 	Array<int> ids;
@@ -245,7 +245,7 @@ void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons, Point<f
 		//anti-flicker : the border is pushed out by the exit margin for people already inside
 		for (auto& p : persons)
 		{
-			Point<float> meters(p.position.x * sceneSize.x, p.position.y * sceneSize.y);
+			Point<float> meters = p.position;
 			if (!contains(meters, idsInside.contains(p.id) ? exitMargin->floatValue() : 0)) continue;
 			ids.add(p.id);
 			lastInsideMs.set(p.id, now);

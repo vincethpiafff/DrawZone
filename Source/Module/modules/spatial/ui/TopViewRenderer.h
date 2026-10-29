@@ -101,6 +101,7 @@ public:
 	bool hasModule = false;
 	String moduleName;
 	int localPort = 0;
+	String sourcesText;	// each enabled source and its reception
 	TrackingData::Snapshot snapshot;
 
 	struct ZoneView

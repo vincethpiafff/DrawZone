@@ -60,10 +60,12 @@ public:
 	SpatialModule();
 	~SpatialModule();
 
-	//a person not updated for this long is removed (missed /object/leave)
+	//a person not updated for this long is removed (missed /object/leave, or its source went silent)
 	static const uint32 personTimeoutMs = 1000;
-	//no message at all for this long : the source is silent, the list is emptied
+	//no message at all for this long : the source is shown as silent
 	static const uint32 sourceTimeoutMs = 1000;
+	//shown by the Monitor and the video output while the scene size is unknown
+	static String getNoSceneSizeText() { return "Waiting for scene size (Augmenta /scene, or Scene > Size Mode : Manual)"; }
 	//zones are evaluated on the message thread at this rate
 	static const int zoneUpdateRateHz = 50;
 

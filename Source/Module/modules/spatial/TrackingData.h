@@ -23,7 +23,7 @@ struct TrackedPerson
 	int id = -1;			// unique in the module
 	int sourceId = -1;		// id given by its source
 	String sourceName;		// name of its source
-	Point<float> position;	// normalized 0-1 in the scene, origin top left
+	Point<float> position;	// scene meters, origin top left (may be outside the scene)
 	Point<float> velocity;	// scene meters, as sent by the source
 	float orientation = 0;
 	float height = 0;		// meters
@@ -47,9 +47,17 @@ public:
 		uint32 lastMessageMs = 0;	// 0 = nothing received yet
 	};
 
+	//reception of one source
+	struct SourceStats
+	{
+		float messagesPerSecond = 0;
+		uint32 lastMessageMs = 0;	// 0 = nothing received yet
+	};
+
 	static const int firstRemappedId = 10000;
 
 	void countMessage(const void* source);
+	SourceStats getSourceStats(const void* source);
 	void setScene(int frame, Point<float> sceneSize);
 	void setSceneSize(Point<float> sceneSize);
 	Point<float> getSceneSize();
@@ -58,8 +66,7 @@ public:
 	void updatePerson(const TrackedPerson& person);
 	void removePerson(const void* source, int sourceId);
 	void removeSource(const void* source);
-	void removeStalePersons(uint32 timeoutMs);
-	bool removeSilentSources(uint32 timeoutMs);	// true if people were removed
+	void removeStalePersons(uint32 timeoutMs);	// also empties a source gone silent
 	void clear();
 
 	int getNumPersons();
@@ -69,11 +76,22 @@ public:
 private:
 	CriticalSection lock;
 	Snapshot data;
-	std::map<const void*, uint32> lastSourceMessageMs;
 	int nextRemappedId = firstRemappedId;
 
-	int messageCount = 0;
-	uint32 rateWindowStartMs = 0;
+	//messages counted over about a second, for the whole module and per source
+	struct RateCounter
+	{
+		float messagesPerSecond = 0;
+		uint32 lastMessageMs = 0;
+		int count = 0;
+		uint32 windowStartMs = 0;
+
+		void add(uint32 now);
+		float getRate(uint32 now) const;	// 0 when silent for more than a second, not an old rate
+	};
+
+	RateCounter moduleRate;
+	std::map<const void*, RateCounter> sourceRates;
 
 	bool isIdUsed(int id) const;
 

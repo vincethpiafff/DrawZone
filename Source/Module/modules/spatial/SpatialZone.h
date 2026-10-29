@@ -89,7 +89,7 @@ public:
 	bool isEllipse() const;
 	bool isFreeShape() const;
 	Rectangle<float> getBounds() const;	// meters
-	void updateFromPersons(const Array<TrackedPerson>& persons, Point<float> sceneSize);
+	void updateFromPersons(const Array<TrackedPerson>& persons);
 
 	void onContainerNiceNameChanged() override;
 	void onContainerParameterChangedInternal(Parameter* p) override;

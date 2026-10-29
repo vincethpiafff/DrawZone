@@ -310,7 +310,7 @@ Point<float> TrackingMonitorPanel::getPersonScreenPosition(int id) const
 	if (sceneScale > 0)
 	{
 		for (auto& p : snapshot.persons)
-			if (p.id == id) return Point<float>(sceneScreenRect.getX() + p.position.x * sceneScreenRect.getWidth(), sceneScreenRect.getY() + p.position.y * sceneScreenRect.getHeight());
+			if (p.id == id) return sceneScreenRect.getTopLeft() + p.position * sceneScale;
 	}
 	for (int i = 0; i < personRowIds.size(); i++) if (personRowIds[i] == id) return personRowRects[i].getCentre().toFloat();
 	return slotDragStart;
@@ -405,8 +405,7 @@ void TrackingMonitorPanel::paintHeader(Graphics& g)
 
 	g.setColour(dimText);
 	g.setFont(Font(13.0f));
-	g.drawText(String(snapshot.messagesPerSecond, 0) + " msg/s" + sep + "Augmenta :" + String(localPort)
-		+ sep + String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
+	g.drawText(model.sourcesText + sep + String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
 }
 
 void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
@@ -417,7 +416,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 	if (size.x <= 0 || size.y <= 0)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.5f));
-		g.drawFittedText("Waiting for scene size (/scene)", r, Justification::centred, 1);
+		g.drawFittedText(SpatialModule::getNoSceneSizeText(), r, Justification::centred, 1);
 		return;
 	}
 
@@ -615,7 +614,7 @@ int TrackingMonitorPanel::getPersonAt(Point<float> pos) const
 	for (int i = snapshot.persons.size() - 1; i >= 0; i--)
 	{
 		auto& p = snapshot.persons.getReference(i);
-		Point<float> screen(sceneScreenRect.getX() + p.position.x * sceneScreenRect.getWidth(), sceneScreenRect.getY() + p.position.y * sceneScreenRect.getHeight());
+		Point<float> screen = sceneScreenRect.getTopLeft() + p.position * sceneScale;
 		if (screen.getDistanceFrom(pos) <= 10) return p.id;
 	}
 	return -1;
@@ -640,7 +639,7 @@ void TrackingMonitorPanel::assignSlot(int personId, int slotIndex)
 	else
 	{
 		Point<float> meters;
-		for (auto& p : snapshot.persons) if (p.id == personId) meters = Point<float>(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
+		for (auto& p : snapshot.persons) if (p.id == personId) meters = p.position;
 		sm->playerSlots.assignByHand(personId, meters, slotIndex);
 	}
 	timerCallback();
@@ -1047,7 +1046,7 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 		g.setColour(TEXT_COLOR);
 		g.drawText(String(p.id), idR.withTrimmedLeft(15), Justification::centredLeft);
 
-		g.drawText(String(p.position.x * snapshot.sceneSize.x, 1) + ", " + String(p.position.y * snapshot.sceneSize.y, 1),
+		g.drawText(String(p.position.x, 1) + ", " + String(p.position.y, 1),
 			cells.removeFromLeft(cells.getWidth() / 3), Justification::centredLeft);
 
 		Point<float> rel = i < personRelativePositions.size() ? personRelativePositions[i] : Point<float>(-1, -1);

@@ -41,10 +41,17 @@ Point<float> SpatialSource::toScene(Point<float> p, Point<float> area) const
 {
 	if (flipX->boolValue()) p.x = area.x > 0 ? area.x - p.x : -p.x;
 	if (flipY->boolValue()) p.y = area.y > 0 ? area.y - p.y : -p.y;
-	return vectorToScene(p) + offset->getPoint();
+	return scaleAndRotate(p) + offset->getPoint();
 }
 
 Point<float> SpatialSource::vectorToScene(Point<float> v) const
+{
+	if (flipX->boolValue()) v.x = -v.x;
+	if (flipY->boolValue()) v.y = -v.y;
+	return scaleAndRotate(v);
+}
+
+Point<float> SpatialSource::scaleAndRotate(Point<float> v) const
 {
 	v *= scale->floatValue();
 	float a = degreesToRadians(rotation->floatValue());
@@ -61,6 +68,14 @@ float SpatialSource::angleToScene(float degrees) const
 
 void SpatialSource::update(SpatialModule*)
 {
+}
+
+String SpatialSource::getReceptionText(SpatialModule* module) const
+{
+	TrackingData::SourceStats s = module->trackingData.getSourceStats(this);
+	if (s.lastMessageMs == 0) return "No data yet";
+	if (Time::getMillisecondCounter() - s.lastMessageMs > SpatialModule::sourceTimeoutMs) return "Silent";
+	return "Receiving, " + String(roundToInt(s.messagesPerSecond)) + " msg/s";
 }
 
 // AugmentaSource
@@ -104,8 +119,7 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 	if (msg.size() < 15) return;
 
 	Point<float> area = augmentaSceneSize;
-	Point<float> sceneSize = module->trackingData.getSceneSize();
-	if (area.x <= 0 || area.y <= 0 || sceneSize.x <= 0 || sceneSize.y <= 0) return; //no /scene yet : positions can't be placed
+	if (area.x <= 0 || area.y <= 0) return; //no /scene yet : Augmenta positions (0-1 in its scene) can't be placed
 
 	TrackedPerson p;
 	p.sourceId = OSCHelpers::getIntArg(msg[1]);
@@ -113,14 +127,11 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 	p.source = this;
 	p.age = OSCHelpers::getFloatArg(msg[3]);
 
-	//normalized in the Augmenta scene -> Augmenta meters -> scene meters -> normalized in the scene
+	//normalized in the Augmenta scene -> Augmenta meters -> scene meters
 	Point<float> meters(OSCHelpers::getFloatArg(msg[4]) * area.x, OSCHelpers::getFloatArg(msg[5]) * area.y);
-	Point<float> scene = toScene(meters, area);
-	p.position = Point<float>(scene.x / sceneSize.x, scene.y / sceneSize.y);
+	p.position = toScene(meters, area);
 
 	Point<float> v(OSCHelpers::getFloatArg(msg[6]) * area.x, OSCHelpers::getFloatArg(msg[7]) * area.y);
-	if (flipX->boolValue()) v.x = -v.x;
-	if (flipY->boolValue()) v.y = -v.y;
 	p.velocity = vectorToScene(v);
 	p.orientation = angleToScene(OSCHelpers::getFloatArg(msg[8]));
 	p.height = OSCHelpers::getFloatArg(msg[14]);
@@ -135,7 +146,7 @@ void AugmentaSource::update(SpatialModule* module)
 	else if (!isUsed) status->setValue("Not used : only the first Augmenta source receives the OSC input");
 	else
 	{
-		String s = String(module->trackingData.getNumPersons(this)) + " people";
+		String s = getReceptionText(module) + ", " + String(module->trackingData.getNumPersons(this)) + " people";
 		if (augmentaSceneSize.x > 0) s += ", Augmenta scene " + String(augmentaSceneSize.x, 1) + " x " + String(augmentaSceneSize.y, 1) + " m";
 		else s += ", waiting for /scene";
 		status->setValue(s);

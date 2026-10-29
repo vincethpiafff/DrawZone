@@ -42,11 +42,17 @@ public:
 
 	//source meters -> scene meters ; area = size of the source area, 0 when it has none
 	Point<float> toScene(Point<float> sourceMeters, Point<float> area) const;
-	Point<float> vectorToScene(Point<float> v) const;	// velocity
+	Point<float> vectorToScene(Point<float> v) const;	// velocity, flipped by sign
 	float angleToScene(float degrees) const;			// orientation
 
 	//message thread, at the zone rate
 	virtual void update(SpatialModule* module);
+
+	//"No data yet", "Silent" or "Receiving, 50 msg/s"
+	String getReceptionText(SpatialModule* module) const;
+
+private:
+	Point<float> scaleAndRotate(Point<float> v) const;	// no flip, no offset
 };
 
 //Augmenta OSC protocol v2, received on the module's OSC input
@@ -57,7 +63,7 @@ public:
 	AugmentaSource(var params = var());
 	~AugmentaSource();
 
-	Point<float> augmentaSceneSize;	// meters, from /scene (network thread)
+	Point<float> augmentaSceneSize;	// meters, from /scene ; written and read under the manager lock
 	std::atomic<bool> isUsed { false };	// the first enabled Augmenta source gets the messages
 
 	//network thread, under the manager lock

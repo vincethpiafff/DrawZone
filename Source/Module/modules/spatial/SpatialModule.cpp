@@ -103,9 +103,9 @@ void SpatialModule::updateZones()
 		for (auto& z : zoneManager.items) z->setSceneSize(zonesSceneSize);
 	}
 
-	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons, s.sceneSize);
+	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons);
 
-	playerSlots.update(s.persons, s.sceneSize); //before the people, which show their slot
+	playerSlots.update(s.persons); //before the people, which show their slot
 	updatePeople(s);
 }
 
@@ -137,10 +137,9 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 			people[p.id] = sp;
 		}
 
-		Point<float> meters(p.position.x * s.sceneSize.x, p.position.y * s.sceneSize.y);
 		Array<SpatialZone*> zones;
 		for (auto& z : zoneManager.items) if (z->idsInside.contains(p.id)) zones.add(z); //same membership as the zone (with its anti-flicker)
-		sp->update(meters, zones);
+		sp->update(p.position, zones);
 
 		int slotIndex = playerSlots.getSlotIndexForPerson(p.id);
 		sp->updateTracking(p, slotIndex >= 0 ? playerSlots.slots[slotIndex]->niceName : String());
@@ -216,9 +215,8 @@ void SpatialPerson::update(Point<float> positionMeters, const Array<SpatialZone*
 
 void SpatialModule::timerCallback()
 {
-	//people not updated (missed leave), sources gone silent, disabled sources
+	//people not updated (missed leave, or their source went silent), disabled sources
 	trackingData.removeStalePersons(personTimeoutMs);
-	trackingData.removeSilentSources(sourceTimeoutMs);
 	{
 		const ScopedLock sl(sourceManager.items.getLock());
 		AugmentaSource* used = sourceManager.getAugmentaSource();

@@ -23,6 +23,19 @@ void TopViewModel::update(SpatialModule* sm)
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
 
+		StringArray sources;
+		{
+			const ScopedLock sl(sm->sourceManager.items.getLock());
+			for (auto& s : sm->sourceManager.items)
+			{
+				if (!s->enabled->boolValue()) continue;
+				String name = s->niceName;
+				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) name += " :" + String(localPort); }
+				sources.add(name + " (" + s->getReceptionText(sm) + ")");
+			}
+		}
+		sourcesText = sources.isEmpty() ? String("No enabled source") : sources.joinIntoString("  /  ");
+
 		for (auto& z : sm->zoneManager.items)
 		{
 			ZoneView zv;
@@ -127,7 +140,7 @@ void TopViewModel::updateMotions()
 
 	for (auto& p : snapshot.persons)
 	{
-		Point<float> meters(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
+		Point<float> meters = p.position;
 
 		Motion m;
 		auto it = motions.find(p.id);
@@ -295,7 +308,7 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 	//People : dot with a halo and the id, arrow toward where they go when moving
 	for (auto& p : m.snapshot.persons)
 	{
-		Point<float> pos(scene.getX() + p.position.x * scene.getWidth(), scene.getY() + p.position.y * scene.getHeight());
+		Point<float> pos = scene.getTopLeft() + p.position * scale;
 		Colour c = TopViewModel::getPersonColor(p.id);
 
 		auto it = m.motions.find(p.id);

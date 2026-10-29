@@ -202,7 +202,7 @@ Image SpatialVideoOutput::renderFrame()
 	float scale = 0;
 	if (!computeGeometry(model.snapshot.sceneSize, w, h, scene, scale))
 	{
-		resolution->setValue("Waiting for scene size (/scene)");
+		resolution->setValue(SpatialModule::getNoSceneSizeText());
 		return Image();
 	}
 

@@ -537,6 +537,7 @@ aostageDemo_Festival.kramera` (hors dépôt) ; il se lit dans **Kratos** (logici
     - ✅ test Vincent : « tout est ok » (Cockpit dans le menu, TEST_ZONES.noisette rechargé avec ses zones, ordre des blocs) ;
     - ✅ commit sur `feature/multi-source` ;
     - ⏭️ brique 2 : source PSN ; barre d'icônes verticale (C) plus tard ;
+    - ⬜ **brique « PSN Output »** (demande de Vincent, 29/10/2026, à développer en même temps que l'entrée PSN) : l'utilisateur choisit s'il renvoie les trackers reçus (toutes sources) dans une **sortie PSN**, avec des **ids qui correspondent aux Player Slots** de DrawZone (slot 1 → tracker 1…) ; à préciser au moment de la brique : option on / off, personnes sans slot (non envoyées ou ids à part), slot tenu (« Held ») envoyé ou non, adresse multicast / port, bibliothèque `psn_lib` déjà dans `External/posistagenet` (elle sait émettre) ;
 
 ## 🔧 Étape d'optimisation
 
@@ -555,23 +556,62 @@ Recommandation : 1, 2, 4, 5 et 21 au début de la brique PSN (même code) ;
 
 - 29/10/2026 : Vincent valide la recommandation (« ok »). Ordre : 3 (doc) ✅,
   puis 21, 4, 5, 1, 2 une par une (une brique = un test), puis le nettoyage.
-- ⏸️ 29/10/2026 fin de séance (doc de la tâche 3 non commitée). Reprise au
+- ⏸️ 29/10/2026 fin de séance (doc de la tâche 3 commitée : `9b33551f`). Reprise au
   prochain démarrage : tâche **21** (verrou sur `augmentaSceneSize`).
+- 29/10/2026 reprise : tâche 21 écartée (❌, déjà protégée, commentaire
+  corrigé). Suivante : tâche **4** (flip de la vitesse).
+- 29/10/2026 tâche 4, code : `vectorToScene` gère le flip (changement de
+  signe), `scaleAndRotate` (privée) commune à `toScene` et `vectorToScene`,
+  2 lignes de flip retirées de `processPerson`. ❌ puis ✅ compilation :
+  `C1083 juce_audio_basics.h` introuvable, car Vincent a renommé
+  `D:\DRAWZONE` en `D:\0-DRAWZONE` (le projet pointe vers
+  `D:\DRAWZONE\JUCE`). → Jonction Windows `D:\DRAWZONE` → `D:\0-DRAWZONE`
+  (hors dépôt, choix de Vincent). Compilation 0 erreur (exe du 29/10 11:51,
+  seuls C4101 / C4206 de Ben), Chataigne relancé par Claude. ⬜ test Vincent.
+- 💬 29/10/2026 Vincent : « continue jusqu'au bout » → tâches 5, 1 et 2
+  enchaînées, un seul test groupé à la fin.
+- 29/10/2026 tâche 5, code : `removeSilentSources` supprimée (une personne
+  d'une source muette n'est plus mise à jour, `removeStalePersons` la retire
+  déjà au bout de la même seconde) ; `sourceTimeoutMs` ne sert plus qu'à
+  afficher « Silent ».
+- 29/10/2026 tâche 1, code : `TrackedPerson::position` en **mètres de la
+  scène** ; plus de conversion 0-1 ↔ mètres dans les zones, les slots,
+  People, le rendu, le Monitor (point, survol, attribution à la main,
+  tableau) ; `updateFromPersons` et `PlayerSlots::update` sans taille de
+  scène ; une personne Augmenta n'attend plus que le `/scene` de sa source.
+- 29/10/2026 tâche 2, code : débit et dernier message **par source**
+  (`TrackingData::SourceStats`, compteur `RateCounter` commun au module et
+  aux sources) ; Status de chaque source : « Receiving, 50 msg/s, 1 people… »,
+  « Silent » ou « No data yet » ; en-tête du Monitor : chaque source active
+  et sa réception au lieu de « msg/s · Augmenta :port » ; texte « Waiting
+  for scene size » écrit une seule fois (`SpatialModule::getNoSceneSizeText`),
+  il cite aussi le mode Manual.
+- ✅ 29/10/2026 compilation des tâches 5, 1 et 2 : 0 erreur (seul C4101 de
+  Ben), Chataigne relancé par Claude. ⬜ test groupé de Vincent (4, 5, 1, 2).
+- ❌ puis ✅ lecture MCP par Claude pendant le test : position en mètres
+  (3.34, 2.54), slot « JOUEUR 1 », mais Status « Receiving, 116.486 msg/s » :
+  dans JUCE, `String(float, 0)` ne veut pas dire 0 décimale (format par
+  défaut). → `String(roundToInt(...))`. À recompiler à la prochaine
+  fermeture de Chataigne.
+- ✅ 29/10/2026 test Vincent : « ok tu peux commit ». **Tâches 4, 5, 1 et 2
+  validées**, commit sur `feature/multi-source` (accord de Vincent). Reste
+  de la revue : la brique de nettoyage (6 à 25, sauf 21) ; puis brique 2 de
+  la v0.5 (source PSN) avec la brique « PSN Output ».
 
 #### 🔴 Priorité haute : avant la source PSN
 
 | # | État | Type | Où | Constat | Proposition | Effort |
 |---|---|---|---|---|---|---|
-| 1 | ⬜ | Conception | `TrackingData`, et partout | Positions rangées en 0-1 dans la scène puis remultipliées par la taille de scène à 9 endroits (zones, slots, People, rendu, Monitor…) ; une personne Augmenta est ignorée tant que la taille de scène est inconnue | Ranger les positions **en mètres** dans `TrackedPerson` (PSN envoie déjà des mètres) | Moyen |
-| 2 | ⬜ | Spécifique Augmenta | Rendu, sortie vidéo, en-tête du Monitor | « Waiting for scene size (/scene) » écrit 2 fois ; « Augmenta :port » et un seul état Receiving / msg/s pour toutes les sources | État et débit **par source** (prévu en brique 4, à garder en tête dès PSN) | Moyen |
-| 3 | ✅ 29/10 | Doc | `DECISIONS`, `README`, `ROADMAP`, `CHANGELOG`, `CLAUDE.md`, commentaires | Renommage en **Cockpit** noté nulle part ; commentaire de `SpatialModule.h` dépassé (« Augmenta OSC for now… will expose zones ») | Fait : décision **D14** (D13 était déjà prise), CHANGELOG, CLAUDE.md, ROADMAP, en-tête de `SpatialModule.h` ; README sans mention du module, inchangé | Petit |
-| 4 | ⬜ | Doublon | `AugmentaSource::processPerson` | Flip de la vitesse recodé à la main au lieu de passer par la transformation de la source (PSN en aura besoin) | Une seule fonction « vecteur → scène » qui gère le flip | Petit |
+| 1 | ✅ 29/10 | Conception | `TrackingData`, et partout | Positions rangées en 0-1 dans la scène puis remultipliées par la taille de scène à 9 endroits (zones, slots, People, rendu, Monitor…) ; une personne Augmenta est ignorée tant que la taille de scène est inconnue | Ranger les positions **en mètres** dans `TrackedPerson` (PSN envoie déjà des mètres) | Moyen |
+| 2 | ✅ 29/10 | Spécifique Augmenta | Rendu, sortie vidéo, en-tête du Monitor | « Waiting for scene size (/scene) » écrit 2 fois ; « Augmenta :port » et un seul état Receiving / msg/s pour toutes les sources | État et débit **par source** (prévu en brique 4, à garder en tête dès PSN) | Moyen |
+| 3 | ✅ 29/10 `9b33551f` | Doc | `DECISIONS`, `README`, `ROADMAP`, `CHANGELOG`, `CLAUDE.md`, commentaires | Renommage en **Cockpit** noté nulle part ; commentaire de `SpatialModule.h` dépassé (« Augmenta OSC for now… will expose zones ») | Fait : décision **D14** (D13 était déjà prise), CHANGELOG, CLAUDE.md, ROADMAP, en-tête de `SpatialModule.h` ; README sans mention du module, inchangé | Petit |
+| 4 | ✅ 29/10 | Doublon | `AugmentaSource::processPerson` | Flip de la vitesse recodé à la main au lieu de passer par la transformation de la source (PSN en aura besoin) | Une seule fonction « vecteur → scène » qui gère le flip | Petit |
 
 #### 🟠 Priorité moyenne : doublons et nettoyage
 
 | # | État | Type | Où | Constat | Proposition | Effort |
 |---|---|---|---|---|---|---|
-| 5 | ⬜ | Doublon | Minuteur du module | `removeStalePersons` et `removeSilentSources` font presque la même chose (1 s chacun) ; le retour de la seconde n'est jamais lu | Garder une seule règle | Petit |
+| 5 | ✅ 29/10 | Doublon | Minuteur du module | `removeStalePersons` et `removeSilentSources` font presque la même chose (1 s chacun) ; le retour de la seconde n'est jamais lu | Garder une seule règle | Petit |
 | 6 | ⬜ | Doublon | `SpatialModule::updatePeople` et `TopViewModel::update` | « Dans quelle zone est cette personne » cherché deux fois | Calculer une fois dans le module et réutiliser | Petit |
 | 7 | ⬜ | Doublon | `SpatialZone`, `SpatialPerson`, `TopViewModel`, Monitor | Calcul « position dans la boîte ↔ mètres » réécrit 6 fois ; bornes recalculées au lieu de `getBounds()` | Deux petites fonctions communes | Petit |
 | 8 | ⬜ | Doublon | `hitTest` du Monitor et `SpatialZone::contains` | Test « dans l'ellipse » recodé en coordonnées écran | `zone->contains(toMeters(pos))` | Petit |
@@ -592,7 +632,7 @@ Recommandation : 1, 2, 4, 5 et 21 au début de la brique PSN (même code) ;
 | 18 | ⬜ | Performance | Monitor et sortie vidéo | Chacun recopie toutes les données (`TopViewModel`) de son côté | Partager la copie quand les deux tournent | Moyen |
 | 19 | ⬜ | Performance (mineur) | Statut des sources, résolution vidéo | Textes reconstruits 50 (ou 30) fois / s | Rafraîchir à 4 Hz | Petit |
 | 20 | ⬜ | Code mort | `TrackingData`, `PlayerSlots.cpp` | `Snapshot.frame` écrit mais jamais lu ; `TrackingData::clear()` jamais appelé ; `#include "PlayerSlots.h"` inutile en unity build | Supprimer | Petit |
-| 21 | ⬜ | Robustesse | `AugmentaSource::augmentaSceneSize` | Écrit par le thread réseau, lu par le thread de l'interface, sans verrou | Le protéger par le verrou de `TrackingData` | Petit |
+| 21 | ❌ 29/10 | Robustesse | `AugmentaSource::augmentaSceneSize` | Écrit par le thread réseau, lu par le thread de l'interface, sans verrou | Écartée : constat faux. Les 3 accès (écriture dans `processMessage`, lectures dans `updateSceneSize` et `AugmentaSource::update`) se font déjà sous le verrou du manager des sources (`items.getLock()`, un `CriticalSection`). Seul le commentaire de `SpatialSource.h` (« network thread ») était trompeur : corrigé | Petit |
 | 22 | ⬜ | Cosmétique | Ids remappés | Le compteur à partir de 10000 ne redescend jamais (ids très grands sur un long show) | Repartir de 10000 quand aucun id remappé n'est utilisé | Petit |
 | 23 | ⬜ | Limite connue | Tracking Monitor | N'affiche que le premier module Cockpit | Choix du module (déjà dans les idées) | Moyen |
 | 24 | ⬜ | Doc en double | `docs/drawzone/JOURNAL.md` | Journal arrêté au 26/10, doublon de `TODO.md` | Le figer avec un renvoi vers `TODO.md`, ou le supprimer | Petit |
