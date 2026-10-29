@@ -21,7 +21,7 @@ immersives et interactives. Il doit :
 DrawZone est un **fork de Chataigne** (Ben Kuper, C++/JUCE + organicUI).
 On réutilise son interface, ses protocoles, sa State Machine, son Module Router,
 Parrot (enregistrement/lecture), etc. Le cœur de DrawZone sera un nouveau type
-de module **« Spatial »** dont les zones exposent leurs valeurs comme paramètres
+de module **« Spatial »** (nom affiché : **Cockpit**, voir D14) dont les zones exposent leurs valeurs comme paramètres
 Chataigne, donc utilisables partout dans le logiciel.
 
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :

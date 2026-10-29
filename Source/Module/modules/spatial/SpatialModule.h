@@ -5,8 +5,9 @@
 	Created: 24 Oct 2026
 	Author:  DrawZone
 
-	Spatial module: receives tracked people (Augmenta OSC for now)
-	and will expose interaction zones as Chataigne parameters.
+	Spatial module, shown as "Cockpit" (see D14): receives tracked people
+	from its sources (Augmenta OSC), exposes zones, people and player
+	slots as Chataigne parameters.
 	Inherits OSCModule to reuse its OSC receiver and senders (see D12).
 
   ==============================================================================

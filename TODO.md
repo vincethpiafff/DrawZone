@@ -538,6 +538,66 @@ aostageDemo_Festival.kramera` (hors dépôt) ; il se lit dans **Kratos** (logici
     - ✅ commit sur `feature/multi-source` ;
     - ⏭️ brique 2 : source PSN ; barre d'icônes verticale (C) plus tard ;
 
+## 🔧 Étape d'optimisation
+
+Revue de tout le code DrawZone (doublons, améliorations, code mort,
+robustesse, doc), faite **de temps en temps, à la demande de Vincent**.
+Au démarrage d'une séance, Claude présente les tâches encore ouvertes et
+Vincent choisit ce qu'on règle. Chaque tâche réglée passe à ✅ (avec la
+date et le commit), une tâche écartée à ❌ avec la raison.
+
+### Revue du 28/10/2026 (après la brique 1 de la v0.5, commit `f3c76b3b`)
+
+Code relu : `Source/Module/modules/spatial/` (≈ 5 700 lignes),
+`Tools/drawzone/`, `docs/drawzone/`. Rien n'a été modifié.
+Recommandation : 1, 2, 4, 5 et 21 au début de la brique PSN (même code) ;
+3 en une petite brique doc ; le reste dans une brique de nettoyage.
+
+- 29/10/2026 : Vincent valide la recommandation (« ok »). Ordre : 3 (doc) ✅,
+  puis 21, 4, 5, 1, 2 une par une (une brique = un test), puis le nettoyage.
+- ⏸️ 29/10/2026 fin de séance (doc de la tâche 3 non commitée). Reprise au
+  prochain démarrage : tâche **21** (verrou sur `augmentaSceneSize`).
+
+#### 🔴 Priorité haute : avant la source PSN
+
+| # | État | Type | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|---|
+| 1 | ⬜ | Conception | `TrackingData`, et partout | Positions rangées en 0-1 dans la scène puis remultipliées par la taille de scène à 9 endroits (zones, slots, People, rendu, Monitor…) ; une personne Augmenta est ignorée tant que la taille de scène est inconnue | Ranger les positions **en mètres** dans `TrackedPerson` (PSN envoie déjà des mètres) | Moyen |
+| 2 | ⬜ | Spécifique Augmenta | Rendu, sortie vidéo, en-tête du Monitor | « Waiting for scene size (/scene) » écrit 2 fois ; « Augmenta :port » et un seul état Receiving / msg/s pour toutes les sources | État et débit **par source** (prévu en brique 4, à garder en tête dès PSN) | Moyen |
+| 3 | ✅ 29/10 | Doc | `DECISIONS`, `README`, `ROADMAP`, `CHANGELOG`, `CLAUDE.md`, commentaires | Renommage en **Cockpit** noté nulle part ; commentaire de `SpatialModule.h` dépassé (« Augmenta OSC for now… will expose zones ») | Fait : décision **D14** (D13 était déjà prise), CHANGELOG, CLAUDE.md, ROADMAP, en-tête de `SpatialModule.h` ; README sans mention du module, inchangé | Petit |
+| 4 | ⬜ | Doublon | `AugmentaSource::processPerson` | Flip de la vitesse recodé à la main au lieu de passer par la transformation de la source (PSN en aura besoin) | Une seule fonction « vecteur → scène » qui gère le flip | Petit |
+
+#### 🟠 Priorité moyenne : doublons et nettoyage
+
+| # | État | Type | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|---|
+| 5 | ⬜ | Doublon | Minuteur du module | `removeStalePersons` et `removeSilentSources` font presque la même chose (1 s chacun) ; le retour de la seconde n'est jamais lu | Garder une seule règle | Petit |
+| 6 | ⬜ | Doublon | `SpatialModule::updatePeople` et `TopViewModel::update` | « Dans quelle zone est cette personne » cherché deux fois | Calculer une fois dans le module et réutiliser | Petit |
+| 7 | ⬜ | Doublon | `SpatialZone`, `SpatialPerson`, `TopViewModel`, Monitor | Calcul « position dans la boîte ↔ mètres » réécrit 6 fois ; bornes recalculées au lieu de `getBounds()` | Deux petites fonctions communes | Petit |
+| 8 | ⬜ | Doublon | `hitTest` du Monitor et `SpatialZone::contains` | Test « dans l'ellipse » recodé en coordonnées écran | `zone->contains(toMeters(pos))` | Petit |
+| 9 | ⬜ | Doublon | `itemAdded` / `itemsAdded` (zones) | Même corps dans les deux | Une fonction commune | Petit |
+| 10 | ⬜ | Doublon | `setupInspectorSections` | Blocs listés deux fois (liste « repliés » et liste « ordre ») | Une seule liste | Petit |
+| 11 | ⬜ | Doublon (UI) | Monitor et `SpatialSectionEditor` | Dessins recopiés : puce (fond + bordure + survol) ×3, chevron ×2, coche ×2, pointillés ×5 ; deux palettes de couleurs, vert écrit en dur deux fois | Un petit fichier commun d'aides de dessin et une seule palette | Moyen |
+| 12 | ⬜ | Rangement | `TopViewRenderer.h` | Le style du Monitor (`TrackingMonitorStyle`) est rangé dans l'en-tête du rendu | Le déplacer dans le fichier commun du point 11 | Petit |
+| 13 | ⬜ | Doublon + bug possible | Création de zone dans le Monitor | 4 chemins de création ; `createZoneAt` place la zone **après** l'ajout (les autres avant) : après annuler / rétablir, la zone pourrait revenir au centre (**à vérifier**) | Un seul chemin de création | Petit |
+| 14 | ⬜ | Lisibilité | Menus du Monitor | Numéros de menu « magiques » (1 à 9 dans le désordre) | Une énumération | Petit |
+| 15 | ⬜ | Fragilité | Menu du mode des slots | Mode choisi par son texte (« Hold Spot To Reclaim ») recopié de `PlayerSlots` : casse si l'option est renommée | Choisir par valeur, pas par texte | Petit |
+
+#### 🟢 Optimisation, code mort, robustesse, doc
+
+| # | État | Type | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|---|
+| 16 | ⬜ | Performance | `SpatialZone::contains` (forme libre) | Contour reconstruit à chaque test (par personne, par zone, 50 fois / s) | Garder le contour en mémoire, le refaire quand les points changent | Petit |
+| 17 | ⬜ | Performance | `SpatialVideoOutput` | Nouvelle image allouée à chaque frame (≈ 8 Mo en 1080p, 30 fois / s) ; dé-prémultipliage et rendu sur le thread de l'interface | Réutiliser 2 images ; plus tard, rendre sur un thread à part | Moyen |
+| 18 | ⬜ | Performance | Monitor et sortie vidéo | Chacun recopie toutes les données (`TopViewModel`) de son côté | Partager la copie quand les deux tournent | Moyen |
+| 19 | ⬜ | Performance (mineur) | Statut des sources, résolution vidéo | Textes reconstruits 50 (ou 30) fois / s | Rafraîchir à 4 Hz | Petit |
+| 20 | ⬜ | Code mort | `TrackingData`, `PlayerSlots.cpp` | `Snapshot.frame` écrit mais jamais lu ; `TrackingData::clear()` jamais appelé ; `#include "PlayerSlots.h"` inutile en unity build | Supprimer | Petit |
+| 21 | ⬜ | Robustesse | `AugmentaSource::augmentaSceneSize` | Écrit par le thread réseau, lu par le thread de l'interface, sans verrou | Le protéger par le verrou de `TrackingData` | Petit |
+| 22 | ⬜ | Cosmétique | Ids remappés | Le compteur à partir de 10000 ne redescend jamais (ids très grands sur un long show) | Repartir de 10000 quand aucun id remappé n'est utilisé | Petit |
+| 23 | ⬜ | Limite connue | Tracking Monitor | N'affiche que le premier module Cockpit | Choix du module (déjà dans les idées) | Moyen |
+| 24 | ⬜ | Doc en double | `docs/drawzone/JOURNAL.md` | Journal arrêté au 26/10, doublon de `TODO.md` | Le figer avec un renvoi vers `TODO.md`, ou le supprimer | Petit |
+| 25 | ⬜ | Doc | `TODO.md` (≈ 570 lignes) | Devient long à relire | Archiver les versions terminées (v0.1 à v0.4) dans un fichier à part | Petit |
+
 ## 💡 Idées
 
 Idées notées en route, datées, à trier plus tard (roadmap, décision ou abandon).

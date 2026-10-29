@@ -128,3 +128,20 @@ l'époque.
 **Raison** : choix de Vincent après la v0.2.0. La vue 2D est déjà riche
 (zones, personnes, slots, emplacements réservés) et sert tout de suite en
 spectacle, comme retour visuel ou source vidéo.
+
+## D14 — Le module s'appelle « Cockpit », le code garde « Spatial » (28/10/2026)
+
+**Décision** : le nom visible du module devient **Cockpit** (menu
+Modules > DrawZone > Cockpit, type de module, messages). Le code garde le
+nom de travail **Spatial** (`SpatialModule`, dossier
+`Source/Module/modules/spatial/`, commits `feat(spatial)`).
+
+**Raisons** :
+- Choix de Vincent : « aux manettes d'un vaisseau spatial ».
+- Renommer tout le code coûterait cher pour rien : seul le nom affiché
+  compte pour l'utilisateur.
+
+**Conséquence** : `ModuleFactory::create(type)` (code de Ben, marqué
+`// DrawZone:`) charge un ancien type « Spatial » comme Cockpit, donc les
+anciennes sessions s'ouvrent toujours. Dans la doc, « module Spatial » et
+« module Cockpit » désignent le même module.

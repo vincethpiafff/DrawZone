@@ -4,6 +4,8 @@ Principe : de petites briques, chacune compilable et testable avec Augmenta
 Fusion. La 2D (zones au sol) passe avant la 3D : c'est 90 % des cas d'usage,
 et elle donne un outil utilisable tôt.
 
+Nom : le module « Spatial » s'affiche **Cockpit** depuis le 28/10/2026 (D14).
+
 | Version | Contenu | Résultat testable | État |
 |---|---|---|---|
 | **v0.0** | Outils installés, fork, compilation de Chataigne, réception d'Augmenta Fusion | Chataigne compilé en local qui reçoit Augmenta | ✅ 23/10/2026 |

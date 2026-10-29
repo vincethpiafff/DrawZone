@@ -5,6 +5,10 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+### Modifié
+- Le module **Spatial** s'appelle désormais **Cockpit** (Modules > DrawZone >
+  Cockpit) ; les anciennes sessions s'ouvrent toujours (D14).
+
 ## [0.4.0] - 2026-10-28
 
 Sortie vidéo de la vue de dessus (zones, personnes, slots) en Spout et NDI,
