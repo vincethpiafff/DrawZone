@@ -101,7 +101,7 @@ void AugmentaSource::processMessage(const OSCMessage& msg, SpatialModule* module
 	{
 		if (msg.size() < 4) return;
 		augmentaSceneSize = Point<float>(OSCHelpers::getFloatArg(msg[2]), OSCHelpers::getFloatArg(msg[3]));
-		if (module->isSceneSizeAuto()) data.setScene(OSCHelpers::getIntArg(msg[0]), augmentaSceneSize);
+		if (module->isSceneSizeAuto()) data.setSceneSize(augmentaSceneSize);
 	}
 	else if (address == "/object/enter" || address == "/object/update")
 	{

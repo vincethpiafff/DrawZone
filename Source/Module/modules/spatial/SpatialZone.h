@@ -64,7 +64,7 @@ public:
 	Array<Point<float>> getFreePointsMeters() const;
 	void setFreePointsMeters(const Array<Point<float>>& meters);	// also fits Center and Size to the points
 	void setFreePoints(const Array<Point<float>>& relative);		// 0-1 in the box
-	Path getOutline() const;	// meters, free shape only
+	const Path& getOutline() const;	// meters, free shape only ; kept until the box or a point changes
 	Point<float> getHandleMeters(int index, bool out) const;	// curve control point of a free shape point, meters
 
 	ControllableContainer zoneValues;
@@ -89,10 +89,16 @@ public:
 	bool isEllipse() const;
 	bool isFreeShape() const;
 	Rectangle<float> getBounds() const;	// meters
+
+	//box (meters) <-> 0-1 in the box, origin top left ; a flat box gives .5 on that axis
+	static Point<float> toBox(Rectangle<float> box, Point<float> meters);
+	static Point<float> fromBox(Rectangle<float> box, Point<float> relative);
+
 	void updateFromPersons(const Array<TrackedPerson>& persons);
 
 	void onContainerNiceNameChanged() override;
 	void onContainerParameterChangedInternal(Parameter* p) override;
+	void onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c) override;	// a free shape point changed
 
 	var getJSONData(bool includeNonOverriden = false) override;
 	void loadJSONDataInternal(var data) override;
@@ -100,6 +106,11 @@ public:
 	InspectableEditor* getEditorInternal(bool isRoot, Array<Inspectable*> inspectables = Array<Inspectable*>()) override;
 
 	String getTypeString() const override { return "Zone"; }
+
+private:
+	//message thread only (zone updates and Monitor)
+	mutable Path outlineCache;
+	mutable bool outlineDirty = true;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialZone)
 };

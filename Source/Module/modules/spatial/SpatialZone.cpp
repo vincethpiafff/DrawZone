@@ -119,7 +119,7 @@ bool SpatialZone::contains(Point<float> positionMeters, float margin) const
 	if (isFreeShape())
 	{
 		if (freePoints.size() < 3) return false;
-		Path outline = getOutline();
+		const Path& outline = getOutline();
 		if (outline.contains(positionMeters, .001f)) return true;
 		if (margin <= 0) return false;
 		Point<float> nearest;
@@ -154,15 +154,22 @@ Rectangle<float> SpatialZone::getBounds() const
 	return Rectangle<float>(s.x, s.y).withCentre(center->getPoint());
 }
 
+Point<float> SpatialZone::toBox(Rectangle<float> box, Point<float> meters)
+{
+	return Point<float>(box.getWidth() > 0 ? (meters.x - box.getX()) / box.getWidth() : .5f,
+		box.getHeight() > 0 ? (meters.y - box.getY()) / box.getHeight() : .5f);
+}
+
+Point<float> SpatialZone::fromBox(Rectangle<float> box, Point<float> relative)
+{
+	return Point<float>(box.getX() + relative.x * box.getWidth(), box.getY() + relative.y * box.getHeight());
+}
+
 Array<Point<float>> SpatialZone::getFreePointsMeters() const
 {
 	Rectangle<float> b = getBounds();
 	Array<Point<float>> result;
-	for (auto& fp : freePoints)
-	{
-		Point<float> rel = fp->position->getPoint();
-		result.add(Point<float>(b.getX() + rel.x * b.getWidth(), b.getY() + rel.y * b.getHeight()));
-	}
+	for (auto& fp : freePoints) result.add(fromBox(b, fp->position->getPoint()));
 	return result;
 }
 
@@ -175,11 +182,7 @@ void SpatialZone::setFreePointsMeters(const Array<Point<float>>& meters)
 	center->setPoint(b.getCentre());
 
 	Array<Point<float>> relative;
-	for (auto& m : meters)
-	{
-		relative.add(Point<float>(b.getWidth() > 0 ? (m.x - b.getX()) / b.getWidth() : .5f,
-			b.getHeight() > 0 ? (m.y - b.getY()) / b.getHeight() : .5f));
-	}
+	for (auto& m : meters) relative.add(toBox(b, m));
 	setFreePoints(relative);
 }
 
@@ -198,11 +201,16 @@ void SpatialZone::setFreePoints(const Array<Point<float>>& relative)
 	}
 
 	for (int i = 0; i < relative.size(); i++) freePoints[i]->position->setPoint(relative[i]);
+	outlineDirty = true;
 }
 
-Path SpatialZone::getOutline() const
+const Path& SpatialZone::getOutline() const
 {
-	Path p;
+	if (!outlineDirty) return outlineCache;
+	outlineDirty = false;
+
+	Path& p = outlineCache;
+	p.clear();
 	Array<Point<float>> meters = getFreePointsMeters();
 	int n = meters.size();
 	if (n == 0) return p;
@@ -228,10 +236,8 @@ Path SpatialZone::getOutline() const
 Point<float> SpatialZone::getHandleMeters(int index, bool out) const
 {
 	if (!isPositiveAndBelow(index, freePoints.size())) return Point<float>();
-	Rectangle<float> b = getBounds();
-	Point<float> rel = freePoints[index]->position->getPoint();
-	Point<float> pos(b.getX() + rel.x * b.getWidth(), b.getY() + rel.y * b.getHeight());
-	return pos + (out ? freePoints[index]->getOutOffset() : freePoints[index]->getInOffset());
+	Point<float> pos = fromBox(getBounds(), freePoints[index]->position->getPoint());
+	return pos +(out ? freePoints[index]->getOutOffset() : freePoints[index]->getInOffset());
 }
 
 void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons)
@@ -270,8 +276,7 @@ void SpatialZone::updateFromPersons(const Array<TrackedPerson>& persons)
 	{
 		Point<float> average = sum / (float)sumCount;
 		Rectangle<float> b = getBounds();
-		averagePosition->setPoint(b.getWidth() > 0 ? (average.x - b.getX()) / b.getWidth() : .5f,
-			b.getHeight() > 0 ? (average.y - b.getY()) / b.getHeight() : .5f);
+		averagePosition->setPoint(toBox(b, average));
 		averageDistanceToCenter->setValue(average.getDistanceFrom(b.getCentre()));
 	}
 
@@ -306,11 +311,19 @@ void SpatialZone::onContainerNiceNameChanged()
 
 void SpatialZone::onContainerParameterChangedInternal(Parameter* p)
 {
+	if (p == center || p == size || p == shape) outlineDirty = true;
+
 	//switched to free shape without points yet : start from the corners of the box
 	if (p == shape && isFreeShape() && freePoints.isEmpty() && !isCurrentlyLoadingData)
 	{
 		setFreePoints({ Point<float>(0, 0), Point<float>(1, 0), Point<float>(1, 1), Point<float>(0, 1) });
 	}
+}
+
+void SpatialZone::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
+{
+	BaseItem::onControllableFeedbackUpdateInternal(cc, c);
+	if (cc != nullptr && (cc == &pointsCC || cc->parentContainer == &pointsCC)) outlineDirty = true; //position, handle or interpolation of a point
 }
 
 var SpatialZone::getJSONData(bool includeNonOverriden)

@@ -138,7 +138,14 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 		}
 
 		Array<SpatialZone*> zones;
-		for (auto& z : zoneManager.items) if (z->idsInside.contains(p.id)) zones.add(z); //same membership as the zone (with its anti-flicker)
+		sp->firstZoneIndex = -1;
+		for (int i = 0; i < zoneManager.items.size(); i++)
+		{
+			SpatialZone* z = zoneManager.items[i];
+			if (!z->idsInside.contains(p.id)) continue; //same membership as the zone (with its anti-flicker)
+			if (zones.isEmpty()) sp->firstZoneIndex = i;
+			zones.add(z);
+		}
 		sp->update(p.position, zones);
 
 		int slotIndex = playerSlots.getSlotIndexForPerson(p.id);
@@ -209,8 +216,8 @@ void SpatialPerson::update(Point<float> positionMeters, const Array<SpatialZone*
 
 	zoneName->setValue(names.joinIntoString(" + "));
 	//clamped : with the exit margin, a person can be slightly outside the area
-	relativePosition->setPoint(area.getWidth() > 0 ? jlimit(0.0f, 1.0f, (positionMeters.x - area.getX()) / area.getWidth()) : .5f,
-		area.getHeight() > 0 ? jlimit(0.0f, 1.0f, (positionMeters.y - area.getY()) / area.getHeight()) : .5f);
+	Point<float> rel = SpatialZone::toBox(area, positionMeters);
+	relativePosition->setPoint(jlimit(0.0f, 1.0f, rel.x), jlimit(0.0f, 1.0f, rel.y));
 }
 
 void SpatialModule::timerCallback()
@@ -218,13 +225,16 @@ void SpatialModule::timerCallback()
 	//people not updated (missed leave, or their source went silent), disabled sources
 	trackingData.removeStalePersons(personTimeoutMs);
 	{
+		bool updateStatus = ++statusTick >= zoneUpdateRateHz / statusUpdateRateHz;
+		if (updateStatus) statusTick = 0;
+
 		const ScopedLock sl(sourceManager.items.getLock());
 		AugmentaSource* used = sourceManager.getAugmentaSource();
 		for (auto& s : sourceManager.items)
 		{
 			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) a->isUsed = a == used;
 			if (!s->enabled->boolValue()) trackingData.removeSource(s);
-			s->update(this);
+			if (updateStatus) s->update(this);
 		}
 	}
 	personCount->setValue(trackingData.getNumPersons());
@@ -232,10 +242,15 @@ void SpatialModule::timerCallback()
 	updateZones();
 }
 
-void SpatialModule::itemAdded(SpatialZone* zone)
+void SpatialModule::setupAddedZone(SpatialZone* zone)
 {
 	zonesValuesCC.addChildControllableContainer(&zone->zoneValues);
 	zone->setSceneSize(zonesSceneSize);
+}
+
+void SpatialModule::itemAdded(SpatialZone* zone)
+{
+	setupAddedZone(zone);
 
 	//a brand new zone starts at the center of the scene (not a duplicated or loaded one)
 	bool isLoading = isCurrentlyLoadingData || zoneManager.isCurrentlyLoadingData;
@@ -245,11 +260,7 @@ void SpatialModule::itemAdded(SpatialZone* zone)
 
 void SpatialModule::itemsAdded(Array<SpatialZone*> zones)
 {
-	for (auto& z : zones)
-	{
-		zonesValuesCC.addChildControllableContainer(&z->zoneValues);
-		z->setSceneSize(zonesSceneSize);
-	}
+	for (auto& z : zones) setupAddedZone(z);
 }
 
 void SpatialModule::itemRemoved(SpatialZone* zone)
@@ -332,17 +343,16 @@ void SpatialModule::setupInspectorSections()
 			};
 	}
 
-	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> sections { &sourceManager, &sceneCC, &zoneManager, &playerSlots, &videoOutput, receiveCC.get(), outputManager.get(), thruManager.get() };
-	for (auto& cc : sections) if (cc != nullptr) cc->editorIsCollapsed = true;
-
 	//inspector order (Vincent's rule, keep it for the next blocks) :
 	//network inputs, network outputs (OSC, then PSN / TUIO), Sources, Video Output, Scene, Zones, Player Slots
+	//all folded at creation and at load (Chataigne only saves the folded state)
 	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)
 	{
+		if (cc == nullptr) continue;
+		cc->editorIsCollapsed = true;
 		int i = list.indexOf(cc);
 		if (i < 0) continue;
 		list.move(i, pos++);

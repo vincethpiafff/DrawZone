@@ -42,7 +42,6 @@ public:
 	{
 		Array<TrackedPerson> persons;
 		Point<float> sceneSize;	// meters
-		int frame = 0;
 		float messagesPerSecond = 0;
 		uint32 lastMessageMs = 0;	// 0 = nothing received yet
 	};
@@ -58,7 +57,6 @@ public:
 
 	void countMessage(const void* source);
 	SourceStats getSourceStats(const void* source);
-	void setScene(int frame, Point<float> sceneSize);
 	void setSceneSize(Point<float> sceneSize);
 	Point<float> getSceneSize();
 
@@ -67,7 +65,6 @@ public:
 	void removePerson(const void* source, int sourceId);
 	void removeSource(const void* source);
 	void removeStalePersons(uint32 timeoutMs);	// also empties a source gone silent
-	void clear();
 
 	int getNumPersons();
 	int getNumPersons(const void* source);

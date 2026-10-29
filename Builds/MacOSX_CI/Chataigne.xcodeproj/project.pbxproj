@@ -790,6 +790,7 @@
 		C79D12282B547B8B49912DAD /* StateMachineIncludes.h */ /* StateMachineIncludes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StateMachineIncludes.h; path = ../../Source/StateMachine/StateMachineIncludes.h; sourceTree = SOURCE_ROOT; };
 		C7B87D07F4FBB8CE172A040C /* CommandTemplateEditor.h */ /* CommandTemplateEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CommandTemplateEditor.h; path = ../../Source/Common/Command/Template/ui/CommandTemplateEditor.h; sourceTree = SOURCE_ROOT; };
 		C7BE2656188911D29D8DC80D /* StateModule.cpp */ /* StateModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StateModule.cpp; path = ../../Source/Module/modules/state/StateModule.cpp; sourceTree = SOURCE_ROOT; };
+		C80AE83CCEAB28ABFE595A2C /* SpatialStyle.h */ /* SpatialStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialStyle.h; path = ../../Source/Module/modules/spatial/ui/SpatialStyle.h; sourceTree = SOURCE_ROOT; };
 		C83B5CE21064E44E054924B8 /* StreamDeckModule.h */ /* StreamDeckModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StreamDeckModule.h; path = ../../Source/Module/modules/controller/streamdeck/StreamDeckModule.h; sourceTree = SOURCE_ROOT; };
 		C86A957BC44904609CAE5C07 /* StateMachineView.cpp */ /* StateMachineView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StateMachineView.cpp; path = ../../Source/StateMachine/ui/StateMachineView.cpp; sourceTree = SOURCE_ROOT; };
 		C8F7B577E4F08EE149D8F1F8 /* LiveOSCCommandBase.h */ /* LiveOSCCommandBase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LiveOSCCommandBase.h; path = ../../Source/Module/modules/osc/live/commands/LiveOSCCommandBase.h; sourceTree = SOURCE_ROOT; };
@@ -3229,6 +3230,7 @@
 			children = (
 				662CD5CDBB3C8FAACE99750D,
 				441385663354C7EE93FCAE69,
+				C80AE83CCEAB28ABFE595A2C,
 				3307095B648CE969EB3CEAEE,
 				3209B2CE127190995B03A01D,
 				6545877641D887408FD7997D,

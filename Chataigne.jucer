@@ -1456,6 +1456,7 @@
                     file="Source/Module/modules/spatial/ui/TopViewRenderer.cpp"/>
               <FILE id="dzSeHd" name="SpatialSectionEditor.h" compile="0" resource="0"
                     file="Source/Module/modules/spatial/ui/SpatialSectionEditor.h"/>
+              <FILE id="dzStHd" name="SpatialStyle.h" compile="0" resource="0" file="Source/Module/modules/spatial/ui/SpatialStyle.h"/>
               <FILE id="dzTvHd" name="TopViewRenderer.h" compile="0" resource="0"
                     file="Source/Module/modules/spatial/ui/TopViewRenderer.h"/>
               <FILE id="dzTmCp" name="TrackingMonitorPanel.cpp" compile="0" resource="0"

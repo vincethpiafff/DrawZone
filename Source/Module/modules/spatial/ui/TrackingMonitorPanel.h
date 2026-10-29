@@ -44,6 +44,11 @@ public:
 	bool keyPressed(const KeyPress& key) override; // while drawing a free shape : Escape cancels, Backspace removes the last point
 
 private:
+	//popup menu item ids (0 = menu dismissed)
+	enum ZoneMenuItem { ZONE_DUPLICATE = 1, ZONE_DELETE, ZONE_HIDE, ZONE_CREATE, ZONE_SET_COLOR, ZONE_SHOW, ZONE_DRAW_FREE_SHAPE, ZONE_DRAW_RECTANGLE, ZONE_DRAW_ELLIPSE };
+	enum SlotMenuItem { SLOT_RENAME = 1, SLOT_SET_COLOR, SLOT_ENABLED };
+	enum PersonMenuItem { PERSON_RELEASE_SLOT = 1, PERSON_ASSIGN_FIRST_SLOT = 100 };	// slot i : PERSON_ASSIGN_FIRST_SLOT + i
+
 	SpatialModule* getSpatialModule();
 	void paintHeader(Graphics& g);
 	void paintTopView(Graphics& g, Rectangle<int> r);
@@ -135,6 +140,8 @@ private:
 	void showHiddenZones();
 	void createZone();
 	void createZoneAt(Point<float> positionMeters);
+	//the only way the Monitor adds a zone : z is fully set up before (shape, place), so the undoable add keeps it
+	void addZone(SpatialZone* z, bool select);
 
 	//Chataigne's own color picker on the zone or slot color, opened from the right click menu
 	std::unique_ptr<ColorParameterUI> zoneColorUI;

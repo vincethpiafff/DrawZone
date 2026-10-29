@@ -5313,6 +5313,9 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>

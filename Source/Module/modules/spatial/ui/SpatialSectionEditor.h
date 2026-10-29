@@ -37,7 +37,7 @@ namespace SpatialSection
 		case SOURCES: return Colour(0xffc98bdb);
 		case SCENE: return Colour(0xffb48fd6);
 		case ZONES: return Colour(0xffe0b44e);
-		case SLOTS: return Colour(0xff6cc58b);
+		case SLOTS: return TrackingMonitorStyle::activeColor;
 		case OUTPUT: return Colour(0xff4f9de8);
 		default: return Colour(0xff8f8f8f);
 		}
@@ -108,9 +108,9 @@ namespace SpatialSection
 			float w = f.getStringWidthFloat(c.text) + 10;
 			if (x - w < r.getX()) break; //not enough room : the leftmost chips are dropped
 			Rectangle<float> cr(x - w, r.getCentreY() - 7, w, 14);
-			g.setColour(c.on ? Colour(0xff6cc58b).withAlpha(.25f) : Colours::black.withAlpha(.28f));
+			g.setColour(c.on ? TrackingMonitorStyle::activeColor.withAlpha(.25f) : Colours::black.withAlpha(.28f));
 			g.fillRoundedRectangle(cr, 3);
-			g.setColour(c.on ? Colour(0xffbfe8cc) : Colour(0xff9a9a9a));
+			g.setColour(c.on ? TrackingMonitorStyle::activeText : TrackingMonitorStyle::dimText);
 			g.drawText(c.text, cr, Justification::centred, false);
 			x -= w + 4;
 		}

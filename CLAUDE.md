@@ -52,7 +52,7 @@ transformation par source.
   testée par Vincent dans Chataigne avec Augmenta Fusion.
 - Rôles : Claude écrit le code, compile, corrige. Vincent définit le
   comportement attendu, teste avec du vrai tracking, valide.
-- **Traçabilité : `TODO.md`** (racine du dépôt). Le lire en début de séance.
+- **Traçabilité : `TODO.md`** (racine du dépôt ; versions terminées dans `docs/drawzone/TODO-archive.md`). Le lire en début de séance.
   Le mettre à jour après chaque étape : réussites (✅), échecs (❌) avec leur
   cause et leur correction, étape en cours (⏭️), à faire (⬜), idées (💡).
   Les échecs sont notés aussi, pas seulement les succès.
@@ -61,7 +61,7 @@ transformation par source.
 ## 3. Arborescence locale (Windows uniquement pour l'instant)
 
 ```
-D:\DRAWZONE\
+D:\0-DRAWZONE\
 ├── JUCE\        JUCE modifié de Ben (branche develop-local, JUCE 7.0.12). Hors dépôt.
 └── DrawZone\    CE dépôt (fork : github.com/vincethpiafff/DrawZone)
 ```
@@ -100,7 +100,7 @@ Chataigne est généré à partir de `Chataigne.jucer`. Pour ajouter ou retirer 
 fichier source, il faut l'ajouter au `.jucer` puis **enregistrer dans le
 Projucer**, qui régénère tous les projets (Windows, Mac, Linux…).
 
-- Projucer : `D:\DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022\x64\Release\App\Projucer.exe`
+- Projucer : `D:\0-DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022\x64\Release\App\Projucer.exe`
   (compilé en **mode GPL**, voir BUILDING.md ; sinon l'enregistrement est bloqué).
 - Ligne de commande possible : `Projucer.exe --resave Chataigne.jucer`.
 - Après chaque enregistrement, contrôler `git status` : seuls les fichiers
@@ -129,7 +129,7 @@ code dans `Source/Module/modules/spatial/`.
 - Remotes : `origin` = notre fork ; `upstream` = Chataigne de Ben en
   **lecture seule** (son URL de push vaut `NE_PAS_PUSHER`). Ne jamais changer ça.
   Même blocage sur les 6 sous-modules (`Modules/juce_*`) et sur
-  `D:\DRAWZONE\JUCE`, dont `origin` est un dépôt de Ben. Ce réglage est local :
+  `D:\0-DRAWZONE\JUCE`, dont `origin` est un dépôt de Ben. Ce réglage est local :
   à refaire après un nouveau clone
   (`git submodule foreach "git remote set-url --push origin NE_PAS_PUSHER"`).
 - **Ne pas déranger Ben** (le fork est public et relié au sien) :
@@ -177,7 +177,7 @@ et, un jour, proposer notre travail à Ben.
 - Fichiers propres à DrawZone : `CLAUDE.md`, `.github/README.md`,
   `docs/drawzone/`, `Tools/drawzone/`. Le `README.md` racine reste celui de Ben.
 - Seule divergence connue à ce jour : `Builds/VisualStudio2022/Chataigne_App.vcxproj`
-  pointe vers notre JUCE (`D:\DRAWZONE\JUCE`). En cas de conflit lors d'une
+  pointe vers notre JUCE (`D:\0-DRAWZONE\JUCE`). En cas de conflit lors d'une
   fusion avec upstream : prendre la version de Ben puis réenregistrer dans le Projucer.
 
 ## 7. Fichiers de Ben à ne pas suivre

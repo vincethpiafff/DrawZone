@@ -72,6 +72,11 @@ public:
 private:
 	SpatialModule* module;
 	TopViewModel model;
+	uint32 lastResolutionTextMs = 0;
+
+	//two frames reused in turn instead of a new image (about 8 MB in 1080p) at each frame
+	Image framePool[2];
+	Image getFrameImage(int w, int h);
 
 	//Spout sender, used on the GL thread only ; shared with the queued GL jobs so it outlives this object
 	struct SpoutState

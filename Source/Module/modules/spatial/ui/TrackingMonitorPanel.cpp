@@ -266,10 +266,7 @@ void TrackingMonitorPanel::paintOutputChip(Graphics& g, Rectangle<int> chip, boo
 	using namespace TrackingMonitorStyle;
 
 	Rectangle<float> cf = chip.toFloat();
-	g.setColour(hovered ? rowBg.brighter(.15f) : rowBg);
-	g.fillRoundedRectangle(cf, 4);
-	g.setColour(on ? HIGHLIGHT_COLOR : (hovered ? TEXT_COLOR.withAlpha(.5f) : borderColor));
-	g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+	drawChip(g, cf, hovered, on);
 
 	//check box : filled with a tick when the output is on
 	Rectangle<float> box = getOutputBoxRect(chip).toFloat();
@@ -277,12 +274,8 @@ void TrackingMonitorPanel::paintOutputChip(Graphics& g, Rectangle<int> chip, boo
 	{
 		g.setColour(HIGHLIGHT_COLOR);
 		g.fillRoundedRectangle(box, 3);
-		Path tick;
-		tick.startNewSubPath(box.getX() + 3.5f, box.getCentreY());
-		tick.lineTo(box.getX() + 6, box.getBottom() - 4);
-		tick.lineTo(box.getRight() - 3.5f, box.getY() + 4);
-		g.setColour(Colours::black.withAlpha(.8f));
-		g.strokePath(tick, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+		drawTick(g, Point<float>(box.getX() + 3.5f, box.getCentreY()), Point<float>(box.getX() + 6, box.getBottom() - 4),
+			Point<float>(box.getRight() - 3.5f, box.getY() + 4), Colours::black.withAlpha(.8f));
 	}
 	else
 	{
@@ -329,13 +322,10 @@ void TrackingMonitorPanel::paintSlotDrag(Graphics& g)
 	Point<float> from = slotDragSlot >= 0 ? slotChipRects[slotDragSlot].getCentre().toFloat() : getPersonScreenPosition(slotDragPersonId);
 
 	//link from the dragged item to the mouse
-	Path link, dashed;
+	Path link;
 	link.startNewSubPath(from);
 	link.lineTo(slotDragMouse);
-	const float dashes[] = { 6, 4 };
-	PathStrokeType(2.0f).createDashedStroke(dashed, link, dashes, 2);
-	g.setColour(c.withAlpha(valid ? 1.0f : .6f));
-	g.fillPath(dashed);
+	strokeDashed(g, link, 2.0f, 6, 4, c.withAlpha(valid ? 1.0f : .6f));
 	g.fillEllipse(Rectangle<float>(8, 8).withCentre(slotDragMouse));
 
 	if (!valid) return;
@@ -376,7 +366,7 @@ void TrackingMonitorPanel::paintHeader(Graphics& g)
 	bool silent = !received || now - snapshot.lastMessageMs > SpatialModule::sourceTimeoutMs;
 
 	String state = !received ? "No data yet" : (silent ? "Silent source" : "Receiving");
-	Colour stateColor = !received ? NORMAL_COLOR : (silent ? Colours::orange : Colours::limegreen);
+	Colour stateColor = !received ? NORMAL_COLOR : (silent ? Colours::orange : activeColor);
 
 	//source state pill
 	Font pillFont(13.0f);
@@ -525,19 +515,12 @@ void TrackingMonitorPanel::paintSlotBar(Graphics& g)
 	if (!slotModeRect.isEmpty())
 	{
 		Rectangle<float> mf = slotModeRect.toFloat();
-		g.setColour(slotModeHovered ? rowBg.brighter(.15f) : rowBg);
-		g.fillRoundedRectangle(mf, 4);
-		g.setColour(slotModeHovered ? TEXT_COLOR.withAlpha(.5f) : borderColor);
-		g.drawRoundedRectangle(mf.reduced(.5f), 4, 1);
+		drawChip(g, mf, slotModeHovered);
 
 		Colour iconColor = slotsEnabled ? HIGHLIGHT_COLOR : NORMAL_COLOR;
-		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(mf.getX() + 15, mf.getCentreY())), slotReleaseMode, iconColor);
+		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(mf.getX() + 15, mf.getCentreY())), slotReleaseMode == PlayerSlots::HOLD_SPOT, iconColor);
 
-		Rectangle<float> chevron = Rectangle<float>(8, 5).withCentre(Point<float>(mf.getRight() - 12, mf.getCentreY()));
-		Path p;
-		p.addTriangle(chevron.getX(), chevron.getY(), chevron.getRight(), chevron.getY(), chevron.getCentreX(), chevron.getBottom());
-		g.setColour(dimText);
-		g.fillPath(p);
+		drawChevron(g, Point<float>(mf.getRight() - 12, mf.getCentreY()), false, dimText);
 
 		g.setFont(Font(12.0f, Font::bold));
 		g.setColour(TEXT_COLOR);
@@ -570,12 +553,9 @@ void TrackingMonitorPanel::paintSlotBar(Graphics& g)
 		}
 		else if (s.held)
 		{
-			Path border, dashed;
+			Path border;
 			border.addRoundedRectangle(cf.reduced(.5f), 4);
-			const float dashes[] = { 4, 3 };
-			PathStrokeType(1.0f).createDashedStroke(dashed, border, dashes, 2);
-			g.setColour(c.withAlpha(.8f));
-			g.fillPath(dashed);
+			strokeDashed(g, border, 1.0f, 4, 3, c.withAlpha(.8f));
 		}
 		else if (s.occupied)
 		{
@@ -655,20 +635,20 @@ void TrackingMonitorPanel::showPersonMenu(int personId, Point<int> clickPosition
 		auto& s = slots.getReference(i);
 		String state = !s.occupied ? "free" : (s.held ? "held" : "#" + String(s.personId));
 		String key = i < 9 ? "   [" + String(i + 1) + "]" : String();
-		slotsMenu.addColouredItem(100 + i, s.name + "   " + state + key, s.color, slotsEnabled && i != current, i == current);
+		slotsMenu.addColouredItem(PERSON_ASSIGN_FIRST_SLOT + i, s.name + "   " + state + key, s.color, slotsEnabled && i != current, i == current);
 	}
 
 	PopupMenu m;
 	m.addSectionHeader("Person " + String(personId));
 	m.addSubMenu("Assign slot", slotsMenu, slotsEnabled && !slots.isEmpty());
-	m.addItem(1, "Release slot   [0]", current >= 0);
+	m.addItem(PERSON_RELEASE_SLOT, "Release slot   [0]", current >= 0);
 
 	WeakReference<Component> panelRef(this);
 	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(Rectangle<int>(1, 1).withPosition(localPointToGlobal(clickPosition))), [panelRef, personId](int result)
 		{
 			TrackingMonitorPanel* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
 			if (p == nullptr || result <= 0) return;
-			p->assignSlot(personId, result == 1 ? -1 : result - 100);
+			p->assignSlot(personId, result == PERSON_RELEASE_SLOT ? -1 : result - PERSON_ASSIGN_FIRST_SLOT);
 		});
 }
 
@@ -691,10 +671,7 @@ void TrackingMonitorPanel::paintShortcuts(Graphics& g)
 	//chip : keyboard icon, label, chevron
 	bool open = shortcutsPinned || shortcutsHovered;
 	Rectangle<float> cf = shortcutsRect.toFloat();
-	g.setColour(open ? rowBg.brighter(.15f) : rowBg);
-	g.fillRoundedRectangle(cf, 4);
-	g.setColour(shortcutsPinned ? HIGHLIGHT_COLOR : (open ? TEXT_COLOR.withAlpha(.5f) : borderColor));
-	g.drawRoundedRectangle(cf.reduced(.5f), 4, 1);
+	drawChip(g, cf, open, shortcutsPinned);
 
 	Rectangle<float> kb = Rectangle<float>(16, 11).withCentre(Point<float>(cf.getX() + 14, cf.getCentreY()));
 	g.setColour(dimText);
@@ -705,12 +682,7 @@ void TrackingMonitorPanel::paintShortcuts(Graphics& g)
 	g.setFont(Font(12.0f));
 	g.setColour(TEXT_COLOR);
 	g.drawText("Shortcuts", cf.withTrimmedLeft(28).withTrimmedRight(16), Justification::centredLeft, true);
-	Rectangle<float> chevron = Rectangle<float>(8, 5).withCentre(Point<float>(cf.getRight() - 10, cf.getCentreY()));
-	Path cp;
-	if (open) cp.addTriangle(chevron.getX(), chevron.getBottom(), chevron.getRight(), chevron.getBottom(), chevron.getCentreX(), chevron.getY());
-	else cp.addTriangle(chevron.getX(), chevron.getY(), chevron.getRight(), chevron.getY(), chevron.getCentreX(), chevron.getBottom());
-	g.setColour(dimText);
-	g.fillPath(cp);
+	drawChevron(g, Point<float>(cf.getRight() - 10, cf.getCentreY()), open, dimText);
 
 	if (!open) return;
 
@@ -785,7 +757,7 @@ public:
 			g.fillRoundedRectangle(r, 4);
 		}
 
-		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(r.getX() + 16, r.getY() + 14)), mode, HIGHLIGHT_COLOR);
+		drawSlotModeIcon(g, Rectangle<float>(14, 14).withCentre(Point<float>(r.getX() + 16, r.getY() + 14)), mode == PlayerSlots::HOLD_SPOT, HIGHLIGHT_COLOR);
 
 		Rectangle<float> text = r.withTrimmedLeft(32).withTrimmedRight(24);
 		g.setFont(Font(13.0f, Font::bold));
@@ -798,13 +770,8 @@ public:
 
 		if (ticked)
 		{
-			g.setColour(HIGHLIGHT_COLOR);
-			Path tick;
 			Point<float> c(r.getRight() - 12, r.getY() + 14);
-			tick.startNewSubPath(c.x - 5, c.y);
-			tick.lineTo(c.x - 1.5f, c.y + 4);
-			tick.lineTo(c.x + 5, c.y - 4);
-			g.strokePath(tick, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+			drawTick(g, c.translated(-5, 0), c.translated(-1.5f, 4), c.translated(5, -4), HIGHLIGHT_COLOR);
 		}
 	}
 };
@@ -825,8 +792,10 @@ void TrackingMonitorPanel::showSlotModeMenu()
 			PlayerSlots* p = dynamic_cast<PlayerSlots*>(slotsRef.get());
 			if (p == nullptr || result <= 0) return;
 			EnumParameter* mode = p->releaseMode;
-			String key = result - 1 == PlayerSlots::HOLD_SPOT ? "Hold Spot To Reclaim" : "Next Person Takes Slot";
-			if (key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
+			//the option is found by its value (PlayerSlots::ReleaseMode), so renaming it doesn't break the menu
+			String key;
+			for (auto* ev : mode->enumValues) if ((int)ev->value == result - 1) key = ev->key;
+			if (key.isNotEmpty() && key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
 			if (TrackingMonitorPanel* panel = dynamic_cast<TrackingMonitorPanel*>(panelRef.get())) panel->repaint();
 		});
 }
@@ -857,11 +826,11 @@ void TrackingMonitorPanel::showSlotMenu(int slotIndex, Point<int> clickPosition)
 	PopupMenu m;
 	if (slot != nullptr)
 	{
-		m.addItem(1, "Rename");
-		m.addItem(2, "Set color...");
+		m.addItem(SLOT_RENAME, "Rename");
+		m.addItem(SLOT_SET_COLOR, "Set color...");
 		m.addSeparator();
 	}
-	m.addItem(3, "Enabled", true, ps.enabled->boolValue());
+	m.addItem(SLOT_ENABLED, "Enabled", true, ps.enabled->boolValue());
 
 	WeakReference<ControllableContainer> slotRef(slot);
 	WeakReference<ControllableContainer> slotsRef(&ps);
@@ -875,9 +844,9 @@ void TrackingMonitorPanel::showSlotMenu(int slotIndex, Point<int> clickPosition)
 			if (p == nullptr) return;
 			switch (result)
 			{
-			case 1: if (s != nullptr && panel != nullptr) panel->showRenameEditor(s, chip.withTrimmedLeft(20).withSizeKeepingCentre(jmax(chip.getWidth() - 20, 120), 24)); break;
-			case 2: if (s != nullptr && panel != nullptr) panel->showColorEditor(s, s->color, clickPosition); break;
-			case 3: p->enabled->setUndoableValue(p->enabled->boolValue(), !p->enabled->boolValue()); break;
+			case SLOT_RENAME: if (s != nullptr && panel != nullptr) panel->showRenameEditor(s, chip.withTrimmedLeft(20).withSizeKeepingCentre(jmax(chip.getWidth() - 20, 120), 24)); break;
+			case SLOT_SET_COLOR: if (s != nullptr && panel != nullptr) panel->showColorEditor(s, s->color, clickPosition); break;
+			case SLOT_ENABLED: p->enabled->setUndoableValue(p->enabled->boolValue(), !p->enabled->boolValue()); break;
 			}
 		});
 }
@@ -1222,21 +1191,9 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 			}
 		}
 
-		bool inside = zr.contains(pos);
-		if (zones[i].freeShape) //its curves can go out of the box
-		{
-			Path sp = zones[i].outline;
-			sp.applyTransform(AffineTransform::scale(sceneScale).translated(sceneScreenRect.getX(), sceneScreenRect.getY()));
-			inside = sp.contains(pos);
-		}
-		else if (inside && zones[i].ellipse)
-		{
-			Point<float> d = pos - zr.getCentre();
-			float rx = zr.getWidth() / 2, ry = zr.getHeight() / 2;
-			inside = rx > 0 && ry > 0 && (d.x * d.x) / (rx * rx) + (d.y * d.y) / (ry * ry) <= 1;
-		}
-
-		if (inside)
+		//same test as the zone itself (rectangle, ellipse, free shape whose curves can go out of the box)
+		SpatialZone* z = dynamic_cast<SpatialZone*>(zones[i].zone.get());
+		if (z != nullptr && z->contains((pos - sceneScreenRect.getTopLeft()) / sceneScale))
 		{
 			hit.zoneIndex = i;
 			return hit;
@@ -1584,25 +1541,30 @@ void TrackingMonitorPanel::showHiddenZones()
 	timerCallback();
 }
 
-void TrackingMonitorPanel::createZoneAt(Point<float> positionMeters)
+void TrackingMonitorPanel::addZone(SpatialZone* z, bool select)
 {
 	SpatialModule* sm = getSpatialModule();
-	if (sm == nullptr) return;
+	if (sm == nullptr)
+	{
+		delete z;
+		return;
+	}
 
-	SpatialZone* z = sm->zoneManager.addItem();
-	if (z == nullptr) return;
-
-	z->center->setPoint(positionMeters);
+	sm->zoneManager.addItem(z);
+	if (select) z->selectThis();
 	timerCallback();
+}
+
+void TrackingMonitorPanel::createZoneAt(Point<float> positionMeters)
+{
+	SpatialZone* z = new SpatialZone();
+	z->center->setPoint(positionMeters);
+	addZone(z, false);
 }
 
 void TrackingMonitorPanel::createZone()
 {
-	SpatialModule* sm = getSpatialModule();
-	if (sm == nullptr) return;
-
-	sm->zoneManager.addItem(); //a new zone starts at the center of the scene
-	timerCallback();
+	addZone(new SpatialZone(), false); //a new zone starts at the center of the scene
 }
 
 void TrackingMonitorPanel::showZoneColorEditor(SpatialZone* zone, Point<int> position)
@@ -1701,18 +1663,18 @@ void TrackingMonitorPanel::showContextMenu(SpatialZone* zone, Point<int> clickPo
 	if (zone != nullptr)
 	{
 		bool hidden = zone->hiddenInMonitor->boolValue(); //only possible from the column
-		m.addItem(1, "Duplicate");
-		m.addItem(2, "Delete");
-		m.addItem(hidden ? 6 : 3, hidden ? "Show" : "Hide");
-		m.addItem(5, "Set color...");
+		m.addItem(ZONE_DUPLICATE, "Duplicate");
+		m.addItem(ZONE_DELETE, "Delete");
+		m.addItem(hidden ? ZONE_SHOW : ZONE_HIDE, hidden ? "Show" : "Hide");
+		m.addItem(ZONE_SET_COLOR, "Set color...");
 	}
 	else if (canCreate)
 	{
-		m.addItem(4, "Create zone");
+		m.addItem(ZONE_CREATE, "Create zone");
 		m.addSeparator();
-		m.addItem(8, "Draw rectangle");
-		m.addItem(9, "Draw ellipse");
-		m.addItem(7, "Draw free shape");
+		m.addItem(ZONE_DRAW_RECTANGLE, "Draw rectangle");
+		m.addItem(ZONE_DRAW_ELLIPSE, "Draw ellipse");
+		m.addItem(ZONE_DRAW_FREE_SHAPE, "Draw free shape");
 	}
 
 	if (m.getNumItems() == 0) return;
@@ -1726,15 +1688,15 @@ void TrackingMonitorPanel::showContextMenu(SpatialZone* zone, Point<int> clickPo
 			TrackingMonitorPanel* p = dynamic_cast<TrackingMonitorPanel*>(panelRef.get());
 			switch (result)
 			{
-			case 1: if (z != nullptr) z->duplicate(); break;
-			case 2: if (z != nullptr) z->remove(); break;
-			case 3: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(false, true); break;
-			case 4: if (p != nullptr) p->createZoneAt(clickMeters); break;
-			case 5: if (z != nullptr && p != nullptr) p->showZoneColorEditor(z, clickPosition); break;
-			case 6: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(true, false); break;
-			case 7: if (p != nullptr) p->startFreeShapeDrawing(); break;
-			case 8: if (p != nullptr) p->startBoxDrawing(SpatialZone::RECTANGLE); break;
-			case 9: if (p != nullptr) p->startBoxDrawing(SpatialZone::ELLIPSE); break;
+			case ZONE_DUPLICATE: if (z != nullptr) z->duplicate(); break;
+			case ZONE_DELETE: if (z != nullptr) z->remove(); break;
+			case ZONE_HIDE: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(false, true); break;
+			case ZONE_CREATE: if (p != nullptr) p->createZoneAt(clickMeters); break;
+			case ZONE_SET_COLOR: if (z != nullptr && p != nullptr) p->showZoneColorEditor(z, clickPosition); break;
+			case ZONE_SHOW: if (z != nullptr) z->hiddenInMonitor->setUndoableValue(true, false); break;
+			case ZONE_DRAW_FREE_SHAPE: if (p != nullptr) p->startFreeShapeDrawing(); break;
+			case ZONE_DRAW_RECTANGLE: if (p != nullptr) p->startBoxDrawing(SpatialZone::RECTANGLE); break;
+			case ZONE_DRAW_ELLIPSE: if (p != nullptr) p->startBoxDrawing(SpatialZone::ELLIPSE); break;
 			}
 		});
 }
@@ -1819,15 +1781,11 @@ void TrackingMonitorPanel::finishFreeShapeDrawing()
 		return;
 	}
 
-	//shape and points set before adding, so the undo / redo of the creation keeps them
 	SpatialZone* z = new SpatialZone();
 	z->shape->setValueWithData(SpatialZone::FREE_SHAPE);
 	z->setFreePointsMeters(drawPoints);
-	sm->zoneManager.addItem(z);
-	z->selectThis();
-
 	drawPoints.clear();
-	timerCallback();
+	addZone(z, true);
 }
 
 void TrackingMonitorPanel::cancelFreeShapeDrawing()
@@ -1870,10 +1828,7 @@ void TrackingMonitorPanel::finishBoxDrawing()
 	z->shape->setValueWithData(boxShape);
 	z->size->setPoint(r.getWidth(), r.getHeight());
 	z->center->setPoint(r.getCentre());
-	sm->zoneManager.addItem(z);
-	z->selectThis();
-
-	timerCallback();
+	addZone(z, true);
 }
 
 void TrackingMonitorPanel::cancelBoxDrawing()

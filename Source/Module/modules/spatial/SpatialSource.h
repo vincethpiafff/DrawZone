@@ -45,7 +45,7 @@ public:
 	Point<float> vectorToScene(Point<float> v) const;	// velocity, flipped by sign
 	float angleToScene(float degrees) const;			// orientation
 
-	//message thread, at the zone rate
+	//message thread, at the status rate (SpatialModule::statusUpdateRateHz) : Status text
 	virtual void update(SpatialModule* module);
 
 	//"No data yet", "Silent" or "Receiving, 50 msg/s"

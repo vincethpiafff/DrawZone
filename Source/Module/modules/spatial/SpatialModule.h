@@ -16,6 +16,7 @@
 #pragma once
 
 #include "TrackingData.h"
+#include "ui/SpatialStyle.h"
 #include "ui/SpatialSectionEditor.h"
 #include "SpatialSource.h"
 #include "SpatialZone.h"
@@ -44,6 +45,8 @@ public:
 	FloatParameter* height;		// meters
 	FloatParameter* age;		// seconds since entering
 
+	int firstZoneIndex = -1;	// index of the first zone the person is in, -1 = none (for the top view)
+
 	void update(Point<float> positionMeters, const Array<SpatialZone*>& zones);
 	void updateTracking(const TrackedPerson& p, const String& slot);
 
@@ -68,6 +71,9 @@ public:
 	static String getNoSceneSizeText() { return "Waiting for scene size (Augmenta /scene, or Scene > Size Mode : Manual)"; }
 	//zones are evaluated on the message thread at this rate
 	static const int zoneUpdateRateHz = 50;
+	//status texts (sources) are rebuilt at this rate only
+	static const int statusUpdateRateHz = 4;
+	int statusTick = 0;
 
 	TrackingData trackingData;
 
@@ -105,6 +111,7 @@ public:
 	void updatePeople(const TrackingData::Snapshot& s);
 	void timerCallback() override;
 
+	void setupAddedZone(SpatialZone* zone);	// its values in Values > Zones, its bounds
 	void itemAdded(SpatialZone* zone) override;
 	void itemsAdded(Array<SpatialZone*> zones) override;
 	void itemRemoved(SpatialZone* zone) override;

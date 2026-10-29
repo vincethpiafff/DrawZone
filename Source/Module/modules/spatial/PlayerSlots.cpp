@@ -8,8 +8,6 @@
   ==============================================================================
 */
 
-#include "PlayerSlots.h"
-
 PlayerSlot::PlayerSlot(int index) :
 	ControllableContainer("Slot " + String(index + 1))
 {

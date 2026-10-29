@@ -3355,6 +3355,7 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h"/>

@@ -36,8 +36,8 @@ C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\B
 ## 1. Dossier de travail et JUCE
 
 ```bat
-mkdir D:\DRAWZONE
-cd /d D:\DRAWZONE
+mkdir D:\0-DRAWZONE
+cd /d D:\0-DRAWZONE
 git config --global core.longpaths true
 git clone --branch develop-local --depth 1 https://github.com/benkuper/JUCE JUCE
 ```
@@ -47,7 +47,7 @@ JUCE reste **à côté** du dépôt, jamais dedans (règle de Ben).
 ## 2. Cloner DrawZone sans conversion des fins de ligne
 
 ```bat
-cd /d D:\DRAWZONE
+cd /d D:\0-DRAWZONE
 git -c core.autocrlf=false clone --recursive https://github.com/vincethpiafff/DrawZone DrawZone
 cd DrawZone
 git config core.autocrlf false
@@ -65,7 +65,7 @@ montre `upstream ... NE_PAS_PUSHER (push)`.
 Le Projucer transforme `Chataigne.jucer` en projet Visual Studio.
 
 ```bat
-cd /d D:\DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022
+cd /d D:\0-DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022
 set CL=/DJUCER_ENABLE_GPL_MODE#1
 "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe" Projucer.sln /p:Configuration=Release /p:Platform=x64 /m /t:Rebuild
 set CL=
@@ -81,17 +81,17 @@ set CL=
 
 1. Lancer `Projucer.exe`.
 2. **File → Global Paths…**
-   - Path to JUCE : `D:\DRAWZONE\JUCE`
-   - JUCE Modules : `D:\DRAWZONE\JUCE\modules`
+   - Path to JUCE : `D:\0-DRAWZONE\JUCE`
+   - JUCE Modules : `D:\0-DRAWZONE\JUCE\modules`
    - Le reste (VST, AAX, ARA, Android, User Modules) ne sert pas.
    - Ne cliquer sur aucun bouton « Re-scan », fermer la fenêtre.
-3. **File → Open…** → `D:\DRAWZONE\DrawZone\Chataigne.jucer`
+3. **File → Open…** → `D:\0-DRAWZONE\DrawZone\Chataigne.jucer`
 4. **Ctrl+S** (ne pas utiliser « Save and Open in IDE »).
 
 Contrôle :
 
 ```bat
-cd /d D:\DRAWZONE\DrawZone
+cd /d D:\0-DRAWZONE\DrawZone
 git status --short
 ```
 
@@ -178,7 +178,7 @@ start "" "Binaries\App\Chataigne.exe"
 ## Mettre à jour JUCE ou le Projucer
 
 ```bat
-cd /d D:\DRAWZONE\JUCE
+cd /d D:\0-DRAWZONE\JUCE
 git pull
 ```
 

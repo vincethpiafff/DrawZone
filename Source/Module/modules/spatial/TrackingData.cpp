@@ -53,13 +53,6 @@ float TrackingData::RateCounter::getRate(uint32 now) const
 	return lastMessageMs == 0 || now - lastMessageMs > 1000 ? 0 : messagesPerSecond;
 }
 
-void TrackingData::setScene(int frame, Point<float> sceneSize)
-{
-	const ScopedLock sl(lock);
-	data.frame = frame;
-	data.sceneSize = sceneSize;
-}
-
 void TrackingData::setSceneSize(Point<float> sceneSize)
 {
 	const ScopedLock sl(lock);
@@ -121,16 +114,6 @@ void TrackingData::removeStalePersons(uint32 timeoutMs)
 	const ScopedLock sl(lock);
 	uint32 now = Time::getMillisecondCounter();
 	data.persons.removeIf([now, timeoutMs](const TrackedPerson& p) { return now - p.lastUpdateMs > timeoutMs; });
-}
-
-void TrackingData::clear()
-{
-	const ScopedLock sl(lock);
-	Point<float> sceneSize = data.sceneSize;
-	data = Snapshot();
-	data.sceneSize = sceneSize;
-	sourceRates.clear();
-	moduleRate = RateCounter();
 }
 
 int TrackingData::getNumPersons()
