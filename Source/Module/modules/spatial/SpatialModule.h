@@ -68,7 +68,7 @@ public:
 	//no message at all for this long : the source is shown as silent
 	static const uint32 sourceTimeoutMs = 1000;
 	//shown by the Monitor and the video output while the scene size is unknown
-	static String getNoSceneSizeText() { return "Waiting for scene size (Augmenta /scene, or Scene > Size Mode : Manual)"; }
+	static String getNoSceneSizeText() { return "Waiting for scene size (a source knowing its scene, Use As Scene on one if there are several, or Scene > Size Mode : Manual)"; }
 	//zones are evaluated on the message thread at this rate
 	static const int zoneUpdateRateHz = 50;
 	//status texts (sources) are rebuilt at this rate only
@@ -80,13 +80,11 @@ public:
 	//tracking systems (Augmenta, PSN, TUIO...), each with its transform to the scene
 	SpatialSourceManager sourceManager;
 
-	//scene size : from Augmenta /scene (Auto) or set by hand (Manual)
+	//scene size : from a source (Auto, see SpatialSourceManager::getSceneArea) or set by hand (Manual)
 	enum SceneSizeMode { SCENE_AUTO, SCENE_MANUAL };
 	ControllableContainer sceneCC;
 	EnumParameter* sceneSizeMode;
 	Point2DParameter* sceneSizeManual;
-	std::atomic<bool> sceneAuto { true };	// read by the network threads
-	bool isSceneSizeAuto() const { return sceneAuto; }
 	void updateSceneSize();
 
 	//Inspector : section look (icon badge, state chips), blocks of the session first, network last, all folded
@@ -96,7 +94,7 @@ public:
 
 	SpatialSectionManager<SpatialZone> zoneManager;
 	ControllableContainer zonesValuesCC;
-	Point<float> zonesSceneSize;	//scene size last applied to the zone bounds
+	Point<float> zonesSceneSize;	//where a new zone starts : the center of this scene
 
 	ControllableContainer peopleValuesCC;
 	std::map<int, SpatialPerson*> people;	// by person id, owned by peopleValuesCC

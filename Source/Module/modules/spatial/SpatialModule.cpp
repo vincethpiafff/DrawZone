@@ -27,8 +27,8 @@ SpatialModule::SpatialModule() :
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
 
-	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Auto : the scene is the Augmenta scene (/scene message). Manual : the scene size is set below, for sources without a scene (PSN, TUIO) or to frame several sources");
-	sceneSizeMode->addOption("Auto (Augmenta)", SCENE_AUTO)->addOption("Manual", SCENE_MANUAL);
+	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Auto : the scene comes from a source (Augmenta /scene message, Area Size of a PSN source) : the one marked Use As Scene, or the only one knowing its scene. Manual : the scene size is set below");
+	sceneSizeMode->addOption("Auto (From Sources)", SCENE_AUTO)->addOption("Manual", SCENE_MANUAL);
 	sceneSizeManual = sceneCC.addPoint2DParameter("Size", "Manual : width and height of the scene, in meters");
 	sceneSizeManual->setBounds(.1f, .1f, 1000, 1000);
 	sceneSizeManual->setDefaultPoint(10, 6);
@@ -75,15 +75,13 @@ void SpatialModule::processMessageInternal(const OSCMessage& msg)
 
 void SpatialModule::updateSceneSize()
 {
-	sceneAuto = sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO;
-	sceneSizeManual->setEnabled(!sceneAuto);
-	if (!sceneAuto) trackingData.setSceneSize(sceneSizeManual->getPoint());
+	bool isAuto = sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO;
+	sceneSizeManual->setEnabled(!isAuto);
+	if (!isAuto) trackingData.setSceneSize(sceneSizeManual->getPoint());
 	else
 	{
-		//back to the Augmenta scene, if one was received
 		const ScopedLock sl(sourceManager.items.getLock());
-		AugmentaSource* a = sourceManager.getAugmentaSource();
-		trackingData.setSceneSize(a != nullptr ? a->augmentaSceneSize : Point<float>());
+		trackingData.setSceneSize(sourceManager.getSceneArea());
 	}
 }
 
@@ -100,7 +98,6 @@ void SpatialModule::updateZones()
 	if (s.sceneSize != zonesSceneSize)
 	{
 		zonesSceneSize = s.sceneSize;
-		for (auto& z : zoneManager.items) z->setSceneSize(zonesSceneSize);
 	}
 
 	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons);
@@ -236,6 +233,7 @@ void SpatialModule::timerCallback()
 			if (!s->enabled->boolValue()) trackingData.removeSource(s);
 			if (updateStatus) s->update(this);
 		}
+		if (sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO) trackingData.setSceneSize(sourceManager.getSceneArea());
 	}
 	personCount->setValue(trackingData.getNumPersons());
 
@@ -245,7 +243,6 @@ void SpatialModule::timerCallback()
 void SpatialModule::setupAddedZone(SpatialZone* zone)
 {
 	zonesValuesCC.addChildControllableContainer(&zone->zoneValues);
-	zone->setSceneSize(zonesSceneSize);
 }
 
 void SpatialModule::itemAdded(SpatialZone* zone)
@@ -310,7 +307,7 @@ void SpatialModule::setupInspectorSections()
 				{
 					Point<float> s = trackingData.getSceneSize();
 					String size = s.x > 0 && s.y > 0 ? String(s.x, 1) + " x " + String(s.y, 1) + " m" : String("no size yet");
-					return Array<Chip>({ chip(sceneAuto ? "Auto" : "Manual", false), chip(size, false) });
+					return Array<Chip>({ chip(sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO ? "Auto" : "Manual", false), chip(size, false) });
 				}, cc, isRoot);
 		};
 

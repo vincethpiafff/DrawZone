@@ -44,10 +44,8 @@ public:
 	SpatialZone(var params = var());
 	~SpatialZone();
 
-	//bounds used until the tracking system sends its scene size
+	//zones are in meters and don't depend on the scene : a smaller scene must not move or shrink them
 	static constexpr float maxMeters = 1000;
-
-	void setSceneSize(Point<float> sceneSize);
 
 	enum Shape { RECTANGLE, ELLIPSE, FREE_SHAPE };
 	EnumParameter* shape;

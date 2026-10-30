@@ -70,7 +70,8 @@ SpatialZone::SpatialZone(var params) :
 	pointsCC.editorIsCollapsed = true; //folded at the bottom of the Inspector
 	addChildControllableContainer(&pointsCC);
 
-	setSceneSize(Point<float>());
+	center->setBounds(0, 0, maxMeters, maxMeters);
+	size->setBounds(0, 0, maxMeters, maxMeters);
 
 	presence = zoneValues.addBoolParameter("Presence", "Is at least one person in this zone ?", false);
 	presence->setControllableFeedbackOnly(true);
@@ -106,14 +107,6 @@ SpatialZone::~SpatialZone()
 
 //the zone must stay inside the scene sent by the tracking system
 //(finite bounds also stop the Inspector drag from jumping to millions of meters)
-void SpatialZone::setSceneSize(Point<float> sceneSize)
-{
-	if (sceneSize.x <= 0 || sceneSize.y <= 0) sceneSize = Point<float>(maxMeters, maxMeters); //scene not received yet
-
-	center->setBounds(0, 0, sceneSize.x, sceneSize.y);
-	size->setBounds(0, 0, sceneSize.x, sceneSize.y);
-}
-
 bool SpatialZone::contains(Point<float> positionMeters, float margin) const
 {
 	if (isFreeShape())

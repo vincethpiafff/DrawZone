@@ -160,6 +160,14 @@ Start-Sleep -Milliseconds 1500
 $gone = Tool "organic_inspect" @{ handle = $modules; path = $person }
 Check "no leave : removed after timeout" ($null -eq $gone) $(if ($gone) { "still there" } else { "gone" })
 
+#a much smaller scene must not move or shrink the zones
+$sizeBefore = Value "spatial/parameters/zones/zoneRECT/size"
+$p = Start-Process powershell -ArgumentList "-ExecutionPolicy", "Bypass", "-File", $sim, "-X", 1, "-Y", 0.5, "-SceneW", 2, "-SceneH", 1, "-Seconds", 1.5 -WindowStyle Hidden -PassThru
+$p.WaitForExit()
+$c = Value "spatial/parameters/zones/zoneRECT/center"
+$z = Value "spatial/parameters/zones/zoneRECT/size"
+Check "small scene : zone keeps its place and size" ((Near $c[0] $rect[0] 0.001) -and (Near $c[1] $rect[1] 0.001) -and (Near $z[0] $sizeBefore[0] 0.001) -and (Near $z[1] $sizeBefore[1] 0.001)) (($c + $z) -join ", ")
+
 #no warning or error in the logs during the test
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
 $bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime })
