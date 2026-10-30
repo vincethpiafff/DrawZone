@@ -13,7 +13,7 @@ Nom : le module « Spatial » s'affiche **Cockpit** depuis le 28/10/2026 (D14).
 | **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
 | **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ✅ v0.4.0 (28/10/2026) |
-| **v0.5** | Entrées PSN et TUIO, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
+| **v0.5** | Entrée PSN, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | |
 | **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ avec, en même temps, le test de l'interface avec plusieurs scènes et plusieurs systèmes de tracking en entrée (ex. Fusion en OSC + Naostage en PSN) |
 | **v0.7** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
 | **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |

@@ -145,3 +145,14 @@ nom de travail **Spatial** (`SpatialModule`, dossier
 `// DrawZone:`) charge un ancien type « Spatial » comme Cockpit, donc les
 anciennes sessions s'ouvrent toujours. Dans la doc, « module Spatial » et
 « module Cockpit » désignent le même module.
+
+## D15 — Abandon de l'entrée TUIO (30/10/2026)
+
+**Décision** : DrawZone n'aura pas d'entrée TUIO ; la brique 3 de la v0.5
+est retirée. Les entrées de tracking restent Augmenta (OSC) et PSN.
+
+**Raison** : choix de Vincent.
+
+**Conséquence** : rien à retirer dans le code, TUIO n'avait pas commencé.
+Les mentions de TUIO dans les décisions et le journal passés restent telles
+quelles, comme trace de ce qui était prévu.

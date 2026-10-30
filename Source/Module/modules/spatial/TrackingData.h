@@ -6,7 +6,7 @@
 	Author:  DrawZone
 
 	Protocol-independent list of tracked people, from one or more sources
-	(Augmenta OSC, PSN, TUIO...). Each source gives its own ids : a person
+	(Augmenta OSC, PSN...). Each source gives its own ids : a person
 	keeps the id of its source when no one else uses it, otherwise gets a
 	free id from 10000, so ids stay unique across sources.
 	Filled by the sources and read by the zones, the slots and the UI.

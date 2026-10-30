@@ -5,8 +5,8 @@
 	Created: 28 Oct 2026
 	Author:  DrawZone
 
-	A tracking system feeding the Spatial module (Augmenta OSC, PSN, and
-	TUIO next). Each source places its people in the scene with its own
+	A tracking system feeding the Spatial module (Augmenta OSC, PSN). Each
+	source places its people in the scene with its own
 	transform :
 	  scene = rotate(scale x flip(source meters)) + offset
 	Flip mirrors within the source area when it has one (Augmenta scene),

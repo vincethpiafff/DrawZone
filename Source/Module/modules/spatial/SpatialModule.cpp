@@ -356,7 +356,7 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//network inputs, network outputs (OSC, then PSN / TUIO), Sources, Video Output, Scene, Zones, Player Slots
+	//network inputs, network outputs (OSC, then PSN), Sources, Video Output, Scene, Zones, Player Slots
 	//all folded at creation and at load (Chataigne only saves the folded state)
 	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
 	auto& list = moduleParams.controllableContainers;

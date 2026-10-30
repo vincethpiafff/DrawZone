@@ -10,7 +10,7 @@ DrawZone est un outil open source (GPL-3.0) pour les concepteurs d'expériences
 immersives et interactives. Il doit :
 
 1. recevoir des positions de personnes trackées (Augmenta, Naostage, ZacTrack…)
-   via OSC, PosiStageNet (PSN) et TUIO ;
+   via OSC et PosiStageNet (PSN) ;
 2. permettre de dessiner des zones d'interaction, d'abord en 2D vue de dessus,
    puis sur des surfaces dans un viewport 3D ;
 3. définir une logique « façon game design », inspirée des Blueprints d'Unreal
@@ -32,7 +32,7 @@ dessus en Spout et NDI, après la v0.2.0 : zones rectangle / ellipse / forme
 libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
 Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande partie faite
 dans le Tracking Monitor).
-**Prochaine étape : v0.5**, entrées PSN et TUIO, multi-sources,
+**Prochaine étape : v0.5**, entrée PSN, multi-sources,
 transformation par source.
 
 ## 2. Comment travailler avec Vincent

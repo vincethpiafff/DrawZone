@@ -78,7 +78,7 @@ public:
 
 	TrackingData trackingData;
 
-	//tracking systems (Augmenta, PSN, TUIO...), each with its transform to the scene
+	//tracking systems (Augmenta, PSN...), each with its transform to the scene
 	SpatialSourceManager sourceManager;
 
 	//scene size : from a source (Auto, see SpatialSourceManager::getSceneArea) or set by hand (Manual)
