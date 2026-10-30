@@ -952,6 +952,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3353,6 +3356,7 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSource.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h"/>

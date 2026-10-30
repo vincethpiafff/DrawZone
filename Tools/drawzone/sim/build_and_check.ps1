@@ -1,4 +1,4 @@
-# build_and_check.ps1 - close Chataigne, build, relaunch it, run check_sim.ps1
+# build_and_check.ps1 - close Chataigne, build, run run_checks.ps1 (which reopens the session)
 #
 #   powershell -ExecutionPolicy Bypass -File build_and_check.ps1
 #
@@ -28,14 +28,5 @@ if ($running)
 if ($LASTEXITCODE -ne 0) { "STOP : build failed"; exit 1 }
 "build OK"
 
-Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe)
-#wait for the MCP server, then for the session and the first Fusion messages
-$deadline = (Get-Date).AddSeconds(90)
-while ((Get-Date) -lt $deadline)
-{
-	try { $c = New-Object System.Net.Sockets.TcpClient("127.0.0.1", 42002); $c.Close(); break } catch { Start-Sleep 1 }
-}
-Start-Sleep 5
-
-& (Join-Path $PSScriptRoot "check_sim.ps1")
+& (Join-Path $PSScriptRoot "run_checks.ps1")
 exit $LASTEXITCODE

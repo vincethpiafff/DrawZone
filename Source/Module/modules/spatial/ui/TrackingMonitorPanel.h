@@ -116,6 +116,12 @@ private:
 	void paintOutputChip(Graphics& g, Rectangle<int> chip, bool on, bool hovered, const String& label);
 	bool handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output);
 
+	//"PSN Output" chip in the header : the box turns the output on / off, the label opens a menu with what it sends
+	Rectangle<int> psnRect;
+	bool psnOn = false, psnHovered = false;
+	String psnLabel;
+	void showPSNOutputMenu();
+
 	//"Shortcuts" chip in the header : unfolds the list of shortcuts on hover, pinned open by a click
 	Rectangle<int> shortcutsRect;
 	bool shortcutsHovered = false;

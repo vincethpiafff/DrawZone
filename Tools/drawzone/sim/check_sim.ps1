@@ -2,7 +2,7 @@
 #
 #   powershell -ExecutionPolicy Bypass -File check_sim.ps1
 #
-# Needs Chataigne running with TEST_ZONES.noisette, the MCP server enabled (Inspect profile)
+# Needs Chataigne running with a copy of TEST_ZONES.noisette from make_psn_session.ps1 -NoPsn (see run_checks.ps1), the MCP server enabled (Inspect profile)
 # and the token in the user variable CHATAIGNE_MCP_TOKEN. Read only : it never changes the session.
 # For each scenario, a fake person (id 77) is sent at a known position, then read back
 # (position, zone, relative position, slot), then it must disappear after /object/leave.
@@ -167,6 +167,15 @@ $p.WaitForExit()
 $c = Value "spatial/parameters/zones/zoneRECT/center"
 $z = Value "spatial/parameters/zones/zoneRECT/size"
 Check "small scene : zone keeps its place and size" ((Near $c[0] $rect[0] 0.001) -and (Near $c[1] $rect[1] 0.001) -and (Near $z[0] $sizeBefore[0] 0.001) -and (Near $z[1] $sizeBefore[1] 0.001)) (($c + $z) -join ", ")
+
+#PSN output off by default (session without it) : a person is needed for it to have something to send
+$p = Start-Process powershell -ArgumentList "-ExecutionPolicy", "Bypass", "-File", $sim, "-X", 4, "-Y", 1, "-Seconds", 2.5 -WindowStyle Hidden -PassThru
+Start-Sleep -Milliseconds 800
+$o = & (Join-Path $PSScriptRoot "psn_capture.ps1") -Via "127.0.0.1"
+$p.WaitForExit()
+$outStatus = Value "spatial/parameters/psnOutput/status"
+Check "PSN output status Disabled" ($outStatus -eq "Disabled") "'$outStatus'"
+Check "PSN output off by default : nothing sent" ($o.packets -eq 0) "$($o.packets) packets"
 
 #no warning or error in the logs during the test
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }

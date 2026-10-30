@@ -65,6 +65,9 @@ function Value([string]$path)
 	return $o.value
 }
 
+$psnOutputFile = Join-Path $PSScriptRoot "psn_capture.ps1"
+function Output([string]$via = "127.0.0.1") { return & $psnOutputFile -Via $via }
+
 $results = New-Object System.Collections.Generic.List[object]
 function Check([string]$name, [bool]$ok, [string]$got)
 {
@@ -85,7 +88,7 @@ Check "scene from PSN area (16 x 12)" ($res -match "^1600 x 1200 px") "'$res'"
 Check "PSN Y connected, no data" ((Value "$sources/psnY/status") -match "^No data yet, 0 people, 236\.10\.10\.10:56575") "$(Value "$sources/psnY/status")"
 
 #Y up : x = 2, z = 1.5 + offset (1, 0.5) -> scene (3, 2) ; the unused tracker at the origin must not appear
-$p = Sim $psnSim @("-Port", 56575, "-Id", 77, "-X", 2, "-Y", 1.7, "-Z", 1.5, "-Vx", 0.8, "-Vz", -0.4, "-Seconds", 3)
+$p = Sim $psnSim @("-Port", 56575, "-Id", 77, "-X", 2, "-Y", 1.7, "-Z", 1.5, "-Vx", 0.8, "-Vz", -0.4, "-Seconds", 9)
 Start-Sleep -Milliseconds 1500
 $pos = Value "$people/person77/position"
 Check "Y up : position (3, 2)" ($null -ne $pos -and (Near $pos[0] 3) -and (Near $pos[1] 2)) ($pos -join ", ")
@@ -98,11 +101,24 @@ Check "tracker at origin ignored" ($null -eq (Tool "organic_inspect" @{ handle =
 Check "person count 1" ((Value "spatial/values/personCount") -eq 1) "$(Value "spatial/values/personCount")"
 $s = Value "$sources/psnY/status"
 Check "status receiving" ($s -match "^Receiving, \d+ msg/s, 1 people, 236\.10\.10\.10:56575") "'$s'"
+#PSN output : slot 1 -> tracker 1, scene meters, y up (height), z = scene y
+$o = Output
+Check "output : only tracker 1" (($o.ids -join ",") -eq "1") ($o.ids -join ",")
+Check "output : position (3, 1.7, 2)" ($o.ids.Count -gt 0 -and (Near $o.pos[1][0] 3) -and (Near $o.pos[1][1] 1.7) -and (Near $o.pos[1][2] 2)) ($(if ($o.ids.Count -gt 0) { $o.pos[1] -join ", " }))
+Check "output : speed (0.8, 0, -0.4)" ($o.ids.Count -gt 0 -and (Near $o.speed[1][0] 0.8) -and (Near $o.speed[1][1] 0) -and (Near $o.speed[1][2] -0.4)) ($(if ($o.ids.Count -gt 0) { $o.speed[1] -join ", " }))
+Check "output : slot name in the info packet" ($o.info -match "JOUEUR 1") "'$($o.info)'"
+#another card : a socket joined without a card would also hear Loopback, so a real card is named
+$otherCard = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.*" -and (Get-NetIPInterface -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4).ConnectionState -eq "Connected" } | Select-Object -First 1).IPAddress
+$oOther = Output $otherCard
+Check "output : chosen card only, nothing on $otherCard" ($oOther.packets -eq 0) "$($oOther.packets) packets"
+Check "output : status" ((Value "spatial/parameters/psnOutput/status") -match "^Sending 1 tracker \(Player Slots\) to 236\.10\.10\.11:56565$") "$(Value "spatial/parameters/psnOutput/status")"
 Check "source name" ((Value "$people/person77/source") -eq "PSN Y") "$(Value "$people/person77/source")"
 $p.WaitForExit()
 
 #no leave in PSN : gone after the timeout
 Start-Sleep -Milliseconds 1500
+$o = Output
+Check "output : held slot still sent at its last position" (($o.ids -join ",") -eq "1" -and (Near $o.pos[1][0] 3) -and (Near $o.pos[1][2] 2) -and (Near $o.speed[1][0] 0)) ($o.ids -join ",")
 Check "gone after silence" ($null -eq (Tool "organic_inspect" @{ handle = $modules; path = "$people/person77" })) ""
 Start-Sleep -Milliseconds 500
 $s = Value "$sources/psnY/status"
@@ -139,6 +155,19 @@ else { Check "2 scenes : the chosen source keeps the scene" ($res -match "^1600 
 Check "same id : 2 people" ((Value "spatial/values/personCount") -eq 2) "$(Value "spatial/values/personCount")"
 $p.WaitForExit()
 $a.WaitForExit()
+
+#no slot left for the 3rd person : not sent. First wait for the held slots to end (5 s in TEST_ZONES)
+Start-Sleep -Seconds 7
+$o = Output
+Check "output : free slots not sent" ($o.ids.Count -eq 0) "ids $($o.ids -join ",")"
+$a = Sim $augmentaSim @("-Id", 40, "-X", 4, "-Y", 1, "-Seconds", 3)
+$p = Sim $psnSim @("-Port", 56575, "-Id", 41, "-X", 2, "-Y", 1.7, "-Z", 1.5, "-Seconds", 3)
+$q = Sim $psnSim @("-Via", "127.0.0.1", "-Port", 56576, "-Id", 42, "-X", 1, "-Y", 1, "-Z", 1.6, "-Seconds", 3)
+Start-Sleep -Milliseconds 1500
+$people3 = Value "spatial/values/personCount"
+$o = Output
+Check "output : 3 people, 2 slots, trackers 1 and 2" ($people3 -eq 3 -and ($o.ids -join ",") -eq "1,2") "$people3 people, ids $($o.ids -join ",")"
+$a.WaitForExit(); $p.WaitForExit(); $q.WaitForExit()
 
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
 $bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime })

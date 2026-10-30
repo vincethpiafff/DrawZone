@@ -14,6 +14,7 @@
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
 #include "SpatialVideoOutput.cpp"
+#include "SpatialPSNOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
 
 SpatialModule::SpatialModule() :
@@ -22,7 +23,8 @@ SpatialModule::SpatialModule() :
 	zoneManager("Zones", SpatialSection::ZONES),
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
-	videoOutput(this)
+	videoOutput(this),
+	psnOutput(this)
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
@@ -52,6 +54,7 @@ SpatialModule::SpatialModule() :
 
 	moduleParams.addChildControllableContainer(&playerSlots);
 	moduleParams.addChildControllableContainer(&videoOutput);
+	moduleParams.addChildControllableContainer(&psnOutput);
 	valuesCC.addChildControllableContainer(&playerSlots.slotsValues);
 
 	setupInspectorSections();
@@ -103,6 +106,7 @@ void SpatialModule::updateZones()
 	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons);
 
 	playerSlots.update(s.persons); //before the people, which show their slot
+	psnOutput.update(s.persons);
 	updatePeople(s);
 }
 
@@ -233,6 +237,7 @@ void SpatialModule::timerCallback()
 			if (!s->enabled->boolValue()) trackingData.removeSource(s);
 			if (updateStatus) s->update(this);
 		}
+		if (updateStatus) psnOutput.updateStatus();
 		if (sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO) trackingData.setSceneSize(sourceManager.getSceneArea());
 	}
 	personCount->setValue(trackingData.getNumPersons());
@@ -322,6 +327,16 @@ void SpatialModule::setupInspectorSections()
 				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
 		};
 
+	psnOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<EnablingControllableContainerEditor>(OUTPUT, [this, chip]()
+				{
+					if (!psnOutput.enabled->boolValue()) return Array<Chip>({ chip("Disabled", false) });
+					int n = psnOutput.numTrackersSent;
+					return Array<Chip>({ chip(String(n) + (n == 1 ? " tracker" : " trackers"), n > 0) });
+				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+		};
+
 	videoOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
 		{
 			return new SpatialSectionEditor<GenericControllableContainerEditor>(OUTPUT, [this, chip]()
@@ -343,7 +358,7 @@ void SpatialModule::setupInspectorSections()
 	//inspector order (Vincent's rule, keep it for the next blocks) :
 	//network inputs, network outputs (OSC, then PSN / TUIO), Sources, Video Output, Scene, Zones, Player Slots
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
+	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)

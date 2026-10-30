@@ -365,6 +365,7 @@ void PSNSource::processFrame(const psn::tracker_map& trackers)
 		//without area, PSN has no scene and its meters are absolute
 		p.position = toScene(toGround(pos, upY) - areaOrigin, area);
 		p.height = upY ? pos.y : pos.z;
+		p.trackerName = t.get_name();
 		if (t.is_speed_set()) p.velocity = vectorToScene(toGround(t.get_speed(), upY));
 		if (t.is_ori_set())
 		{

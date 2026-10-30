@@ -518,6 +518,7 @@
 		771A246AE678B5F6659FB8E7 /* CVPreset.cpp */ /* CVPreset.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CVPreset.cpp; path = ../../Source/CustomVariables/Preset/CVPreset.cpp; sourceTree = SOURCE_ROOT; };
 		77DA8C5F719F7C3B25B06C28 /* ConvertedParameterManagerEditor.h */ /* ConvertedParameterManagerEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConvertedParameterManagerEditor.h; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ui/ConvertedParameterManagerEditor.h; sourceTree = SOURCE_ROOT; };
 		77FDC417ABF22A287F49034A /* ModuleManagerUI.h */ /* ModuleManagerUI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ModuleManagerUI.h; path = ../../Source/Module/ui/ModuleManagerUI.h; sourceTree = SOURCE_ROOT; };
+		786C6D83EC55BF502A70A095 /* SpatialPSNOutput.h */ /* SpatialPSNOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialPSNOutput.h; path = ../../Source/Module/modules/spatial/SpatialPSNOutput.h; sourceTree = SOURCE_ROOT; };
 		786CF34A60DCB23F26EB0F48 /* ConsequenceManager.cpp */ /* ConsequenceManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConsequenceManager.cpp; path = ../../Source/Common/Processor/Action/Consequence/ConsequenceManager.cpp; sourceTree = SOURCE_ROOT; };
 		789BEEB77C5B2E458CCC99A5 /* ComparatorFactory.h */ /* ComparatorFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ComparatorFactory.h; path = ../../Source/Common/Processor/Action/Condition/conditions/StandardCondition/Comparator/ComparatorFactory.h; sourceTree = SOURCE_ROOT; };
 		78B240F53429613DC1AD4C8F /* AudioModuleHardwareEditor.cpp */ /* AudioModuleHardwareEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioModuleHardwareEditor.cpp; path = ../../Source/Module/modules/audio/ui/AudioModuleHardwareEditor.cpp; sourceTree = SOURCE_ROOT; };
@@ -527,6 +528,7 @@
 		79EA796B591281322DA21A35 /* GamepadModule.h */ /* GamepadModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = GamepadModule.h; path = ../../Source/Module/modules/controller/gamepad/GamepadModule.h; sourceTree = SOURCE_ROOT; };
 		7A33EADEDCB3B4815709D2C4 /* ConversionSourceParameterUI.cpp */ /* ConversionSourceParameterUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConversionSourceParameterUI.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ui/ConversionSourceParameterUI.cpp; sourceTree = SOURCE_ROOT; };
 		7A91E8D798CAD8D2754205F1 /* Resolume.png */ /* Resolume.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Resolume.png; path = ../../Resources/Modules/Resolume.png; sourceTree = SOURCE_ROOT; };
+		7A9B6888EBC9458C82269185 /* SpatialPSNOutput.cpp */ /* SpatialPSNOutput.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialPSNOutput.cpp; path = ../../Source/Module/modules/spatial/SpatialPSNOutput.cpp; sourceTree = SOURCE_ROOT; };
 		7ABB941A2D9C97F17BD7AF8F /* encoder.c */ /* encoder.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = encoder.c; path = ../../Source/Common/LTC/encoder.c; sourceTree = SOURCE_ROOT; };
 		7ADF7EC08335C9EE28AFA3B6 /* SpatialSource.h */ /* SpatialSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialSource.h; path = ../../Source/Module/modules/spatial/SpatialSource.h; sourceTree = SOURCE_ROOT; };
 		7BF5117D14F60545839C618F /* ConvertedParameter.cpp */ /* ConvertedParameter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConvertedParameter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ConvertedParameter.cpp; sourceTree = SOURCE_ROOT; };
@@ -2333,6 +2335,8 @@
 				7ADF7EC08335C9EE28AFA3B6,
 				50119A43BFEC63CA3CF6B3DE,
 				88F108AAE5896865D7741653,
+				7A9B6888EBC9458C82269185,
+				786C6D83EC55BF502A70A095,
 				8E608A91450F6B0C21AEF7C6,
 				52283D92A577DEF4A41D1B2A,
 				856DC9E1B71F7B5BFAD71F34,

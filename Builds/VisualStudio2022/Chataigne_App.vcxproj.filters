@@ -2140,6 +2140,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
@@ -5302,6 +5305,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h">

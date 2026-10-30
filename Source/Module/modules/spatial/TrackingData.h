@@ -28,6 +28,7 @@ struct TrackedPerson
 	float orientation = 0;
 	float height = 0;		// meters
 	float age = 0;			// seconds since entering
+	String trackerName;		// name given by its source, empty when it has none
 	uint32 lastUpdateMs = 0;
 	const void* source = nullptr;	// identifies the source, never dereferenced
 };

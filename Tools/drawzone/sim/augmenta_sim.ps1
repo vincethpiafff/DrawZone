@@ -8,7 +8,7 @@
 
 param(
 	[string]$TargetHost = "127.0.0.1",
-	[int]$Port = 12000,
+	[int]$Port = 12999,	# the test sessions of make_psn_session.ps1, not the one Fusion sends to
 	[int]$Id = 77,
 	[float]$X = 4,
 	[float]$Y = 2.25,

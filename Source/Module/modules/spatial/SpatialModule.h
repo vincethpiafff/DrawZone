@@ -23,6 +23,7 @@
 #include "PlayerSlots.h"
 #include "ui/TopViewRenderer.h"
 #include "SpatialVideoOutput.h"
+#include "SpatialPSNOutput.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
 class SpatialPerson :
@@ -102,6 +103,7 @@ public:
 	PlayerSlots playerSlots;
 
 	SpatialVideoOutput videoOutput;	// top view sent as video (Spout, NDI)
+	SpatialPSNOutput psnOutput;		// player slots sent as PSN trackers
 
 	void processMessageInternal(const OSCMessage& msg) override;
 

@@ -60,6 +60,8 @@ void TrackingMonitorPanel::resized()
 	ndiRect = headerRect.removeFromRight(106).reduced(0, 1);
 	headerRect.removeFromRight(8);
 	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
+	headerRect.removeFromRight(8);
+	psnRect = headerRect.removeFromRight(214).reduced(0, 1);
 	headerRect.removeFromRight(10);
 	r.removeFromTop(8);
 
@@ -212,6 +214,13 @@ void TrackingMonitorPanel::timerCallback()
 	model.update(sm);
 	spoutOn = sm != nullptr && sm->videoOutput.spout->boolValue();
 	ndiOn = sm != nullptr && sm->videoOutput.ndi->boolValue();
+	psnOn = sm != nullptr && sm->psnOutput.enabled->boolValue();
+	psnLabel = "PSN Output";
+	if (sm != nullptr)
+	{
+		psnLabel += " : " + sm->psnOutput.sendMode->getValueKey();
+		if (psnOn) psnLabel += " (" + String(sm->psnOutput.numTrackersSent) + ")";
+	}
 
 	numHidden = 0;
 	for (auto& z : zones) if (z.hidden) numHidden++;
@@ -253,6 +262,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	if (slotDragging) paintSlotDrag(g);
 	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
 	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
+	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
 	paintShortcuts(g); //last : the unfolded list goes over everything
 }
 
@@ -659,8 +669,8 @@ Rectangle<int> TrackingMonitorPanel::getShortcutsPanelRect() const
 
 void TrackingMonitorPanel::mouseExit(const MouseEvent&)
 {
-	if (!shortcutsHovered && !slotModeHovered && !spoutHovered && !ndiHovered) return;
-	shortcutsHovered = slotModeHovered = spoutHovered = ndiHovered = false;
+	if (!shortcutsHovered && !slotModeHovered && !spoutHovered && !ndiHovered && !psnHovered) return;
+	shortcutsHovered = slotModeHovered = spoutHovered = ndiHovered = psnHovered = false;
 	repaint();
 }
 
@@ -775,6 +785,40 @@ public:
 		}
 	}
 };
+
+void TrackingMonitorPanel::showPSNOutputMenu()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	const int settingsItem = 100;
+	EnumParameter* mode = sm->psnOutput.sendMode;
+	int current = (int)mode->getValueData();
+
+	PopupMenu m;
+	m.addItem(SpatialPSNOutput::PLAYER_SLOTS + 1, "Player Slots : occupied slots, slot 1 -> tracker 1", true, current == SpatialPSNOutput::PLAYER_SLOTS);
+	m.addItem(SpatialPSNOutput::SOURCE_IDS + 1, "Source IDs : everyone, with the id of its source", true, current == SpatialPSNOutput::SOURCE_IDS);
+	m.addSeparator();
+	m.addItem(settingsItem, "Show Settings");
+
+	WeakReference<ControllableContainer> outputRef(&sm->psnOutput);
+	WeakReference<Component> panelRef(this);
+	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(psnRect)), [outputRef, panelRef, settingsItem](int result)
+		{
+			SpatialPSNOutput* output = dynamic_cast<SpatialPSNOutput*>(outputRef.get());
+			if (output == nullptr || result <= 0) return;
+			if (result == settingsItem) output->selectThis();
+			else
+			{
+				EnumParameter* mode = output->sendMode;
+				//the option is found by its value (SpatialPSNOutput::SendMode), so renaming it doesn't break the menu
+				String key;
+				for (auto* ev : mode->enumValues) if ((int)ev->value == result - 1) key = ev->key;
+				if (key.isNotEmpty() && key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
+			}
+			if (TrackingMonitorPanel* panel = dynamic_cast<TrackingMonitorPanel*>(panelRef.get())) panel->timerCallback();
+		});
+}
 
 void TrackingMonitorPanel::showSlotModeMenu()
 {
@@ -1213,6 +1257,13 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 		return;
 	}
 
+	bool overPSN = psnRect.contains(e.getPosition());
+	if (overPSN != psnHovered)
+	{
+		psnHovered = overPSN;
+		repaint(psnRect);
+	}
+
 	bool overSpout = spoutRect.contains(e.getPosition());
 	if (overSpout != spoutHovered)
 	{
@@ -1306,6 +1357,15 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	{
 		if (handleOutputChipClick(e.getPosition(), spoutRect, sm->videoOutput.spout)) return;
 		if (handleOutputChipClick(e.getPosition(), ndiRect, sm->videoOutput.ndi)) return;
+
+		if (psnRect.contains(e.getPosition()))
+		{
+			BoolParameter* output = sm->psnOutput.enabled;
+			if (getOutputBoxRect(psnRect).expanded(4).contains(e.getPosition())) output->setUndoableValue(output->boolValue(), !output->boolValue());
+			else showPSNOutputMenu();
+			timerCallback();
+			return;
+		}
 	}
 
 	int personId = getPersonAt(e.position);

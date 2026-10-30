@@ -1446,6 +1446,10 @@
                   file="Source/Module/modules/spatial/SpatialVideoOutput.cpp"/>
             <FILE id="dzVoHd" name="SpatialVideoOutput.h" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialVideoOutput.h"/>
+            <FILE id="dzPoCp" name="SpatialPSNOutput.cpp" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialPSNOutput.cpp"/>
+            <FILE id="dzPoHd" name="SpatialPSNOutput.h" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialPSNOutput.h"/>
             <FILE id="dzZnCp" name="SpatialZone.cpp" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialZone.cpp"/>
             <FILE id="dzZnHd" name="SpatialZone.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialZone.h"/>
             <FILE id="dzTdCp" name="TrackingData.cpp" compile="0" resource="0"
