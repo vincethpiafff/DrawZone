@@ -144,6 +144,8 @@ public:
 
 	Factory<SpatialSource> factory;
 
+	void addItemInternal(SpatialSource* item, var data) override;
+
 	AugmentaSource* getAugmentaSource();	// first enabled one, call under items.getLock()
 	//the enabled source marked Use As Scene, else the only one knowing its scene : with several, it's up to the user. Call under items.getLock()
 	Point<float> getSceneArea();

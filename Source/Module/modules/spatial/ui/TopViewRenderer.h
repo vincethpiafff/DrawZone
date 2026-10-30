@@ -24,8 +24,20 @@ public:
 	bool hasModule = false;
 	String moduleName;
 	int localPort = 0;
-	String sourcesText;	// each enabled source and its reception
 	TrackingData::Snapshot snapshot;
+
+	struct SourceView
+	{
+		WeakReference<ControllableContainer> source;
+		const void* id = nullptr;	// TrackedPerson::source, never dereferenced
+		String name;
+		String reception;
+		Colour color;
+		bool enabled = true;
+		int personCount = 0;
+	};
+	Array<SourceView> sources;
+	Colour getSourceColor(const void* id) const;	// transparent when unknown
 
 	struct ZoneView
 	{
@@ -113,6 +125,7 @@ public:
 		bool slots = true;		// slot label on each person
 		bool heldSpots = true;
 		bool selection = false;	// selected zone and person highlighted (editing only)
+		bool sourceRings = false;	// ring in the color of its source around each person (editing only)
 	};
 
 	//scene : the scene (0,0 to its size in meters) on screen ; clip : the area that may be painted

@@ -67,6 +67,11 @@ private:
 	Rectangle<int> columnRect;
 	Rectangle<int> slotBarRect;	// player slots strip under the top view
 
+	//sources strip under the header, one chip per source : color, name, reception, people. A click shows it in the Inspector
+	Rectangle<int> sourceBarRect;
+	Array<Rectangle<int>> sourceChipRects;	// from the last paint, one per source, empty when it does not fit
+	void paintSourceBar(Graphics& g);
+
 	//player slots strip : one chip per slot, like a game HUD
 	static const int slotBarHeight = 40;
 	void layoutSlotBar();
@@ -116,7 +121,7 @@ private:
 	void paintOutputChip(Graphics& g, Rectangle<int> chip, bool on, bool hovered, const String& label);
 	bool handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output);
 
-	//"PSN Output" chip in the header : the box turns the output on / off, the label opens a menu with what it sends
+	//"PSN Output" chip in the header : the box turns the output on / off, the label shows its parameters in the Inspector and opens a menu with what it sends
 	Rectangle<int> psnRect;
 	bool psnOn = false, psnHovered = false;
 	String psnLabel;

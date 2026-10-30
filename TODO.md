@@ -14,7 +14,7 @@ Phases 0 à 2 et versions v0.1 à v0.4 (terminées) : `docs/drawzone/TODO-archiv
 
 ## ⏭️ En cours
 
-- ⏭️ **v0.5 brique 2 : source PSN** (avec la brique « PSN Output »), sur `feature/multi-source`.
+- ⏭️ **v0.5 brique 4 : Tracking Monitor (couleur et liste des sources)**, puis brique 5 : test Augmenta + PSN, sur `feature/multi-source`.
 
 ## ⬜ À faire ensuite
 
@@ -26,7 +26,7 @@ Phases 0 à 2 et versions v0.1 à v0.4 (terminées) : `docs/drawzone/TODO-archiv
   - ✅ test hors SMODE avec le Python de SMODE (3.12.3) et un faux SMODE (`Oil`, `script`, bank simulés) + vrais paquets OSC en UDP : création, types, bundles, mise à jour, paramètre supprimé à la main puis recréé, paquet corrompu, Clear, Stop → OK ;
   - ⬜ **test de Vincent dans SMODE après la v0.7** (graphe nodal de base, avec ses sorties OSC ; décision de Vincent, 28/10) (types `Parameter(Real/Integer/String)` et `p.value.set` après l'append non confirmés par la référence) ;
 
-- ⏭️ **v0.5 — entrées PSN et TUIO, multi-sources, transformation par source** (démarrée le 28/10) :
+- ⏭️ **v0.5 — entrée PSN, multi-sources, transformation par source** (démarrée le 28/10) :
   - ✅ étude : le module Spatial hérite du module OSC (un seul port, Augmenta) ; `TrackingData` est déjà indépendante du protocole (positions 0–1 + taille de scène venue d'Augmenta) ; Chataigne a un module PosiStageNet (bibliothèque `psn_lib` dans `External/posistagenet`, multicast 236.10.10.10:56565, décodage sur un thread) qui sait aussi **émettre** (Send Mode) → émetteur de test sans Python ; pas de TUIO dans Chataigne (à écrire : OSC sur UDP 3333) ;
   - ✅ proposition validée par Vincent : **Sources dans le module Spatial** (Augmenta, PSN, TUIO ; port et transformation Offset / Rotation / Scale / Flip par source ; ids uniques entre sources ; Scene Size Auto / Manual) ; **fusion** d'une personne vue par deux systèmes **reportée** (étape à part) ; tests PSN avec le module PSN de Chataigne (Send Mode) pendant le développement, puis **Naostage réel** pour valider ; briques : 1 socle multi-sources, 2 source PSN, 3 source TUIO, 4 Tracking Monitor (couleur et liste des sources), 5 test Augmenta + PSN ;
   - 💬 Vincent : simulateur Naostage sur leur site (« Enregistrement Demo (KAPTA Simulator) »), téléchargement impossible dans son navigateur ;
@@ -81,6 +81,9 @@ Phases 0 à 2 et versions v0.1 à v0.4 (terminées) : `docs/drawzone/TODO-archiv
 - ✅ 30/10 💬 Vincent : choix **A**. Code : pastille « PSN Output : <mode> (n) » dans l'en-tête du Monitor (case on / off, libellé → menu des modes + Show Settings). Recompilation complète 0 erreur. ❌ puis ✅ tests : `make_psn_session.ps1` gardait le bloc `psnOutput` de la session (activé par Vincent), puis utilisait `/sendMode` au lieu de `/send` ; erreurs du script de test, pas de l'option. PSN **29 / 29** deux fois, Tracking IDs **6 / 6**, Source Data **6 / 6**, Augmenta **36 / 36**. ⬜ Vincent : pastille à l'écran, 3 modes dans Smode sur 236.10.10.11 ; Kratos réel non testé en Source Data ; pas de commit (rien depuis `4916b7bb`) ;
 - 💬 30/10 Vincent : « ça ne switch pas », Smode reçoit les valeurs brutes de Kratos quel que soit le mode. Cause : Smode écoute `236.10.10.10` (`Engine_15_9.configuration` : `multicastGroup`, log : « Creating device 236.10.10.10->127.0.0.1:56565 »), le groupe de Kratos ; la sortie DrawZone part sur 236.10.10.11 (capture : JOUEUR 1, JOUEUR 2). ⬜ Vincent : régler le device PSN de Smode sur 236.10.10.11. ⬜ changement de mode en direct jamais testé (tests : mode chargé depuis la session) ;
 - 💬 30/10 Vincent : Smode réglé, le changement de mode marche en direct ; le repère doit être le même entre les modes **et entre une source Augmenta et une source Kratos**. Essai repère Kratos abandonné (❌ il change selon la source, jamais compilé). ⏭️ Code, **pas compilé, pas testé** : tout en mètres de la scène (x, y = hauteur, z = y scène) ; modes réduits à Player Slots et Source IDs ; valeurs brutes retirées de `TrackedPerson`. ✅ recompilation complète et `run_checks.ps1` OK (résultats ci-dessous) ; ⬜ Vincent : recaler Smode, alignement Augmenta / Kratos par Area et Offset ;
+- ✅ 30/10 Vincent : « ok commit », **PSN Output validé** (Send : Player Slots / Source IDs, pastille du Monitor, repère de la scène), commit `a2a7a219` sur `feature/multi-source`. Question ouverte : choix de la carte pour l'entrée PSN ;
+- 💬 30/10 Vincent : **TUIO abandonné** (décision D15), brique 3 retirée. Restent dans la v0.5 : brique 4, Tracking Monitor (couleur et liste des sources), et brique 5, test Augmenta + PSN ;
+- ⏭️ 30/10 brique 4, code : rangée de pastilles des sources sous l'en-tête du Monitor (couleur, nom, réception, personnes ; clic → Inspector), couleur par source (`itemColor`, défaut donné par le manager), anneau à la couleur de la source autour de chaque personne (vue et liste People, pas la sortie vidéo ni le rail). Recompilation complète 0 erreur ; PSN **29 / 29** deux fois, Source IDs **6 / 6**, Augmenta **36 / 36** ; capture de la fenêtre : pastilles et anneaux affichés avec Kratos. ; le clic sur le libellé de PSN Output affiche ses réglages dans l'Inspector, plus de Show Settings. Vincent : « ok commit » ; clic sur une pastille, couleur et 2 sources actives non confirmés, à reprendre avec la brique 5 ;
 
 
 ## 🔧 Étape d'optimisation

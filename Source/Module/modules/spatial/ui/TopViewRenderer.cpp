@@ -12,6 +12,7 @@ void TopViewModel::update(SpatialModule* sm)
 {
 	hasModule = sm != nullptr;
 
+	sources.clearQuick();
 	zones.clearQuick();
 	slots.clearQuick();
 	personZones.clearQuick();
@@ -23,18 +24,22 @@ void TopViewModel::update(SpatialModule* sm)
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
 
-		StringArray sources;
 		{
 			const ScopedLock sl(sm->sourceManager.items.getLock());
 			for (auto& s : sm->sourceManager.items)
 			{
-				if (!s->enabled->boolValue()) continue;
-				String name = s->niceName;
-				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) name += " :" + String(localPort); }
-				sources.add(name + " (" + s->getReceptionText(sm) + ")");
+				SourceView sv;
+				sv.source = s;
+				sv.id = s;
+				sv.name = s->niceName;
+				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) sv.name += " :" + String(localPort); }
+				sv.enabled = s->enabled->boolValue();
+				sv.reception = sv.enabled ? s->getReceptionText(sm) : String("Disabled");
+				sv.color = s->itemColor->getColor();
+				sv.personCount = sm->trackingData.getNumPersons(s);
+				sources.add(sv);
 			}
 		}
-		sourcesText = sources.isEmpty() ? String("No enabled source") : sources.joinIntoString("  /  ");
 
 		for (auto& z : sm->zoneManager.items)
 		{
@@ -114,6 +119,12 @@ int TopViewModel::getSlotIndexForPerson(int id) const
 {
 	for (int i = 0; i < slots.size(); i++) if (slots[i].occupied && !slots[i].held && slots[i].personId == id) return i;
 	return -1;
+}
+
+Colour TopViewModel::getSourceColor(const void* id) const
+{
+	for (auto& s : sources) if (s.id == id) return s.color;
+	return Colours::transparentBlack;
 }
 
 Colour TopViewModel::getPersonColor(int id)
@@ -316,6 +327,12 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 		g.fillEllipse(Rectangle<float>(28, 28).withCentre(pos));
 		g.setColour(c);
 		g.fillEllipse(Rectangle<float>(14, 14).withCentre(pos));
+		if (o.sourceRings)
+		{
+			g.setColour(m.getSourceColor(p.source));
+			g.drawEllipse(Rectangle<float>(20, 20).withCentre(pos), 2);
+			g.setColour(c);
+		}
 		if (o.selection && p.id == m.selectedPersonId)
 		{
 			g.setColour(HIGHLIGHT_COLOR);

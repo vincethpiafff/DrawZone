@@ -19,6 +19,9 @@
 SpatialSource::SpatialSource(const String& name, var params) :
 	BaseItem(name)
 {
+	//color of its people in the Tracking Monitor, the default comes from the manager
+	setHasCustomColor(true);
+
 	useAsScene = addBoolParameter("Use As Scene", "The scene size comes from this source (Scene > Size Mode : Auto). Needed when several sources know their scene. Only one source at a time", false);
 	offset = addPoint2DParameter("Offset", "Where the origin of this source lands in the scene, in meters from the top left corner of the scene (applied last)");
 	rotation = addFloatParameter("Rotation", "Rotation of this source around its origin, in degrees, clockwise", 0, -360, 360);
@@ -395,6 +398,15 @@ SpatialSourceManager::SpatialSourceManager() :
 
 SpatialSourceManager::~SpatialSourceManager()
 {
+}
+
+void SpatialSourceManager::addItemInternal(SpatialSource* item, var)
+{
+	//distinct hues, spread by the golden ratio after the first 4 ; a color chosen by the user is kept
+	const float hues[] = { .08f, .55f, .33f, .8f };
+	int index = items.indexOf(item);
+	float hue = index < 4 ? hues[index] : std::fmod(index * .618034f, 1.0f);
+	if (!item->itemColor->isOverriden) item->itemColor->setDefaultValue(Colour::fromHSV(hue, .7f, 1, 1));
 }
 
 AugmentaSource* SpatialSourceManager::getAugmentaSource()

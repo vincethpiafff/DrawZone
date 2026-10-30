@@ -63,7 +63,9 @@ void TrackingMonitorPanel::resized()
 	headerRect.removeFromRight(8);
 	psnRect = headerRect.removeFromRight(214).reduced(0, 1);
 	headerRect.removeFromRight(10);
-	r.removeFromTop(8);
+	r.removeFromTop(6);
+	sourceBarRect = r.removeFromTop(22);
+	r.removeFromTop(6);
 
 	slotBarRect = r.removeFromBottom(slotBarHeight);
 	r.removeFromBottom(8);
@@ -248,6 +250,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	}
 
 	paintHeader(g);
+	paintSourceBar(g);
 	if (!topViewRect.isEmpty()) paintTopView(g, topViewRect);
 	paintSlotBar(g);
 
@@ -405,7 +408,41 @@ void TrackingMonitorPanel::paintHeader(Graphics& g)
 
 	g.setColour(dimText);
 	g.setFont(Font(13.0f));
-	g.drawText(model.sourcesText + sep + String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
+	g.drawText(String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
+}
+
+void TrackingMonitorPanel::paintSourceBar(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	sourceChipRects.clearQuick();
+	Rectangle<int> r = sourceBarRect;
+	Font font(12.0f);
+
+	for (auto& s : model.sources)
+	{
+		String text = s.name + sep + s.reception;
+		if (s.enabled) text += sep + String(s.personCount) + (s.personCount == 1 ? " person" : " people");
+
+		int width = font.getStringWidth(text) + 28;
+		if (width > r.getWidth())
+		{
+			sourceChipRects.add(Rectangle<int>());
+			continue;
+		}
+
+		Rectangle<int> chip = r.removeFromLeft(width);
+		r.removeFromLeft(6);
+		sourceChipRects.add(chip);
+
+		Rectangle<float> cf = chip.toFloat();
+		drawChip(g, cf, false);
+		g.setColour(s.enabled ? s.color : s.color.withAlpha(.35f));
+		g.fillEllipse(Rectangle<float>(10, 10).withCentre(Point<float>(cf.getX() + 12, cf.getCentreY())));
+		g.setFont(font);
+		g.setColour(s.enabled ? TEXT_COLOR : dimText);
+		g.drawText(text, cf.withTrimmedLeft(22).withTrimmedRight(4), Justification::centredLeft, true);
+	}
 }
 
 void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
@@ -444,6 +481,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 	//same drawing as the video output, plus the selection and the editing handles
 	TopViewRenderer::Options o;
 	o.selection = true;
+	o.sourceRings = true;
 
 	auto zoneHandles = [&](int i, Rectangle<float> zr)
 	{
@@ -791,31 +829,24 @@ void TrackingMonitorPanel::showPSNOutputMenu()
 	SpatialModule* sm = getSpatialModule();
 	if (sm == nullptr) return;
 
-	const int settingsItem = 100;
 	EnumParameter* mode = sm->psnOutput.sendMode;
 	int current = (int)mode->getValueData();
 
 	PopupMenu m;
 	m.addItem(SpatialPSNOutput::PLAYER_SLOTS + 1, "Player Slots : occupied slots, slot 1 -> tracker 1", true, current == SpatialPSNOutput::PLAYER_SLOTS);
 	m.addItem(SpatialPSNOutput::SOURCE_IDS + 1, "Source IDs : everyone, with the id of its source", true, current == SpatialPSNOutput::SOURCE_IDS);
-	m.addSeparator();
-	m.addItem(settingsItem, "Show Settings");
 
 	WeakReference<ControllableContainer> outputRef(&sm->psnOutput);
 	WeakReference<Component> panelRef(this);
-	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(psnRect)), [outputRef, panelRef, settingsItem](int result)
+	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(psnRect)), [outputRef, panelRef](int result)
 		{
 			SpatialPSNOutput* output = dynamic_cast<SpatialPSNOutput*>(outputRef.get());
 			if (output == nullptr || result <= 0) return;
-			if (result == settingsItem) output->selectThis();
-			else
-			{
-				EnumParameter* mode = output->sendMode;
-				//the option is found by its value (SpatialPSNOutput::SendMode), so renaming it doesn't break the menu
-				String key;
-				for (auto* ev : mode->enumValues) if ((int)ev->value == result - 1) key = ev->key;
-				if (key.isNotEmpty() && key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
-			}
+			EnumParameter* mode = output->sendMode;
+			//the option is found by its value (SpatialPSNOutput::SendMode), so renaming it doesn't break the menu
+			String key;
+			for (auto* ev : mode->enumValues) if ((int)ev->value == result - 1) key = ev->key;
+			if (key.isNotEmpty() && key != mode->getValueKey()) mode->setUndoableValue(mode->getValueKey(), key);
 			if (TrackingMonitorPanel* panel = dynamic_cast<TrackingMonitorPanel*>(panelRef.get())) panel->timerCallback();
 		});
 }
@@ -1055,7 +1086,10 @@ void TrackingMonitorPanel::paintColumn(Graphics& g)
 		Rectangle<int> cells = row.reduced(8, 0);
 		Rectangle<int> idR = cells.removeFromLeft(36);
 		g.setColour(getPersonColor(p.id));
-		g.fillEllipse(Rectangle<float>(10, 10).withCentre(Point<float>(idR.getX() + 5.0f, (float)idR.getCentreY())));
+		Rectangle<float> dot = Rectangle<float>(10, 10).withCentre(Point<float>(idR.getX() + 5.0f, (float)idR.getCentreY()));
+		g.fillEllipse(dot);
+		g.setColour(model.getSourceColor(p.source));
+		g.drawEllipse(dot.expanded(2.5f), 1.5f);
 		g.setColour(TEXT_COLOR);
 		g.drawText(String(p.id), idR.withTrimmedLeft(15), Justification::centredLeft);
 
@@ -1358,11 +1392,22 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 		if (handleOutputChipClick(e.getPosition(), spoutRect, sm->videoOutput.spout)) return;
 		if (handleOutputChipClick(e.getPosition(), ndiRect, sm->videoOutput.ndi)) return;
 
+		for (int i = 0; i < sourceChipRects.size() && i < model.sources.size(); i++)
+		{
+			if (!sourceChipRects[i].contains(e.getPosition())) continue;
+			if (ControllableContainer* source = model.sources[i].source.get()) source->selectThis();
+			return;
+		}
+
 		if (psnRect.contains(e.getPosition()))
 		{
 			BoolParameter* output = sm->psnOutput.enabled;
 			if (getOutputBoxRect(psnRect).expanded(4).contains(e.getPosition())) output->setUndoableValue(output->boolValue(), !output->boolValue());
-			else showPSNOutputMenu();
+			else
+			{
+				sm->psnOutput.selectThis();
+				showPSNOutputMenu();
+			}
 			timerCallback();
 			return;
 		}
