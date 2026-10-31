@@ -16,13 +16,14 @@
 #include <sys/socket.h>
 #endif
 
-SpatialSource::SpatialSource(const String& name, var params) :
+SpatialSource::SpatialSource(const String& name, var params, int defaultIdOffset) :
 	BaseItem(name)
 {
 	//color of its people in the Tracking Monitor, the default comes from the manager
 	setHasCustomColor(true);
 
 	useAsScene = addBoolParameter("Use As Scene", "The scene size comes from this source (Scene > Size Mode : Auto). Needed when several sources know their scene. Only one source at a time", false);
+	idOffset = addIntParameter("Id Offset", "Added to the ids of this source, so that ids stay the same whichever source starts first. Give each source its own range", defaultIdOffset, 0, 1000000);
 	offset = addPoint2DParameter("Offset", "Where the origin of this source lands in the scene, in meters from the top left corner of the scene (applied last)");
 	rotation = addFloatParameter("Rotation", "Rotation of this source around its origin, in degrees, clockwise", 0, -360, 360);
 	scale = addFloatParameter("Scale", "Scale of this source (1 = its meters are scene meters)", 1, .01f, 100);
@@ -103,10 +104,16 @@ String SpatialSource::getReceptionText(SpatialModule* module) const
 	return "Receiving, " + String(roundToInt(s.messagesPerSecond)) + " msg/s";
 }
 
+String SpatialSource::getIdConflictText(SpatialModule* module) const
+{
+	int n = module->trackingData.getNumIdConflicts(this);
+	return n > 0 ? ". "+String(n)+" id conflict(s) with another source : change Id Offset" : "";
+}
+
 // AugmentaSource
 
 AugmentaSource::AugmentaSource(var params) :
-	SpatialSource(getTypeStringStatic(), params)
+	SpatialSource(getTypeStringStatic(), params, 101)	// Fusion counts from 0, PSN systems from 1 : first person = 101, away from PSN ids
 {
 }
 
@@ -147,6 +154,7 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 
 	TrackedPerson p;
 	p.sourceId = OSCHelpers::getIntArg(msg[1]);
+	p.idOffset = idOffset->intValue();
 	p.sourceName = niceName;
 	p.source = this;
 	p.age = OSCHelpers::getFloatArg(msg[3]);
@@ -173,7 +181,7 @@ void AugmentaSource::update(SpatialModule* module)
 		String s = getReceptionText(module) + ", " + String(module->trackingData.getNumPersons(this)) + " people";
 		if (augmentaSceneSize.x > 0) s += ", Augmenta scene " + String(augmentaSceneSize.x, 1) + " x " + String(augmentaSceneSize.y, 1) + " m";
 		else s += ", waiting for /scene";
-		status->setValue(s);
+		status->setValue(s + getIdConflictText(module));
 	}
 }
 
@@ -242,7 +250,7 @@ void PSNSource::update(SpatialModule* module)
 		if (systemName.isNotEmpty()) s += ", from " + systemName;
 		if (systemName.containsIgnoreCase("kratos") && (upAxis->getValueDataAsEnum<UpAxis>() != UP_Z || getSceneArea().x <= 0))
 			s += ". Kratos : set Up Axis to Z, and Area Position / Size from Kratos > Area";
-		status->setValue(s);
+		status->setValue(s + getIdConflictText(module));
 		break;
 	}
 	}
@@ -323,7 +331,7 @@ void PSNSource::run()
 				if (frame.header.frame_packet_count == 0 || frame.header.frame_id == lastFrameId) continue;
 				lastFrameId = frame.header.frame_id;
 				threadModule->trackingData.countMessage(this);
-				processFrame(frame.trackers);
+				processFrame(frame.trackers, name);
 			}
 			return;
 		}
@@ -337,7 +345,7 @@ Point<float> PSNSource::toGround(const psn::float3& v, bool upY) const
 	return upY ? Point<float>(v.x, v.z) : Point<float>(v.x, -v.y);
 }
 
-void PSNSource::processFrame(const psn::tracker_map& trackers)
+void PSNSource::processFrame(const psn::tracker_map& trackers, const String& system)
 {
 	const float originTolerance = .001f; // meters
 	bool upY = upAxis->getValueDataAsEnum<UpAxis>() == UP_Y;
@@ -357,6 +365,7 @@ void PSNSource::processFrame(const psn::tracker_map& trackers)
 
 		TrackedPerson p;
 		p.sourceId = t.get_id();
+		p.idOffset = idOffset->intValue();
 		p.sourceName = niceName;
 		p.source = this;
 
@@ -368,7 +377,9 @@ void PSNSource::processFrame(const psn::tracker_map& trackers)
 		//without area, PSN has no scene and its meters are absolute
 		p.position = toScene(toGround(pos, upY) - areaOrigin, area);
 		p.height = upY ? pos.y : pos.z;
-		p.trackerName = t.get_name();
+		//"Kratos LEAD", like "Augmenta 0" for an Augmenta person
+		String name(t.get_name());
+		p.trackerName = name.isEmpty() || system.isEmpty() ? name : system + " " + name;
 		if (t.is_speed_set()) p.velocity = vectorToScene(toGround(t.get_speed(), upY));
 		if (t.is_ori_set())
 		{

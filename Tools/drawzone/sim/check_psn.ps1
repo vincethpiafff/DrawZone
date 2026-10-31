@@ -88,6 +88,7 @@ Check "scene from PSN area (16 x 12)" ($res -match "^1600 x 1200 px") "'$res'"
 Check "PSN Y connected, no data" ((Value "$sources/psnY/status") -match "^No data yet, 0 people, 236\.10\.10\.10:56575") "$(Value "$sources/psnY/status")"
 
 #Y up : x = 2, z = 1.5 + offset (1, 0.5) -> scene (3, 2) ; the unused tracker at the origin must not appear
+$simClock = [Diagnostics.Stopwatch]::StartNew()
 $p = Sim $psnSim @("-Port", 56575, "-Id", 77, "-X", 2, "-Y", 1.7, "-Z", 1.5, "-Vx", 0.8, "-Vz", -0.4, "-Seconds", 9)
 Start-Sleep -Milliseconds 1500
 $pos = Value "$people/person77/position"
@@ -96,7 +97,9 @@ Check "Y up : height 1.7" (Near (Value "$people/person77/height") 1.7) "$(Value 
 $v = Value "$people/person77/velocity"
 Check "Y up : velocity (0.8, -0.4)" ($null -ne $v -and (Near $v[0] 0.8) -and (Near $v[1] -0.4)) ($v -join ", ")
 $age = Value "$people/person77/age"
-Check "Y up : age grows" ($age -gt 0.5 -and $age -lt 3) "$age"
+#the reads above can be slow : the age is compared to the real time since the sender started
+$elapsed = $simClock.Elapsed.TotalSeconds
+Check "Y up : age grows" ($age -gt 0.5 -and $age -le $elapsed) "$age s, $elapsed s since the sender started"
 Check "tracker at origin ignored" ($null -eq (Tool "organic_inspect" @{ handle = $modules; path = "$people/person500" })) ""
 Check "person count 1" ((Value "spatial/values/personCount") -eq 1) "$(Value "spatial/values/personCount")"
 $s = Value "$sources/psnY/status"
@@ -152,6 +155,7 @@ else { Check "same id : other gets an id from 10000" ($second -eq "PSN Y") "$sec
 $res = Value "spatial/parameters/videoOutput/resolution"
 if ($NoChoice) { Check "2 scenes, none chosen : no scene" ($res -match "^Waiting for scene size") "'$res'" }
 else { Check "2 scenes : the chosen source keeps the scene" ($res -match "^1600 x 1200 px") "'$res'" }
+Check "same id : conflict shown in the status" ((Value "$sources/psnY/status") -match "1 id conflict") "$(Value "$sources/psnY/status")"
 Check "same id : 2 people" ((Value "spatial/values/personCount") -eq 2) "$(Value "spatial/values/personCount")"
 $p.WaitForExit()
 $a.WaitForExit()
@@ -170,8 +174,10 @@ Check "output : 3 people, 2 slots, trackers 1 and 2" ($people3 -eq 3 -and ($o.id
 $a.WaitForExit(); $p.WaitForExit(); $q.WaitForExit()
 
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
-$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime })
-Check "no warning / error in logs" ($bad.Count -eq 0) $(($bad | ForEach-Object { "$($_.severity): $($_.message)" }) -join " | ")
+#the community module list comes from the internet, not from DrawZone
+$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.message -notmatch "^Community Module definition file is not valid" })
+Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
+$bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 
 $results | Format-Table -AutoSize | Out-String -Width 220
 $failed = @($results | Where-Object { $_.Result -eq "FAIL" }).Count

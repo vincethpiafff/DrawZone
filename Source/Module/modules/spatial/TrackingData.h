@@ -6,9 +6,10 @@
 	Author:  DrawZone
 
 	Protocol-independent list of tracked people, from one or more sources
-	(Augmenta OSC, PSN...). Each source gives its own ids : a person
-	keeps the id of its source when no one else uses it, otherwise gets a
-	free id from 10000, so ids stay unique across sources.
+	(Augmenta OSC, PSN...). A person's id is the id given by its source plus
+	the Id Offset of that source, so it doesn't depend on who arrives first.
+	If another source already uses it (offsets badly set), it gets a free id
+	from 10000, so ids stay unique across sources.
 	Filled by the sources and read by the zones, the slots and the UI.
 	Written from the network threads and read from the message thread,
 	so every access is locked.
@@ -22,13 +23,14 @@ struct TrackedPerson
 {
 	int id = -1;			// unique in the module
 	int sourceId = -1;		// id given by its source
+	int idOffset = 0;		// Id Offset of its source
 	String sourceName;		// name of its source
 	Point<float> position;	// scene meters, origin top left (may be outside the scene)
 	Point<float> velocity;	// scene meters, as sent by the source
 	float orientation = 0;
 	float height = 0;		// meters
 	float age = 0;			// seconds since entering
-	String trackerName;		// name given by its source, empty when it has none
+	String trackerName;		// "system tracker" name from its source, empty when it has none
 	uint32 lastUpdateMs = 0;
 	const void* source = nullptr;	// identifies the source, never dereferenced
 };
@@ -69,6 +71,7 @@ public:
 
 	int getNumPersons();
 	int getNumPersons(const void* source);
+	int getNumIdConflicts(const void* source);	// people who could not get source id + Id Offset
 	Snapshot getSnapshot();
 
 private:

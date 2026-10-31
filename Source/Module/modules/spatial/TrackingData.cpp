@@ -74,10 +74,17 @@ bool TrackingData::isIdUsed(int id) const
 void TrackingData::updatePerson(const TrackedPerson& person)
 {
 	const ScopedLock sl(lock);
-	for (auto& p : data.persons)
+	for (int i = 0; i < data.persons.size(); i++)
 	{
+		TrackedPerson& p = data.persons.getReference(i);
 		if (p.source == person.source && p.sourceId == person.sourceId)
 		{
+			if (p.idOffset != person.idOffset)
+			{
+				//Id Offset changed : takes its new id below
+				data.persons.remove(i);
+				break;
+			}
 			int id = p.id;
 			p = person;
 			p.id = id;
@@ -86,10 +93,10 @@ void TrackingData::updatePerson(const TrackedPerson& person)
 	}
 
 	TrackedPerson p = person;
-	p.id = person.sourceId;
+	p.id = person.sourceId + person.idOffset;
 	if (p.id < 0 || isIdUsed(p.id))
 	{
-		//the source id is taken by a person of another source : a free id from 10000
+		//the id is taken by a person of another source : a free id from 10000
 		while (isIdUsed(nextRemappedId)) nextRemappedId++;
 		p.id = nextRemappedId++;
 	}
@@ -127,6 +134,14 @@ int TrackingData::getNumPersons(const void* source)
 	const ScopedLock sl(lock);
 	int n = 0;
 	for (auto& p : data.persons) if (p.source == source) n++;
+	return n;
+}
+
+int TrackingData::getNumIdConflicts(const void* source)
+{
+	const ScopedLock sl(lock);
+	int n = 0;
+	for (auto& p : data.persons) if (p.source == source && p.id != p.sourceId + p.idOffset) n++;
 	return n;
 }
 

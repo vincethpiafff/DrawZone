@@ -157,7 +157,7 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 SpatialPerson::SpatialPerson(int id) :
 	ControllableContainer("Person " + String(id))
 {
-	personId = addIntParameter("Id", "Id of the person in DrawZone : the id given by its source, or a free id from 10000 when another source already uses it", id);
+	personId = addIntParameter("Id", "Id of the person in DrawZone : the id given by its source plus its Id Offset, or a free id from 10000 when another source already uses it", id);
 	personId->setControllableFeedbackOnly(true);
 	sourceName = addStringParameter("Source", "Tracking system (source) that sees the person", "");
 	sourceName->setControllableFeedbackOnly(true);

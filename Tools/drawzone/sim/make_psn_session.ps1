@@ -8,15 +8,16 @@
 # PSN Z is marked Use As Scene (-NoChoice : no source is).
 
 # -OutputMode : Send of the PSN output, for check_psn_modes.ps1
+# -DefaultIds : Augmenta keeps its default Id Offset, for check_id_offset.ps1 (else 0, so the ids in the checks are the ids sent)
 
-param([string]$From, [string]$To, [switch]$NoPsn, [switch]$NoChoice, [string]$OutputMode = "Player Slots")
+param([string]$From, [string]$To, [switch]$NoPsn, [switch]$NoChoice, [switch]$DefaultIds, [string]$OutputMode = "Player Slots")
 
 $text = [System.IO.File]::ReadAllText($From)
 
 # OSC on a port Fusion does not use (augmenta_sim.ps1 sends there)
 if ($text.Contains('"oscInput": {"parameters"')) { throw "OSC input settings in $From : not handled" }
 $text = $text.Replace('"oscInput": {', '"oscInput": {"parameters": [{"value": 12999, "hexMode": false, "controlAddress": "/localPort"}], ')
-$augmenta = '{"niceName": "Augmenta", "type": "Augmenta"}'
+$augmenta = if ($DefaultIds) { '{"niceName": "Augmenta", "type": "Augmenta"}' } else { '{"parameters": [{"value": 0, "hexMode": false, "controlAddress": "/idOffset"}], "niceName": "Augmenta", "type": "Augmenta"}' }
 $psnY = '{"parameters": [{"value": [1.0, 0.5], "controlAddress": "/offset"}, {"value": 56575, "hexMode": false, "controlAddress": "/multicastPort"}], "niceName": "PSN Y", "type": "PSN"}'
 $psnZ = '{"parameters": [{"value": [-8.0, -2.0], "controlAddress": "/areaPosition"}, {"value": [16.0, 12.0], "controlAddress": "/areaSize"}, {"value": 56576, "hexMode": false, "controlAddress": "/multicastPort"}, {"value": "Z", "controlAddress": "/upAxis"}], "niceName": "PSN Z", "type": "PSN"}'
 if (-not $NoChoice) { $psnZ = $psnZ.Replace('{"parameters": [', '{"parameters": [{"value": true, "controlAddress": "/useAsScene"}, ') }

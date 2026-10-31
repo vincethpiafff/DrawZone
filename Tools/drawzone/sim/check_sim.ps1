@@ -179,8 +179,10 @@ Check "PSN output off by default : nothing sent" ($o.packets -eq 0) "$($o.packet
 
 #no warning or error in the logs during the test
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
-$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime })
-Check "no warning / error in logs" ($bad.Count -eq 0) $(($bad | ForEach-Object { "$($_.severity): $($_.message)" }) -join " | ")
+#the community module list comes from the internet, not from DrawZone
+$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.message -notmatch "^Community Module definition file is not valid" })
+Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
+$bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 
 $results | Format-Table -AutoSize | Out-String -Width 220
 $failed = @($results | Where-Object { $_.Result -eq "FAIL" }).Count

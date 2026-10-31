@@ -30,7 +30,7 @@ class SpatialSource :
 	public BaseItem
 {
 public:
-	SpatialSource(const String& name = "Source", var params = var());
+	SpatialSource(const String& name = "Source", var params = var(), int defaultIdOffset = 0);
 	virtual ~SpatialSource();
 
 	Point2DParameter* offset;	// meters
@@ -41,6 +41,7 @@ public:
 	StringParameter* status;	// read only
 	Trigger* resetParameters;	// transform back to identity
 	BoolParameter* useAsScene;	// the scene size comes from this source, only one at a time
+	IntParameter* idOffset;		// added to the ids of this source
 
 	void onContainerTriggerTriggered(Trigger* t) override;
 	void onContainerParameterChangedInternal(Parameter* p) override;
@@ -58,6 +59,9 @@ public:
 
 	//"No data yet", "Silent" or "Receiving, 50 msg/s"
 	String getReceptionText(SpatialModule* module) const;
+
+	//warning for the Status text, empty when every person has its id
+	String getIdConflictText(SpatialModule* module) const;
 
 protected:
 	//Inspector order for every source : scene, placement in the scene, reception, status
@@ -129,7 +133,7 @@ private:
 
 	std::map<int, uint32> firstSeenMs;	// by tracker id, thread only, gives the age
 
-	void processFrame(const psn::tracker_map& trackers);
+	void processFrame(const psn::tracker_map& trackers, const String& system);
 	Point<float> toGround(const psn::float3& v, bool upY) const;	// top view, not mirrored, in source meters
 	Point<float> getAreaOrigin(bool upY);	// top left of the area in toGround() meters
 	bool joinOnAllInterfaces(DatagramSocket& socket, const String& address);

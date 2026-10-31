@@ -13,6 +13,7 @@ $exe = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")) "Binaries\A
 $checkSim = Join-Path $PSScriptRoot "check_sim.ps1"
 $checkPsn = Join-Path $PSScriptRoot "check_psn.ps1"
 $checkModes = Join-Path $PSScriptRoot "check_psn_modes.ps1"
+$checkIds = Join-Path $PSScriptRoot "check_id_offset.ps1"
 $make = Join-Path $PSScriptRoot "make_psn_session.ps1"
 $dir = Join-Path $env:TEMP "drawzone_checks"
 [void](New-Item -ItemType Directory -Force $dir)
@@ -48,6 +49,7 @@ try
 	& $make -From $Session -To "$dir\psn.noisette" | Out-Null
 	& $make -From $Session -To "$dir\psn_no_choice.noisette" -NoChoice | Out-Null
 	& $make -From $Session -To "$dir\no_psn.noisette" -NoPsn | Out-Null
+	& $make -From $Session -To "$dir\default_ids.noisette" -DefaultIds -OutputMode "Source IDs" | Out-Null
 	& $make -From $Session -To "$dir\source_ids.noisette" -OutputMode "Source IDs" | Out-Null
 
 	OpenSession "$dir\psn.noisette"
@@ -63,6 +65,11 @@ try
 	OpenSession "$dir\source_ids.noisette"
 	"== PSN output, Source IDs"
 	Summary (& $checkModes | Out-String -Width 220)
+	$failed += $LASTEXITCODE
+
+	OpenSession "$dir\default_ids.noisette"
+	"== Id Offset, default values"
+	Summary (& $checkIds | Out-String -Width 220)
 	$failed += $LASTEXITCODE
 
 	OpenSession "$dir\no_psn.noisette"

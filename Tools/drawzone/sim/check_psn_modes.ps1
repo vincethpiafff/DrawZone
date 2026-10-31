@@ -26,7 +26,7 @@ $o = & $capture -Via "127.0.0.1" -Seconds 2.2
 Check "one tracker with the id of the source" (($o.ids -join ",") -eq "88") ($o.ids -join ",")
 Check "position in the scene (10, 1.7, 7)" (Near3 $o.pos[88] 10 1.7 7) ($o.pos[88] -join ", ")
 Check "speed in the scene (0.5, 0, 0.25)" (Near3 $o.speed[88] 0.5 0 0.25) ($o.speed[88] -join ", ")
-Check "name of the source tracker in the info packet" ($o.info -match "Sim") "'$($o.info)'"
+Check "system and tracker names in the info packet" ($o.info -match "DrawZone PSN sim Sim") "'$($o.info)'"
 
 $a = Sim $augmentaSim @("-Id", 88, "-X", 4, "-Y", 1, "-Seconds", 3)
 Start-Sleep -Milliseconds 1500
