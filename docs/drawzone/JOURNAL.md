@@ -1,7 +1,12 @@
-# Journal de bord
+# Journal de bord (figé)
+
+> **Figé le 29/10/2026** (tâche d'optimisation 24) : il faisait doublon avec
+> `TODO.md`, qui garde désormais seul la trace de chaque séance (versions
+> terminées : `docs/drawzone/TODO-archive.md`). Ce journal reste pour l'historique
+> du 23 au 26/10/2026.
 
 Résumé de chaque séance de travail : ce qui a été fait, les problèmes
-rencontrés, où on s'est arrêté. Ajouter les séances les plus récentes en haut.
+rencontrés, où on s'est arrêté.
 
 ---
 

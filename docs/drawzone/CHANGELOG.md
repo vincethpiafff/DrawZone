@@ -5,6 +5,55 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+## [0.5.0] - 2026-10-31
+
+Plusieurs systèmes de tracking dans la même scène : Augmenta et PosiStageNet
+en entrée, chacun avec son placement, et une sortie PSN.
+
+### Ajouté
+- **Bloc Sources** du module : sources **Augmenta** et **PSN**, avec pour
+  chacune Offset, Rotation, Scale, Flip X / Y, Reset All Parameters et Status
+  (réception, débit, personnes).
+- **Id Offset** par source (Augmenta 101 par défaut) : les ids ne dépendent plus
+  de l'ordre de démarrage des sources. Ids à partir de 10000 en secours, signalés
+  dans Status.
+- **Source PSN** : Multicast Address / Port, Up Axis (Y ou Z), Ignore Trackers
+  At Origin, Area Position / Area Size (le PSN ne transporte pas la taille de
+  scène : à saisir, pour Kratos depuis Area). Le groupe est rejoint sur toutes
+  les cartes réseau.
+- **Scene** : Size Mode Auto (From Sources) ou Manual, et **Use As Scene** pour
+  choisir la source de référence.
+- **PSN Output** (désactivé par défaut, 236.10.10.11:56565, envoi sur la carte
+  réseau choisie) : Send *Player Slots* (slot N → tracker N, nom du slot) ou
+  *Source IDs* (ids et noms des sources, par exemple « Kratos LEAD »). Positions
+  en mètres de la scène (x, y = hauteur, z = y de la scène).
+- Tracking Monitor : pastille PSN Output, rangée de pastilles des sources
+  (couleur, nom, réception, personnes), anneau à la couleur de la source autour
+  de chaque personne.
+
+### Modifié
+- Le module **Spatial** s'appelle désormais **Cockpit** (Modules > DrawZone >
+  Cockpit) ; les anciennes sessions s'ouvrent toujours (D14).
+- Inspector du module : sections repliées avec badge d'icône et puces d'état,
+  nouvel ordre des blocs.
+- Les bornes des zones ne dépendent plus de la taille de scène.
+- Entrée **TUIO** retirée des plans (D15).
+
+### Corrigé
+- Session jamais marquée modifiée tant qu'un client MCP était connecté :
+  modifications perdues à la fermeture.
+
+### Technique
+- Positions rangées en mètres de la scène dans `TrackingData` ; débit et état
+  de réception par source.
+- Outils de test dans `Tools/drawzone/sim/` (simulateurs Augmenta et PSN,
+  `run_checks.ps1`).
+
+### Limites connues
+- Une personne vue par deux systèmes compte pour deux (fusion reportée).
+- PSN testé avec Kratos et son enregistrement de démonstration, pas avec un
+  système Naostage réel.
+
 ## [0.4.0] - 2026-10-28
 
 Sortie vidéo de la vue de dessus (zones, personnes, slots) en Spout et NDI,

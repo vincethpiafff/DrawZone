@@ -16,47 +16,104 @@ TrackingData::~TrackingData()
 {
 }
 
-void TrackingData::countMessage()
+void TrackingData::countMessage(const void* source)
 {
 	const ScopedLock sl(lock);
 	uint32 now = Time::getMillisecondCounter();
-	data.lastMessageMs = now;
-	messageCount++;
+	moduleRate.add(now);
+	sourceRates[source].add(now);
+}
 
-	uint32 elapsed = now - rateWindowStartMs;
+TrackingData::SourceStats TrackingData::getSourceStats(const void* source)
+{
+	const ScopedLock sl(lock);
+	SourceStats s;
+	auto it = sourceRates.find(source);
+	if (it == sourceRates.end()) return s;
+	s.messagesPerSecond = it->second.getRate(Time::getMillisecondCounter());
+	s.lastMessageMs = it->second.lastMessageMs;
+	return s;
+}
+
+void TrackingData::RateCounter::add(uint32 now)
+{
+	lastMessageMs = now;
+	count++;
+	uint32 elapsed = now - windowStartMs;
 	if (elapsed >= 1000)
 	{
-		data.messagesPerSecond = messageCount * 1000.0f / elapsed;
-		messageCount = 0;
-		rateWindowStartMs = now;
+		messagesPerSecond = count * 1000.0f / elapsed;
+		count = 0;
+		windowStartMs = now;
 	}
 }
 
-void TrackingData::setScene(int frame, Point<float> sceneSize)
+float TrackingData::RateCounter::getRate(uint32 now) const
+{
+	return lastMessageMs == 0 || now - lastMessageMs > 1000 ? 0 : messagesPerSecond;
+}
+
+void TrackingData::setSceneSize(Point<float> sceneSize)
 {
 	const ScopedLock sl(lock);
-	data.frame = frame;
 	data.sceneSize = sceneSize;
+}
+
+Point<float> TrackingData::getSceneSize()
+{
+	const ScopedLock sl(lock);
+	return data.sceneSize;
+}
+
+bool TrackingData::isIdUsed(int id) const
+{
+	for (auto& p : data.persons) if (p.id == id) return true;
+	return false;
 }
 
 void TrackingData::updatePerson(const TrackedPerson& person)
 {
 	const ScopedLock sl(lock);
-	for (auto& p : data.persons)
+	for (int i = 0; i < data.persons.size(); i++)
 	{
-		if (p.id == person.id)
+		TrackedPerson& p = data.persons.getReference(i);
+		if (p.source == person.source && p.sourceId == person.sourceId)
 		{
+			if (p.idOffset != person.idOffset)
+			{
+				//Id Offset changed : takes its new id below
+				data.persons.remove(i);
+				break;
+			}
+			int id = p.id;
 			p = person;
+			p.id = id;
 			return;
 		}
 	}
-	data.persons.add(person);
+
+	TrackedPerson p = person;
+	p.id = person.sourceId + person.idOffset;
+	if (p.id < 0 || isIdUsed(p.id))
+	{
+		//the id is taken by a person of another source : a free id from 10000
+		while (isIdUsed(nextRemappedId)) nextRemappedId++;
+		p.id = nextRemappedId++;
+	}
+	data.persons.add(p);
 }
 
-void TrackingData::removePerson(int id)
+void TrackingData::removePerson(const void* source, int sourceId)
 {
 	const ScopedLock sl(lock);
-	data.persons.removeIf([id](const TrackedPerson& p) { return p.id == id; });
+	data.persons.removeIf([source, sourceId](const TrackedPerson& p) { return p.source == source && p.sourceId == sourceId; });
+}
+
+void TrackingData::removeSource(const void* source)
+{
+	const ScopedLock sl(lock);
+	data.persons.removeIf([source](const TrackedPerson& p) { return p.source == source; });
+	sourceRates.erase(source);
 }
 
 void TrackingData::removeStalePersons(uint32 timeoutMs)
@@ -66,34 +123,33 @@ void TrackingData::removeStalePersons(uint32 timeoutMs)
 	data.persons.removeIf([now, timeoutMs](const TrackedPerson& p) { return now - p.lastUpdateMs > timeoutMs; });
 }
 
-//returns true if people were removed because the source stopped sending
-bool TrackingData::removeAllIfSilent(uint32 timeoutMs)
-{
-	const ScopedLock sl(lock);
-	if (data.persons.isEmpty()) return false;
-	if (Time::getMillisecondCounter() - data.lastMessageMs <= timeoutMs) return false;
-	data.persons.clear();
-	return true;
-}
-
-void TrackingData::clear()
-{
-	const ScopedLock sl(lock);
-	data = Snapshot();
-	messageCount = 0;
-}
-
 int TrackingData::getNumPersons()
 {
 	const ScopedLock sl(lock);
 	return data.persons.size();
 }
 
+int TrackingData::getNumPersons(const void* source)
+{
+	const ScopedLock sl(lock);
+	int n = 0;
+	for (auto& p : data.persons) if (p.source == source) n++;
+	return n;
+}
+
+int TrackingData::getNumIdConflicts(const void* source)
+{
+	const ScopedLock sl(lock);
+	int n = 0;
+	for (auto& p : data.persons) if (p.source == source && p.id != p.sourceId + p.idOffset) n++;
+	return n;
+}
+
 TrackingData::Snapshot TrackingData::getSnapshot()
 {
 	const ScopedLock sl(lock);
 	Snapshot s = data;
-	//no message for more than a second : the source is silent, don't show an old rate
-	if (data.lastMessageMs == 0 || Time::getMillisecondCounter() - data.lastMessageMs > 1000) s.messagesPerSecond = 0;
+	s.messagesPerSecond = moduleRate.getRate(Time::getMillisecondCounter());
+	s.lastMessageMs = moduleRate.lastMessageMs;
 	return s;
 }

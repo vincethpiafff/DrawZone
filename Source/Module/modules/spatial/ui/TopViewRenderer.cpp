@@ -12,6 +12,7 @@ void TopViewModel::update(SpatialModule* sm)
 {
 	hasModule = sm != nullptr;
 
+	sources.clearQuick();
 	zones.clearQuick();
 	slots.clearQuick();
 	personZones.clearQuick();
@@ -23,13 +24,29 @@ void TopViewModel::update(SpatialModule* sm)
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
 
+		{
+			const ScopedLock sl(sm->sourceManager.items.getLock());
+			for (auto& s : sm->sourceManager.items)
+			{
+				SourceView sv;
+				sv.source = s;
+				sv.id = s;
+				sv.name = s->niceName;
+				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) sv.name += " :" + String(localPort); }
+				sv.enabled = s->enabled->boolValue();
+				sv.reception = sv.enabled ? s->getReceptionText(sm) : String("Disabled");
+				sv.color = s->itemColor->getColor();
+				sv.personCount = sm->trackingData.getNumPersons(s);
+				sources.add(sv);
+			}
+		}
+
 		for (auto& z : sm->zoneManager.items)
 		{
 			ZoneView zv;
 			zv.zone = z;
 			zv.name = z->niceName;
-			Point<float> size = z->size->getPoint();
-			zv.bounds = Rectangle<float>(size.x, size.y).withCentre(z->center->getPoint());
+			zv.bounds = z->getBounds();
 			zv.ellipse = z->isEllipse();
 			zv.freeShape = z->isFreeShape();
 			if (zv.freeShape)
@@ -81,24 +98,13 @@ void TopViewModel::update(SpatialModule* sm)
 			slots.add(sv);
 		}
 
-		//first enabled zone containing each person, same test as the zones themselves
+		//zone and relative position computed by the module (Values > People) ; a person not there yet : in no zone
 		for (auto& p : snapshot.persons)
 		{
-			int zoneIndex = -1;
-			for (int i = 0; i < sm->zoneManager.items.size(); i++)
-			{
-				SpatialZone* z = sm->zoneManager.items[i];
-				if (z->idsInside.contains(p.id)) //same membership as the zone (with its anti-flicker)
-				{
-					zoneIndex = i;
-					break;
-				}
-			}
-			personZones.add(zoneIndex);
-
-			//relative position computed by the module (zone or zones overlap)
 			auto it = sm->people.find(p.id);
-			personRelativePositions.add(it != sm->people.end() ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
+			bool known = it != sm->people.end();
+			personZones.add(known ? it->second->firstZoneIndex : -1);
+			personRelativePositions.add(known ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
 		}
 	}
 	else
@@ -115,6 +121,12 @@ int TopViewModel::getSlotIndexForPerson(int id) const
 	return -1;
 }
 
+Colour TopViewModel::getSourceColor(const void* id) const
+{
+	for (auto& s : sources) if (s.id == id) return s.color;
+	return Colours::transparentBlack;
+}
+
 Colour TopViewModel::getPersonColor(int id)
 {
 	return Colour::fromHSV((id * .13f) - (int)(id * .13f), .7f, 1, 1);
@@ -127,7 +139,7 @@ void TopViewModel::updateMotions()
 
 	for (auto& p : snapshot.persons)
 	{
-		Point<float> meters(p.position.x * snapshot.sceneSize.x, p.position.y * snapshot.sceneSize.y);
+		Point<float> meters = p.position;
 
 		Motion m;
 		auto it = motions.find(p.id);
@@ -248,12 +260,9 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 			g.setColour(s.color.withAlpha(.1f));
 			g.fillEllipse(circle);
 
-			Path ring, dashed;
+			Path ring;
 			ring.addEllipse(circle);
-			const float dashes[] = { 5, 4 };
-			PathStrokeType(1.5f).createDashedStroke(dashed, ring, dashes, 2);
-			g.setColour(s.color.withAlpha(.8f));
-			g.fillPath(dashed);
+			strokeDashed(g, ring, 1.5f, 5, 4, s.color.withAlpha(.8f));
 
 			//time left : an arc that empties, full circle when held until reclaimed
 			float ratio = s.holdRemaining < 0 || m.holdTime <= 0 ? 1.0f : jlimit(0.0f, 1.0f, s.holdRemaining / m.holdTime);
@@ -295,7 +304,7 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 	//People : dot with a halo and the id, arrow toward where they go when moving
 	for (auto& p : m.snapshot.persons)
 	{
-		Point<float> pos(scene.getX() + p.position.x * scene.getWidth(), scene.getY() + p.position.y * scene.getHeight());
+		Point<float> pos = scene.getTopLeft() + p.position * scale;
 		Colour c = TopViewModel::getPersonColor(p.id);
 
 		auto it = m.motions.find(p.id);
@@ -318,6 +327,12 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 		g.fillEllipse(Rectangle<float>(28, 28).withCentre(pos));
 		g.setColour(c);
 		g.fillEllipse(Rectangle<float>(14, 14).withCentre(pos));
+		if (o.sourceRings)
+		{
+			g.setColour(m.getSourceColor(p.source));
+			g.drawEllipse(Rectangle<float>(20, 20).withCentre(pos), 2);
+			g.setColour(c);
+		}
 		if (o.selection && p.id == m.selectedPersonId)
 		{
 			g.setColour(HIGHLIGHT_COLOR);

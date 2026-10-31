@@ -329,6 +329,7 @@
 		432EEB89D43DED4F54A7CCAD /* ModuleRouter.cpp */ /* ModuleRouter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ModuleRouter.cpp; path = ../../Source/Module/Routing/ModuleRouter.cpp; sourceTree = SOURCE_ROOT; };
 		43BF5ADDAC099D6B0F796965 /* GPIOModule.h */ /* GPIOModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = GPIOModule.h; path = ../../Source/Module/modules/gpio/GPIOModule.h; sourceTree = SOURCE_ROOT; };
 		43FF3B8ECBF69AB0CED363AE /* LiveOSCModule.cpp */ /* LiveOSCModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = LiveOSCModule.cpp; path = ../../Source/Module/modules/osc/live/LiveOSCModule.cpp; sourceTree = SOURCE_ROOT; };
+		441385663354C7EE93FCAE69 /* SpatialSectionEditor.h */ /* SpatialSectionEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialSectionEditor.h; path = ../../Source/Module/modules/spatial/ui/SpatialSectionEditor.h; sourceTree = SOURCE_ROOT; };
 		4413B1B6C315E4E1F1CC0BC3 /* StreamingModule.cpp */ /* StreamingModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StreamingModule.cpp; path = ../../Source/Module/modules/common/streaming/StreamingModule.cpp; sourceTree = SOURCE_ROOT; };
 		44595F730394CFE8407FDC81 /* MultiplexUI.cpp */ /* MultiplexUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MultiplexUI.cpp; path = ../../Source/Common/Processor/Multiplex/ui/MultiplexUI.cpp; sourceTree = SOURCE_ROOT; };
 		446C48CFB7279D722A57242C /* TimeFilter.cpp */ /* TimeFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TimeFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/TimeFilter.cpp; sourceTree = SOURCE_ROOT; };
@@ -514,6 +515,7 @@
 		771A246AE678B5F6659FB8E7 /* CVPreset.cpp */ /* CVPreset.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CVPreset.cpp; path = ../../Source/CustomVariables/Preset/CVPreset.cpp; sourceTree = SOURCE_ROOT; };
 		77DA8C5F719F7C3B25B06C28 /* ConvertedParameterManagerEditor.h */ /* ConvertedParameterManagerEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConvertedParameterManagerEditor.h; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ui/ConvertedParameterManagerEditor.h; sourceTree = SOURCE_ROOT; };
 		77FDC417ABF22A287F49034A /* ModuleManagerUI.h */ /* ModuleManagerUI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ModuleManagerUI.h; path = ../../Source/Module/ui/ModuleManagerUI.h; sourceTree = SOURCE_ROOT; };
+		786C6D83EC55BF502A70A095 /* SpatialPSNOutput.h */ /* SpatialPSNOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialPSNOutput.h; path = ../../Source/Module/modules/spatial/SpatialPSNOutput.h; sourceTree = SOURCE_ROOT; };
 		786CF34A60DCB23F26EB0F48 /* ConsequenceManager.cpp */ /* ConsequenceManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConsequenceManager.cpp; path = ../../Source/Common/Processor/Action/Consequence/ConsequenceManager.cpp; sourceTree = SOURCE_ROOT; };
 		789BEEB77C5B2E458CCC99A5 /* ComparatorFactory.h */ /* ComparatorFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ComparatorFactory.h; path = ../../Source/Common/Processor/Action/Condition/conditions/StandardCondition/Comparator/ComparatorFactory.h; sourceTree = SOURCE_ROOT; };
 		78B240F53429613DC1AD4C8F /* AudioModuleHardwareEditor.cpp */ /* AudioModuleHardwareEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AudioModuleHardwareEditor.cpp; path = ../../Source/Module/modules/audio/ui/AudioModuleHardwareEditor.cpp; sourceTree = SOURCE_ROOT; };
@@ -524,7 +526,9 @@
 		79EA796B591281322DA21A35 /* GamepadModule.h */ /* GamepadModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = GamepadModule.h; path = ../../Source/Module/modules/controller/gamepad/GamepadModule.h; sourceTree = SOURCE_ROOT; };
 		7A33EADEDCB3B4815709D2C4 /* ConversionSourceParameterUI.cpp */ /* ConversionSourceParameterUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConversionSourceParameterUI.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ui/ConversionSourceParameterUI.cpp; sourceTree = SOURCE_ROOT; };
 		7A91E8D798CAD8D2754205F1 /* Resolume.png */ /* Resolume.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Resolume.png; path = ../../Resources/Modules/Resolume.png; sourceTree = SOURCE_ROOT; };
+		7A9B6888EBC9458C82269185 /* SpatialPSNOutput.cpp */ /* SpatialPSNOutput.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialPSNOutput.cpp; path = ../../Source/Module/modules/spatial/SpatialPSNOutput.cpp; sourceTree = SOURCE_ROOT; };
 		7ABB941A2D9C97F17BD7AF8F /* encoder.c */ /* encoder.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = encoder.c; path = ../../Source/Common/LTC/encoder.c; sourceTree = SOURCE_ROOT; };
+		7ADF7EC08335C9EE28AFA3B6 /* SpatialSource.h */ /* SpatialSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialSource.h; path = ../../Source/Module/modules/spatial/SpatialSource.h; sourceTree = SOURCE_ROOT; };
 		7BF5117D14F60545839C618F /* ConvertedParameter.cpp */ /* ConvertedParameter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConvertedParameter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ConvertedParameter.cpp; sourceTree = SOURCE_ROOT; };
 		7CB032A893DBFEF23EF4F330 /* ConsequenceManagerEditor.h */ /* ConsequenceManagerEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConsequenceManagerEditor.h; path = ../../Source/Common/Processor/Action/Consequence/ui/ConsequenceManagerEditor.h; sourceTree = SOURCE_ROOT; };
 		7CC48BF5AC5A35CF1B60C67F /* DampingFilter.cpp */ /* DampingFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = DampingFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/DampingFilter.cpp; sourceTree = SOURCE_ROOT; };
@@ -744,6 +748,7 @@
 		B7BBA4821B4CAD95A467E9DE /* Condition.cpp */ /* Condition.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Condition.cpp; path = ../../Source/Common/Processor/Action/Condition/Condition.cpp; sourceTree = SOURCE_ROOT; };
 		B84FB7144270D3572B5D9239 /* BaseCommandHandlerEditor.h */ /* BaseCommandHandlerEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BaseCommandHandlerEditor.h; path = ../../Source/Common/Command/ui/BaseCommandHandlerEditor.h; sourceTree = SOURCE_ROOT; };
 		B8FE3445D4EE03CAC3E113B6 /* MouseMacFunctions.h */ /* MouseMacFunctions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MouseMacFunctions.h; path = ../../Source/Module/modules/controller/mouse/MouseMacFunctions.h; sourceTree = SOURCE_ROOT; };
+		B959E81417EA0A99A703CB0A /* SpatialSource.cpp */ /* SpatialSource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialSource.cpp; path = ../../Source/Module/modules/spatial/SpatialSource.cpp; sourceTree = SOURCE_ROOT; };
 		BA3FE442D9608F2B1BF24E08 /* WebSocketServerModule.cpp */ /* WebSocketServerModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = WebSocketServerModule.cpp; path = ../../Source/Module/modules/websocket/WebSocketServerModule.cpp; sourceTree = SOURCE_ROOT; };
 		BA79F5BFDEDF0D5BBEC70225 /* GenericScriptCommand.cpp */ /* GenericScriptCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = GenericScriptCommand.cpp; path = ../../Source/Module/modules/generic/commands/GenericScriptCommand.cpp; sourceTree = SOURCE_ROOT; };
 		BAE663016FCFB6168EAA4BFE /* Icon.icns */ /* Icon.icns */ = {isa = PBXFileReference; lastKnownFileType = file.icns; name = Icon.icns; path = Icon.icns; sourceTree = SOURCE_ROOT; };
@@ -787,6 +792,7 @@
 		C79D12282B547B8B49912DAD /* StateMachineIncludes.h */ /* StateMachineIncludes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StateMachineIncludes.h; path = ../../Source/StateMachine/StateMachineIncludes.h; sourceTree = SOURCE_ROOT; };
 		C7B87D07F4FBB8CE172A040C /* CommandTemplateEditor.h */ /* CommandTemplateEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CommandTemplateEditor.h; path = ../../Source/Common/Command/Template/ui/CommandTemplateEditor.h; sourceTree = SOURCE_ROOT; };
 		C7BE2656188911D29D8DC80D /* StateModule.cpp */ /* StateModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StateModule.cpp; path = ../../Source/Module/modules/state/StateModule.cpp; sourceTree = SOURCE_ROOT; };
+		C80AE83CCEAB28ABFE595A2C /* SpatialStyle.h */ /* SpatialStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialStyle.h; path = ../../Source/Module/modules/spatial/ui/SpatialStyle.h; sourceTree = SOURCE_ROOT; };
 		C83B5CE21064E44E054924B8 /* StreamDeckModule.h */ /* StreamDeckModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StreamDeckModule.h; path = ../../Source/Module/modules/controller/streamdeck/StreamDeckModule.h; sourceTree = SOURCE_ROOT; };
 		C86A957BC44904609CAE5C07 /* StateMachineView.cpp */ /* StateMachineView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StateMachineView.cpp; path = ../../Source/StateMachine/ui/StateMachineView.cpp; sourceTree = SOURCE_ROOT; };
 		C8F7B577E4F08EE149D8F1F8 /* LiveOSCCommandBase.h */ /* LiveOSCCommandBase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LiveOSCCommandBase.h; path = ../../Source/Module/modules/osc/live/commands/LiveOSCCommandBase.h; sourceTree = SOURCE_ROOT; };
@@ -2325,8 +2331,12 @@
 				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
+				B959E81417EA0A99A703CB0A,
+				7ADF7EC08335C9EE28AFA3B6,
 				50119A43BFEC63CA3CF6B3DE,
 				88F108AAE5896865D7741653,
+				7A9B6888EBC9458C82269185,
+				786C6D83EC55BF502A70A095,
 				8E608A91450F6B0C21AEF7C6,
 				52283D92A577DEF4A41D1B2A,
 				856DC9E1B71F7B5BFAD71F34,
@@ -3223,6 +3233,8 @@
 			isa = PBXGroup;
 			children = (
 				662CD5CDBB3C8FAACE99750D,
+				441385663354C7EE93FCAE69,
+				C80AE83CCEAB28ABFE595A2C,
 				3307095B648CE969EB3CEAEE,
 				3209B2CE127190995B03A01D,
 				6545877641D887408FD7997D,

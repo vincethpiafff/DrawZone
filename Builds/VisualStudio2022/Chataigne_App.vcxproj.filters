@@ -2134,7 +2134,13 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSource.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialZone.cpp">
@@ -5295,7 +5301,13 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSource.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h">
@@ -5303,6 +5315,12 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>

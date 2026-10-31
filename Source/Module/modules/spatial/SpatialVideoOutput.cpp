@@ -202,17 +202,17 @@ Image SpatialVideoOutput::renderFrame()
 	float scale = 0;
 	if (!computeGeometry(model.snapshot.sceneSize, w, h, scene, scale))
 	{
-		resolution->setValue("Waiting for scene size (/scene)");
+		resolution->setValue(SpatialModule::getNoSceneSizeText());
 		return Image();
 	}
 
 	bool transparent = transparentBackground->boolValue();
 	Colour bg = transparent ? Colours::transparentBlack : background->getColor().withAlpha(1.0f);
 
-	Image image(Image::ARGB, w, h, true, SoftwareImageType());
+	Image image = getFrameImage(w, h);
+	image.clear(image.getBounds(), bg); //sets the pixels, transparent included (a fill would blend over the last frame)
 	{
 		Graphics g(image);
-		g.fillAll(bg);
 		TopViewRenderer::Options o;
 		o.background = bg;
 		o.grid = showGrid->boolValue();
@@ -235,12 +235,35 @@ Image SpatialVideoOutput::renderFrame()
 		}
 	}
 
+	//text refreshed at 4 Hz, not at each frame
+	uint32 now = Time::getMillisecondCounter();
+	if (now - lastResolutionTextMs < 250) return image;
+	lastResolutionTextMs = now;
+
 	String cm = String(100.0f / scale, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
 	resolution->setValue(String(w) + " x " + String(h) + " px, 1 px = " + cm + " cm"
 		+ (spout->boolValue() && getGLContext() == nullptr ? " (Spout needs Use OpenGL Renderer)" : "")
 		+ (ndiSender != nullptr && ndiSender->getError().isNotEmpty() ? " (" + ndiSender->getError() + ")" : ""));
 
 	return image;
+}
+
+Image SpatialVideoOutput::getFrameImage(int w, int h)
+{
+	//an image still held by the Spout job or the NDI thread is not reused (it may be read right now)
+	for (auto& f : framePool)
+	{
+		if (f.isValid() && f.getReferenceCount() == 1 && f.getWidth() == w && f.getHeight() == h) return f;
+	}
+	for (auto& f : framePool)
+	{
+		if (!f.isValid() || f.getReferenceCount() == 1)
+		{
+			f = Image(Image::ARGB, w, h, false, SoftwareImageType());
+			return f;
+		}
+	}
+	return Image(Image::ARGB, w, h, false, SoftwareImageType()); //both busy : a temporary one
 }
 
 void SpatialVideoOutput::sendSpout(const Image& image)

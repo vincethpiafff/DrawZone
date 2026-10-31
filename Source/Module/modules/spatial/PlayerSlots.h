@@ -63,7 +63,7 @@ public:
 	Array<int> waitingIds;	// tracked people without a slot, in order of arrival
 	Array<int> releasedIds;	// slot removed by hand : no slot again until they leave the scene or are assigned by hand
 
-	void update(const Array<TrackedPerson>& persons, Point<float> sceneSize);
+	void update(const Array<TrackedPerson>& persons);
 	int getSlotIndexForPerson(int id) const;	// 0-based, -1 = no slot
 
 	//by hand, from the Tracking Monitor : a person already in a slot swaps with the occupant,

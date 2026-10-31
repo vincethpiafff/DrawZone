@@ -8,8 +8,6 @@
   ==============================================================================
 */
 
-#include "PlayerSlots.h"
-
 PlayerSlot::PlayerSlot(int index) :
 	ControllableContainer("Slot " + String(index + 1))
 {
@@ -215,14 +213,13 @@ void PlayerSlots::releaseByHand(int personId)
 	updateFreeSlots();
 }
 
-void PlayerSlots::update(const Array<TrackedPerson>& persons, Point<float> sceneSize)
+void PlayerSlots::update(const Array<TrackedPerson>& persons)
 {
 	if (!enabled->boolValue()) return;
 
 	uint32 now = Time::getMillisecondCounter();
 	bool hold = releaseMode->getValueDataAsEnum<ReleaseMode>() == HOLD_SPOT;
 
-	auto toMeters = [sceneSize](const TrackedPerson& p) { return Point<float>(p.position.x * sceneSize.x, p.position.y * sceneSize.y); };
 	auto findPerson = [&persons](int id) -> const TrackedPerson* { for (auto& p : persons) if (p.id == id) return &p; return nullptr; };
 
 	//people in a slot : follow them ; lost : release the slot, or hold it at the last position
@@ -232,8 +229,8 @@ void PlayerSlots::update(const Array<TrackedPerson>& persons, Point<float> scene
 
 		if (const TrackedPerson* p = findPerson(s->trackedId)) //also the same id coming back while held
 		{
-			if (s->isHeld()) assign(s, p->id, toMeters(*p));
-			else s->position->setPoint(toMeters(*p));
+			if (s->isHeld()) assign(s, p->id, p->position);
+			else s->position->setPoint(p->position);
 			continue;
 		}
 
@@ -276,12 +273,12 @@ void PlayerSlots::update(const Array<TrackedPerson>& persons, Point<float> scene
 		float bestDistance = reclaimRadius->floatValue();
 		for (auto& id : waitingIds)
 		{
-			float d = s->position->getPoint().getDistanceFrom(toMeters(*findPerson(id)));
+			float d = s->position->getPoint().getDistanceFrom(findPerson(id)->position);
 			if (d <= bestDistance) { bestDistance = d; bestId = id; }
 		}
 
 		if (bestId < 0) continue;
-		assign(s, bestId, toMeters(*findPerson(bestId)));
+		assign(s, bestId, findPerson(bestId)->position);
 		waitingIds.removeFirstMatchingValue(bestId);
 	}
 
@@ -294,7 +291,7 @@ void PlayerSlots::update(const Array<TrackedPerson>& persons, Point<float> scene
 	for (int i = 0; i < numAssigned; i++)
 	{
 		int id = waitingIds[firstWaiting + i];
-		assign(freeList[i], id, toMeters(*findPerson(id)));
+		assign(freeList[i], id, findPerson(id)->position);
 		freeList[i]->joined->trigger();
 	}
 	waitingIds.removeRange(firstWaiting, numAssigned);

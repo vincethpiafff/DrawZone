@@ -153,6 +153,7 @@ ChataigneMcp::ChataigneMcp(ChataigneEngine& e)
             assistantHub = std::make_unique<organic::assistant::Hub>(juce::Array<organic::assistant::Controller*>{assistantController.get(), claudeAssistantController.get()});
             engine.addChildControllableContainer(assistantHub.get());
             GlobalSettings::getInstance()->addChildControllableContainer(&assistantHub->settings);
+            assistantHub->settings.removeControllableContainerListener(GlobalSettings::getInstance()); // DrawZone: see below
         }
         catch (const Error& error) { status->setValue(String(error.what())); }
     }
@@ -160,6 +161,10 @@ ChataigneMcp::ChataigneMcp(ChataigneEngine& e)
     engine.addEngineListener(this);
     CustomLogger::getInstance()->addLogListener(this);
     GlobalSettings::getInstance()->addChildControllableContainer(this);
+    // DrawZone: GlobalSettings clears the session "modified" flag on any feedback of its children, and the MCP
+    // Activity text changes at each request : a session edited while a client is connected was never marked
+    // modified (no save prompt, work lost on close). Its feedback no longer reaches GlobalSettings.
+    removeControllableContainerListener(GlobalSettings::getInstance());
 }
 ChataigneMcp::~ChataigneMcp()
 {

@@ -10,7 +10,7 @@ DrawZone est un outil open source (GPL-3.0) pour les concepteurs d'expériences
 immersives et interactives. Il doit :
 
 1. recevoir des positions de personnes trackées (Augmenta, Naostage, ZacTrack…)
-   via OSC, PosiStageNet (PSN) et TUIO ;
+   via OSC et PosiStageNet (PSN) ;
 2. permettre de dessiner des zones d'interaction, d'abord en 2D vue de dessus,
    puis sur des surfaces dans un viewport 3D ;
 3. définir une logique « façon game design », inspirée des Blueprints d'Unreal
@@ -21,19 +21,19 @@ immersives et interactives. Il doit :
 DrawZone est un **fork de Chataigne** (Ben Kuper, C++/JUCE + organicUI).
 On réutilise son interface, ses protocoles, sa State Machine, son Module Router,
 Parrot (enregistrement/lecture), etc. Le cœur de DrawZone sera un nouveau type
-de module **« Spatial »** dont les zones exposent leurs valeurs comme paramètres
+de module **« Spatial »** (nom affiché : **Cockpit**, voir D14) dont les zones exposent leurs valeurs comme paramètres
 Chataigne, donc utilisables partout dans le logiciel.
 
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.4.0 validée** (28/10/2026 : sortie vidéo de la vue de
-dessus en Spout et NDI, après la v0.2.0 : zones rectangle / ellipse / forme
-libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
-Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande partie faite
-dans le Tracking Monitor).
-**Prochaine étape : v0.5**, entrées PSN et TUIO, multi-sources,
-transformation par source.
+**État actuel : v0.5.0 validée** (31/10/2026 : entrée PSN, multi-sources,
+transformation et Id Offset par source, sortie PSN, après la v0.4.0 : sortie
+vidéo de la vue de dessus en Spout et NDI, et la v0.2.0 : zones rectangle /
+ellipse / forme libre, métriques, anti-clignotement, slots de joueurs
+« SwapSlots », Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande
+partie faite dans le Tracking Monitor).
+**Prochaine étape : v0.6**, viewport 3D.
 
 ## 2. Comment travailler avec Vincent
 
@@ -52,7 +52,7 @@ transformation par source.
   testée par Vincent dans Chataigne avec Augmenta Fusion.
 - Rôles : Claude écrit le code, compile, corrige. Vincent définit le
   comportement attendu, teste avec du vrai tracking, valide.
-- **Traçabilité : `TODO.md`** (racine du dépôt). Le lire en début de séance.
+- **Traçabilité : `TODO.md`** (racine du dépôt ; versions terminées dans `docs/drawzone/TODO-archive.md`). Le lire en début de séance.
   Le mettre à jour après chaque étape : réussites (✅), échecs (❌) avec leur
   cause et leur correction, étape en cours (⏭️), à faire (⬜), idées (💡).
   Les échecs sont notés aussi, pas seulement les succès.
@@ -61,7 +61,7 @@ transformation par source.
 ## 3. Arborescence locale (Windows uniquement pour l'instant)
 
 ```
-D:\DRAWZONE\
+D:\0-DRAWZONE\
 ├── JUCE\        JUCE modifié de Ben (branche develop-local, JUCE 7.0.12). Hors dépôt.
 └── DrawZone\    CE dépôt (fork : github.com/vincethpiafff/DrawZone)
 ```
@@ -100,7 +100,7 @@ Chataigne est généré à partir de `Chataigne.jucer`. Pour ajouter ou retirer 
 fichier source, il faut l'ajouter au `.jucer` puis **enregistrer dans le
 Projucer**, qui régénère tous les projets (Windows, Mac, Linux…).
 
-- Projucer : `D:\DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022\x64\Release\App\Projucer.exe`
+- Projucer : `D:\0-DRAWZONE\JUCE\extras\Projucer\Builds\VisualStudio2022\x64\Release\App\Projucer.exe`
   (compilé en **mode GPL**, voir BUILDING.md ; sinon l'enregistrement est bloqué).
 - Ligne de commande possible : `Projucer.exe --resave Chataigne.jucer`.
 - Après chaque enregistrement, contrôler `git status` : seuls les fichiers
@@ -129,7 +129,7 @@ code dans `Source/Module/modules/spatial/`.
 - Remotes : `origin` = notre fork ; `upstream` = Chataigne de Ben en
   **lecture seule** (son URL de push vaut `NE_PAS_PUSHER`). Ne jamais changer ça.
   Même blocage sur les 6 sous-modules (`Modules/juce_*`) et sur
-  `D:\DRAWZONE\JUCE`, dont `origin` est un dépôt de Ben. Ce réglage est local :
+  `D:\0-DRAWZONE\JUCE`, dont `origin` est un dépôt de Ben. Ce réglage est local :
   à refaire après un nouveau clone
   (`git submodule foreach "git remote set-url --push origin NE_PAS_PUSHER"`).
 - **Ne pas déranger Ben** (le fork est public et relié au sien) :
@@ -177,7 +177,7 @@ et, un jour, proposer notre travail à Ben.
 - Fichiers propres à DrawZone : `CLAUDE.md`, `.github/README.md`,
   `docs/drawzone/`, `Tools/drawzone/`. Le `README.md` racine reste celui de Ben.
 - Seule divergence connue à ce jour : `Builds/VisualStudio2022/Chataigne_App.vcxproj`
-  pointe vers notre JUCE (`D:\DRAWZONE\JUCE`). En cas de conflit lors d'une
+  pointe vers notre JUCE (`D:\0-DRAWZONE\JUCE`). En cas de conflit lors d'une
   fusion avec upstream : prendre la version de Ben puis réenregistrer dans le Projucer.
 
 ## 7. Fichiers de Ben à ne pas suivre
@@ -195,4 +195,4 @@ et, un jour, proposer notre travail à Ben.
 - Module OSC dans Chataigne : port d'entrée 12000 par défaut.
 - Augmenta Fusion : sortie OSC vers `127.0.0.1:12000`.
 - Messages observés et points à vérifier : `docs/drawzone/notes/augmenta-protocol.md`.
-- Pour PSN, il faudra écrire un petit émetteur de test en Python (v0.5).
+- Simulateurs et tests sans Fusion ni Kratos : `Tools/drawzone/sim/` (`run_checks.ps1`).
