@@ -27,13 +27,13 @@ Chataigne, donc utilisables partout dans le logiciel.
 Roadmap complète : `docs/drawzone/ROADMAP.md`. Décisions et leurs raisons :
 `docs/drawzone/DECISIONS.md`.
 
-**État actuel : v0.4.0 validée** (28/10/2026 : sortie vidéo de la vue de
-dessus en Spout et NDI, après la v0.2.0 : zones rectangle / ellipse / forme
-libre, métriques, anti-clignotement, slots de joueurs « SwapSlots »,
-Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande partie faite
-dans le Tracking Monitor).
-**Prochaine étape : v0.5**, entrée PSN, multi-sources,
-transformation par source.
+**État actuel : v0.5.0 validée** (31/10/2026 : entrée PSN, multi-sources,
+transformation et Id Offset par source, sortie PSN, après la v0.4.0 : sortie
+vidéo de la vue de dessus en Spout et NDI, et la v0.2.0 : zones rectangle /
+ellipse / forme libre, métriques, anti-clignotement, slots de joueurs
+« SwapSlots », Tracking Monitor complet ; la v0.3, éditeur 2D, est en grande
+partie faite dans le Tracking Monitor).
+**Prochaine étape : v0.6**, viewport 3D.
 
 ## 2. Comment travailler avec Vincent
 
@@ -195,4 +195,4 @@ et, un jour, proposer notre travail à Ben.
 - Module OSC dans Chataigne : port d'entrée 12000 par défaut.
 - Augmenta Fusion : sortie OSC vers `127.0.0.1:12000`.
 - Messages observés et points à vérifier : `docs/drawzone/notes/augmenta-protocol.md`.
-- Pour PSN, il faudra écrire un petit émetteur de test en Python (v0.5).
+- Simulateurs et tests sans Fusion ni Kratos : `Tools/drawzone/sim/` (`run_checks.ps1`).

@@ -14,7 +14,7 @@ Phases 0 à 2 et versions v0.1 à v0.4 (terminées) : `docs/drawzone/TODO-archiv
 
 ## ⏭️ En cours
 
-- ⏭️ **v0.5 brique 4 : Tracking Monitor (couleur et liste des sources)**, puis brique 5 : test Augmenta + PSN, sur `feature/multi-source`.
+- ✅ **v0.5.0 clôturée** (31/10, accord de Vincent : « ok tout ») : `CHANGELOG`, `ROADMAP`, `CLAUDE.md`, fusion dans `develop`, tag `v0.5.0`, push. Suite : v0.6, viewport 3D.
 
 ## ⬜ À faire ensuite
 
