@@ -80,9 +80,9 @@ SpatialModule::~SpatialModule()
 
 void SpatialModule::processMessageInternal(const OSCMessage& msg)
 {
-	//the OSC input feeds the first enabled Augmenta source ; locked : a source is not deleted while it parses
+	//the OSC input feeds the first enabled Augmenta source on its port ; locked : a source is not deleted while it parses
 	const ScopedLock sl(sourceManager.items.getLock());
-	if (AugmentaSource* a = sourceManager.getAugmentaSource()) a->processMessage(msg, this);
+	if (AugmentaSource* a = sourceManager.getAugmentaSource(localPort != nullptr ? localPort->intValue() : -1)) a->processMessage(msg, this);
 }
 
 void SpatialModule::afterLoadJSONDataInternal()
@@ -272,10 +272,8 @@ void SpatialModule::timerCallback()
 		if (updateStatus) statusTick = 0;
 
 		const ScopedLock sl(sourceManager.items.getLock());
-		AugmentaSource* used = sourceManager.getAugmentaSource();
 		for (auto& s : sourceManager.items)
 		{
-			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) a->isUsed = a == used;
 			if (!s->enabled->boolValue()) trackingData.removeSource(s);
 			if (updateStatus) s->update(this);
 		}
@@ -367,20 +365,62 @@ SpatialSurface* SpatialModule::getSurface(int index) const
 	return surfaceManager.items[jlimit(0, surfaceManager.items.size() - 1, index)];
 }
 
+var SpatialModule::getJSONData(bool includeNonOverriden)
+{
+	var data = OSCModule::getJSONData(includeNonOverriden);
+	data.getDynamicObject()->setProperty("drawzoneFormat", formatVersion);
+	return data;
+}
+
 void SpatialModule::loadJSONDataItemInternal(var data)
 {
 	if (data.getDynamicObject() != nullptr && data.hasProperty("params"))
 	{
 		data = JSON::parse(JSON::toString(data)); //a copy : the session data is not changed
-		data.getDynamicObject()->setProperty("params", migrateParams(data.getProperty("params", var())));
+		int format = data.getProperty("drawzoneFormat", 1);
+		data.getDynamicObject()->setProperty("params", migrateParams(data.getProperty("params", var()), format));
 	}
 	OSCModule::loadJSONDataItemInternal(data);
 }
 
-var SpatialModule::migrateParams(var params)
+var SpatialModule::migrateParams(var params, int format)
 {
 	DynamicObject* containers = params.getProperty("containers", var()).getDynamicObject();
 	if (containers == nullptr) return params;
+
+	//Augmenta sources before format 2 : Use Module Input (on by default) -> Port = the port of the module's OSC Input
+	int modulePort = 12000;
+	var inputParameters = containers->getProperty("oscInput").getProperty("parameters", var());
+	for (int j = 0; j < inputParameters.size(); j++)
+		if (inputParameters[j].getProperty("controlAddress", "").toString() == "/localPort") modulePort = inputParameters[j].getProperty("value", modulePort);
+	var sourceItems = containers->getProperty("sources").getProperty("items", var());
+	for (int i = 0; i < sourceItems.size(); i++)
+	{
+		var item = sourceItems[i];
+		if (item.getProperty("type", "").toString() != "Augmenta") continue;
+		if (!item.getProperty("parameters", var()).isArray()) item.getDynamicObject()->setProperty("parameters", Array<var>());
+		var parameters = item.getProperty("parameters", var());
+		bool useModuleInput = true;
+		int portIndex = -1;
+		for (int j = parameters.size() - 1; j >= 0; j--)
+		{
+			String address = parameters[j].getProperty("controlAddress", "").toString();
+			if (address == "/port") portIndex = j;
+			if (address != "/useModuleInput") continue;
+			useModuleInput = parameters[j].getProperty("value", true);
+			parameters.remove(j);
+			if (portIndex > j) portIndex--;
+		}
+		if (format >= 2 || !useModuleInput) continue;
+		if (portIndex >= 0) parameters[portIndex].getDynamicObject()->setProperty("value", modulePort);
+		else
+		{
+			var p = new DynamicObject();
+			p.getDynamicObject()->setProperty("value", modulePort);
+			p.getDynamicObject()->setProperty("controlAddress", "/port");
+			parameters.append(p);
+		}
+	}
 
 	//first v0.6 builds : Scenes block, Scene and Use As Scene parameters
 	if (containers->hasProperty("scenes") && !containers->hasProperty("surfaces"))

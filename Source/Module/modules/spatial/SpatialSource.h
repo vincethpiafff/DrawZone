@@ -80,8 +80,8 @@ private:
 	String nameForThreads;
 };
 
-//Augmenta OSC protocol v2, one Fusion scene per port. Use Module Input : the first enabled such source gets the
-//module's OSC input (sessions before v0.6) ; otherwise the source listens to its own Port
+//Augmenta OSC protocol v2, one Fusion scene per port. Port = the port of the module's OSC Input : the first enabled
+//such source gets that input ; any other port : the source opens it with its own receiver
 class AugmentaSource :
 	public SpatialSource,
 	private OSCReceiver::Listener<OSCReceiver::RealtimeCallback>
@@ -90,18 +90,14 @@ public:
 	AugmentaSource(var params = var());
 	~AugmentaSource();
 
-	BoolParameter* useModuleInput;	// fed by the module's OSC Input, Port unused
-	IntParameter* port;				// own port, one Fusion scene per port
-
-	std::atomic<bool> isUsed { false };	// gets the module's OSC input
+	IntParameter* port;	// one Fusion scene per port ; the module's OSC Input port : fed by the module
 
 	//network thread : module input (under the manager lock) or own receiver
 	void processMessage(const OSCMessage& msg, SpatialModule* module);
 	void clearItem() override;
 	void update(SpatialModule* module) override;	// also opens and closes the own receiver
-	void onContainerParameterChangedInternal(Parameter* p) override;
 	Point<float> getSurfaceArea() override;
-	String getPortText(int modulePort) const { return " :" + String(useModuleInput->boolValue() ? modulePort : port->intValue()); }
+	String getPortText() const { return " :" + port->stringValue(); }
 
 	String getTypeString() const override { return getTypeStringStatic(); }
 	static String getTypeStringStatic() { return "Augmenta"; }
@@ -182,8 +178,8 @@ public:
 	SpatialSource* createItemFromData(var data) override;	// its Surface parameter picks among the surfaces before it loads
 	void addItemInternal(SpatialSource* item, var data) override;
 
-	//first enabled Augmenta source with Use Module Input, call under items.getLock()
-	AugmentaSource* getAugmentaSource();
+	//first enabled Augmenta source on the port of the module's OSC Input, call under items.getLock()
+	AugmentaSource* getAugmentaSource(int modulePort);
 	//size of a surface from its sources : the enabled one marked Use As Surface, else the only one knowing its surface
 	//(with several, it's up to the user). from : name of that source. Call under items.getLock()
 	Point<float> getSurfaceArea(const void* surface, String* from = nullptr);

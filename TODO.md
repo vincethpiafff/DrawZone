@@ -122,7 +122,13 @@ la clôture de la v0.6, 28 ensuite ; 27 (gros) plus tard.
   ❌ puis ✅ `make_psn_session.ps1` : variable `$surfaces` = paramètre `-Surfaces` (PowerShell ignore la casse) → `$surfacesJson`.
   ⬜ test de Vincent, puis commit sur son accord.
 - ✅ 06/11 💬 Vincent : on / off des slots dans le viewport → case « Slots » dans la barre des slots (surface affichée) et sur
-  chaque ligne de la liste des surfaces en 3D. Compilé 0 erreur ; affichage seul, pas de test en simulation. ⬜ œil de Vincent.
+  chaque ligne de la liste des surfaces en 3D. Compilé 0 erreur ; affichage seul, pas de test en simulation. ✅ Vincent : « ok tout bon ».
+- ✅ 06/11 commit `1924154c` (surfaces, slots on/off, panneau 3D, revue). Reste : brique 5 (test Fusion de Vincent), puis clôture.
+- ❌ 06/11 💬 Vincent : AUGMENTA 1 marche en Use Module Input, pas en Port 12000 ; AUGMENTA 2 l'inverse. Cause : 12000 déjà
+  ouvert par l'entrée OSC du module ; une seule source reçoit cette entrée. → 💬 « Port seul » : case Use Module Input retirée,
+  source sur le port de l'entrée OSC = entrée du module, autre port = ouvert par elle, même port = « Not used » ; anciennes
+  sessions converties (marque `drawzoneFormat` 2). Compilé 0 erreur ; pas de simulation (💬 : réservée aux intégrations de
+  features). MCP : AUGMENTA 1 « port 12000 (module input) », AUGMENTA 2 « port 12001 », 214 msg/s chacune. ⬜ test de Vincent.
 
 ## ⬜ Questions ouvertes
 

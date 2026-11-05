@@ -15,10 +15,10 @@ param([string]$From, [string]$To, [switch]$NoPsn, [switch]$NoChoice, [switch]$De
 
 $text = [System.IO.File]::ReadAllText($From)
 
-# OSC on a port Fusion does not use (augmenta_sim.ps1 sends there)
+# OSC on a port Fusion does not use (augmenta_sim.ps1 sends there) ; source Augmenta on that port = the module input
 if ($text.Contains('"oscInput": {"parameters"')) { throw "OSC input settings in $From : not handled" }
 $text = $text.Replace('"oscInput": {', '"oscInput": {"parameters": [{"value": 12999, "hexMode": false, "controlAddress": "/localPort"}], ')
-$augmenta = if ($DefaultIds) { '{"niceName": "Augmenta", "type": "Augmenta"}' } else { '{"parameters": [{"value": 0, "hexMode": false, "controlAddress": "/idOffset"}], "niceName": "Augmenta", "type": "Augmenta"}' }
+$augmenta = if ($DefaultIds) { '{"parameters": [{"value": 12999, "hexMode": false, "controlAddress": "/port"}], "niceName": "Augmenta", "type": "Augmenta"}' } else { '{"parameters": [{"value": 12999, "hexMode": false, "controlAddress": "/port"}, {"value": 0, "hexMode": false, "controlAddress": "/idOffset"}], "niceName": "Augmenta", "type": "Augmenta"}' }
 $psnY = '{"parameters": [{"value": [1.0, 0.5], "controlAddress": "/offset"}, {"value": 56575, "hexMode": false, "controlAddress": "/multicastPort"}], "niceName": "PSN Y", "type": "PSN"}'
 $psnZ = '{"parameters": [{"value": [-8.0, -2.0], "controlAddress": "/areaPosition"}, {"value": [16.0, 12.0], "controlAddress": "/areaSize"}, {"value": 56576, "hexMode": false, "controlAddress": "/multicastPort"}, {"value": "Z", "controlAddress": "/upAxis"}], "niceName": "PSN Z", "type": "PSN"}'
 if (-not $NoChoice) { $psnZ = $psnZ.Replace('{"parameters": [', '{"parameters": [{"value": true, "controlAddress": "/useAsSurface"}, ') }
@@ -37,7 +37,7 @@ else { $text = $text.Replace('"sources": {', $surfacesJson + '"sources": {') }
 
 # the sources of the session are replaced : its PSN source would hear the real Kratos
 # -NoPsn : a 2nd Fusion scene on its own port (12998, no real system), Id Offset 1000, placed 8 m to the right, on MUR
-$augmenta2 = '{"parameters": [{"value": "/mur", "controlAddress": "/surface"}, {"value": false, "controlAddress": "/useModuleInput"},{"value": 12998, "hexMode": false, "controlAddress": "/port"}, {"value": 1000, "hexMode": false, "controlAddress": "/idOffset"}, {"value": [8.0, 0.0], "controlAddress": "/offset"}], "niceName": "Augmenta 2", "type": "Augmenta"}'
+$augmenta2 = '{"parameters": [{"value": "/mur", "controlAddress": "/surface"}, {"value": 12998, "hexMode": false, "controlAddress": "/port"}, {"value": 1000, "hexMode": false, "controlAddress": "/idOffset"}, {"value": [8.0, 0.0], "controlAddress": "/offset"}], "niceName": "Augmenta 2", "type": "Augmenta"}'
 $items = if ($NoPsn -or $Surfaces) { "$augmenta, $augmenta2" } else { "$augmenta, $psnY, $psnZ" }
 $pattern = '(?s)("sources": \{[^\[]*?"items": \[).*?(\], "viewOffset")'
 if (-not [regex]::IsMatch($text, $pattern)) { throw "Sources not found in $From" }

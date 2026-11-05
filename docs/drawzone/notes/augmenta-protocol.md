@@ -106,5 +106,5 @@ Fréquence : environ 10 messages `/scene` par seconde. Scène simulée :
 - 1 message par paquet UDP, sans bundle. Par image (≈ 48 Hz) : `/object/update` et `/object/update/extra`
   par personne ; à 10 Hz : `/scene` (frame, nombre de personnes, largeur, hauteur) et `/fusion`
   (0, 0, largeur, hauteur, résolution de sortie en px). D'où ≈ 213 msg/s avec 2 personnes.
-- Dans DrawZone : une source Augmenta par scène ; la 1re reçoit l'entrée OSC du module (Use Module Input),
-  les autres écoutent leur propre Port.
+- Dans DrawZone : une source Augmenta par scène, chacune avec son Port ; celle sur le port de l'entrée OSC
+  du module (12000) reçoit cette entrée, les autres ouvrent leur port (06/11 : case Use Module Input retirée).

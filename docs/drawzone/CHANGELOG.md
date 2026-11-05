@@ -17,8 +17,10 @@ zones, ses slots et sa sortie vidéo.
   Rotation X / Y / Z en 3D, Status. Paramètre **Surface** sur chaque source et
   chaque zone (vide = 1re surface) ; une zone ne compte que les personnes de sa
   surface.
-- Source Augmenta : **Use Module Input** ou son propre **Port** (une scène Fusion
-  par port) ; une nouvelle source prend le port suivant et Id Offset + 100.
+- Source Augmenta : un **Port** par scène Fusion ; le port de l'entrée OSC du module
+  (12000) la fait passer par cette entrée, tout autre port est ouvert par la source.
+  Deux sources sur le même port : signalé dans le Status. Une nouvelle source
+  prend le port suivant et Id Offset + 100.
 - **Player Slots par surface**, à couper par surface (Enabled) ; valeurs dans
   Values > Slots > *surface*. Valeur **Surface** de chaque personne.
 - **Une sortie vidéo par surface** : flux Spout / NDI nommé comme la surface.

@@ -135,8 +135,11 @@ public:
 	void itemsRemoved(Array<SpatialSurface*> surfaces) override;
 
 	//sessions saved before surfaces (Scenes block of the first v0.6 builds, module-wide Player Slots and Video Output) : moved into the surfaces
+	//sessions saved from now on carry formatVersion : Use Module Input of the Augmenta sources is only converted before it
+	static const int formatVersion = 2;
+	var getJSONData(bool includeNonOverriden = false) override;
 	void loadJSONDataItemInternal(var data) override;
-	static var migrateParams(var params);
+	static var migrateParams(var params, int format);
 
 
 	static SpatialModule* create() { return new SpatialModule(); }
