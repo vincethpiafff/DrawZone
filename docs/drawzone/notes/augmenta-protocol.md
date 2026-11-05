@@ -98,3 +98,13 @@ Fréquence : environ 10 messages `/scene` par seconde. Scène simulée :
   gauche, x vers la droite, y vers le bas**, conforme à la doc.
 - Une personne perdue puis retrouvée change-t-elle d'id ? (voir « Points
   durs » de la ROADMAP)
+
+## Plusieurs scènes (capture du 05/11/2026, Fusion, 2 scènes)
+
+- Une sortie OSC par scène, chacune sur son port (SOL 8 × 4,5 m → 12000, MUR 8 × 3 m → 12001).
+  Rien dans les messages ne nomme la scène : le port est le seul moyen de les distinguer.
+- 1 message par paquet UDP, sans bundle. Par image (≈ 48 Hz) : `/object/update` et `/object/update/extra`
+  par personne ; à 10 Hz : `/scene` (frame, nombre de personnes, largeur, hauteur) et `/fusion`
+  (0, 0, largeur, hauteur, résolution de sortie en px). D'où ≈ 213 msg/s avec 2 personnes.
+- Dans DrawZone : une source Augmenta par scène, chacune avec son Port ; celle sur le port de l'entrée OSC
+  du module (12000) reçoit cette entrée, les autres ouvrent leur port (06/11 : case Use Module Input retirée).

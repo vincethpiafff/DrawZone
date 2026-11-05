@@ -49,12 +49,13 @@ SpatialZone::SpatialZone(var params) :
 	pointsCC("Points"),
 	zoneValues("Zone 1")
 {
+	surfaceTarget = addTargetParameter("Surface", "Surface this zone belongs to (Surfaces block) : only the people of that surface count. Empty : the first surface");
 	shape = addEnumParameter("Shape", "Rectangle, ellipse filling the rectangle given by Center and Size (a circle when width = height), or free shape drawn point by point (see Points)");
 	shape->addOption("Rectangle", RECTANGLE)->addOption("Ellipse", ELLIPSE)->addOption("Free Shape", FREE_SHAPE);
 
-	center = addPoint2DParameter("Center", "Center of the zone, in meters from the top left corner of the scene");
+	center = addPoint2DParameter("Center", "Center of the zone, in meters from the top left corner of the surface");
 	center->setDefaultPoint(4, 2.25f);
-	center->extendedEditorInvertY = true; //2D editor : y goes down, like the scene (origin top left)
+	center->extendedEditorInvertY = true; //2D editor : y goes down, like the surface (origin top left)
 
 	size = addPoint2DParameter("Size", "Width and height of the zone, in meters");
 	size->setDefaultPoint(2, 2);
@@ -70,6 +71,7 @@ SpatialZone::SpatialZone(var params) :
 	pointsCC.editorIsCollapsed = true; //folded at the bottom of the Inspector
 	addChildControllableContainer(&pointsCC);
 
+	//finite bounds : the Inspector drag can not jump to millions of meters
 	center->setBounds(0, 0, maxMeters, maxMeters);
 	size->setBounds(0, 0, maxMeters, maxMeters);
 
@@ -105,8 +107,6 @@ SpatialZone::~SpatialZone()
 	for (auto& fp : freePoints) pointsCC.removeChildControllableContainer(fp);
 }
 
-//the zone must stay inside the scene sent by the tracking system
-//(finite bounds also stop the Inspector drag from jumping to millions of meters)
 bool SpatialZone::contains(Point<float> positionMeters, float margin) const
 {
 	if (isFreeShape())

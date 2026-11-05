@@ -2134,6 +2134,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSurface.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSource.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
@@ -2153,6 +2156,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\buttplug\ButtplugModule.cpp">
@@ -5301,6 +5307,9 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSurface.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSource.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
@@ -5326,6 +5335,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h">

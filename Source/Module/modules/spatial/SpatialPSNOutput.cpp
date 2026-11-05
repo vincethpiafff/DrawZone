@@ -14,7 +14,7 @@ SpatialPSNOutput::SpatialPSNOutput(SpatialModule* module) :
 {
 	enabled->setDefaultValue(false);
 
-	sendMode = addEnumParameter("Send", "Who this output sends, always in scene meters, whatever the source.\nPlayer Slots : the occupied slots, slot 1 -> tracker 1.\nSource IDs : everyone, with the id of its source");
+	sendMode = addEnumParameter("Send", "Who this output sends, always in surface meters, whatever the source.\nPlayer Slots : the occupied slots of each surface, 1st surface : trackers 60001, 60002..., 2nd surface : 60101... A surface whose Player Slots are off : its people, with the id given by the tracking\nSource IDs : everyone, with the id of its source.\nNames : \"JOUEUR 1 (SOL)\", the slot or tracker then its surface");
 	sendMode->addOption("Player Slots", PLAYER_SLOTS)->addOption("Source IDs", SOURCE_IDS);
 
 	networkInterface = new NetworkInterfaceParameter();
@@ -68,44 +68,64 @@ void SpatialPSNOutput::send(const std::list<std::string>& packets)
 
 void SpatialPSNOutput::fillFromSlots(psn::tracker_map& trackers, const Array<TrackedPerson>& persons)
 {
-	auto& slots = module->playerSlots.slots;
-	for (int i = 0; i < slots.size(); i++)
+	//surface n (from 0) : its slots are trackers 60000 + 100 x n + 1, + 2... (64 slots at most)
+	auto& surfaces = module->surfaceManager.items;
+	for (int si = 0; si < surfaces.size(); si++)
 	{
-		PlayerSlot* s = slots[i];
-		if (s->isFree()) continue;
-
-		psn::tracker t((uint16_t)(i + 1), s->niceName.toStdString());
-		Point<float> speed; //none while held
-		if (!s->isHeld())
+		SpatialSurface* surface = surfaces[si];
+		if (!surface->playerSlots.enabled->boolValue()) continue; //its people are sent below, with their own ids
+		auto& slots = surface->playerSlots.slots;
+		for (int i = 0; i < slots.size(); i++)
 		{
-			for (auto& p : persons)
-			{
-				if (p.id != s->trackedId) continue;
-				lastHeights[i] = p.height;
-				speed = p.velocity;
-				break;
-			}
-		}
+			PlayerSlot* s = slots[i];
+			if (s->isFree()) continue;
 
-		Point<float> pos = s->position->getPoint();
-		t.set_pos(psn::float3(pos.x, lastHeights[i], pos.y));
-		t.set_speed(psn::float3(speed.x, 0, speed.y));
-		trackers[t.get_id()] = t;
+			int id = getSlotTrackerId(si, i);
+			psn::tracker t((uint16_t)id, getTrackerName(s->niceName, surface->niceName).toStdString());
+			Point<float> speed; //none while held
+			if (!s->isHeld())
+			{
+				for (auto& p : persons)
+				{
+					if (p.id != s->trackedId) continue;
+					lastHeights[id] = p.height;
+					speed = p.velocity;
+					break;
+				}
+			}
+
+			Point<float> pos = s->position->getPoint();
+			t.set_pos(psn::float3(pos.x, lastHeights[id], pos.y));
+			t.set_speed(psn::float3(speed.x, 0, speed.y));
+			trackers[t.get_id()] = t;
+		}
 	}
+
+	//surfaces without slots : their people, with the id given by the tracking (after the slots, which keep their ids)
+	for (auto& surface : surfaces)
+	{
+		if (surface->playerSlots.enabled->boolValue()) continue;
+		for (auto& p : persons) if (p.surface == surface) addPerson(trackers, p);
+	}
+}
+
+void SpatialPSNOutput::addPerson(psn::tracker_map& trackers, const TrackedPerson& p)
+{
+	if (p.id < 0 || p.id > 65535) return; //PSN ids are on 16 bits
+	if (trackers.count((uint16_t)p.id) > 0) { numIdConflicts++; return; } //a slot tracker already has this id
+
+	String name = p.trackerName.isNotEmpty() ? p.trackerName : p.sourceName + " " + String(p.sourceId);
+	String surfaceName;
+	for (auto& s : module->surfaceManager.items) if (s == p.surface) surfaceName = s->niceName;
+	psn::tracker t((uint16_t)p.id, getTrackerName(name, surfaceName).toStdString());
+	t.set_pos(psn::float3(p.position.x, p.height, p.position.y));
+	t.set_speed(psn::float3(p.velocity.x, 0, p.velocity.y));
+	trackers[t.get_id()] = t;
 }
 
 void SpatialPSNOutput::fillFromPeople(psn::tracker_map& trackers, const Array<TrackedPerson>& persons)
 {
-	for (auto& p : persons)
-	{
-		if (p.id < 0 || p.id > 65535) continue; //PSN ids are on 16 bits
-
-		String name = p.trackerName.isNotEmpty() ? p.trackerName : p.sourceName + " " + String(p.sourceId);
-		psn::tracker t((uint16_t)p.id, name.toStdString());
-		t.set_pos(psn::float3(p.position.x, p.height, p.position.y));
-		t.set_speed(psn::float3(p.velocity.x, 0, p.velocity.y));
-		trackers[t.get_id()] = t;
-	}
+	for (auto& p : persons) addPerson(trackers, p);
 }
 
 void SpatialPSNOutput::update(const Array<TrackedPerson>& persons)
@@ -121,6 +141,7 @@ void SpatialPSNOutput::update(const Array<TrackedPerson>& persons)
 	if (socket == nullptr) openSocket();
 	if (socket == nullptr) return;
 
+	numIdConflicts = 0;
 	psn::tracker_map trackers;
 	SendMode mode = sendMode->getValueDataAsEnum<SendMode>();
 	if (mode == PLAYER_SLOTS) fillFromSlots(trackers, persons);
@@ -154,6 +175,7 @@ void SpatialPSNOutput::updateStatus()
 
 	String group = multicastAddress->stringValue() + ":" + multicastPort->stringValue();
 	String s = "Sending " + String(numTrackersSent) + (numTrackersSent == 1 ? " tracker (" : " trackers (") + sendMode->getValueKey() + ") to " + group;
+	if (numIdConflicts > 0) s += ". " + String(numIdConflicts) + (numIdConflicts == 1 ? " person not sent" : " people not sent") + " : a player slot of another surface uses the same id (change the Id Offset of its source)";
 
 	//would come back as new people
 	const ScopedLock sl(module->sourceManager.items.getLock());
@@ -165,4 +187,9 @@ void SpatialPSNOutput::updateStatus()
 			s += ". Warning : source " + psnSource->niceName + " listens to this group and will hear this output";
 	}
 	status->setValue(s);
+}
+
+String SpatialPSNOutput::getTrackerName(const String& name, const String& surface)
+{
+	return surface.isEmpty() ? name : name + " (" + surface + ")";
 }

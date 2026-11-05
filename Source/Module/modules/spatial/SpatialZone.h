@@ -5,7 +5,7 @@
 	Created: 26 Oct 2026
 	Author:  DrawZone
 
-	Interaction zone (rectangle, ellipse or free shape), defined in scene meters (origin top left).
+	Interaction zone (rectangle, ellipse or free shape), defined in surface meters (origin top left).
 	Its values (presence, person count) live in a container that the
 	Spatial module shows in its Values, so they can be used anywhere
 	in Chataigne (State Machine, Mappings...).
@@ -44,8 +44,11 @@ public:
 	SpatialZone(var params = var());
 	~SpatialZone();
 
-	//zones are in meters and don't depend on the scene : a smaller scene must not move or shrink them
+	//zones are in meters and don't depend on the surface : a smaller surface must not move or shrink them
 	static constexpr float maxMeters = 1000;
+
+	TargetParameter* surfaceTarget;	// surface of the zone, empty = the first one
+	const void* surfaceId = nullptr;	// that surface, set by the module (message thread)
 
 	enum Shape { RECTANGLE, ELLIPSE, FREE_SHAPE };
 	EnumParameter* shape;
@@ -111,6 +114,28 @@ private:
 	mutable bool outlineDirty = true;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialZone)
+};
+
+class SpatialZoneManager :
+	public SpatialSectionManager<SpatialZone>
+{
+public:
+	SpatialZoneManager() : SpatialSectionManager("Zones", SpatialSection::ZONES) {}
+
+	SpatialSurfaceManager* surfaceManager = nullptr;	// set by the module before anything is loaded
+
+	//the Surface parameter picks among the surfaces before the zone loads
+	SpatialZone* createItemFromData(var data) override
+	{
+		SpatialZone* z = SpatialSectionManager<SpatialZone>::createItemFromData(data);
+		if (z != nullptr && surfaceManager != nullptr) surfaceManager->setupTarget(z->surfaceTarget);
+		return z;
+	}
+
+	void addItemInternal(SpatialZone* item, var) override
+	{
+		if (surfaceManager != nullptr) surfaceManager->setupTarget(item->surfaceTarget);
+	}
 };
 
 //Inspector of a zone : its parameters, then its live values (which live in the module Values), then its points (folded)

@@ -946,6 +946,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSurface.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSource.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -965,6 +968,9 @@
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\buttplug\ButtplugModule.cpp">
@@ -3354,6 +3360,7 @@
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSurface.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSource.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialVideoOutput.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h"/>
@@ -3363,6 +3370,7 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\commands\ButtplugCommand.h"/>
     <ClInclude Include="..\..\Source\Module\modules\websocket\ui\WebSocketServerModuleUI.h"/>

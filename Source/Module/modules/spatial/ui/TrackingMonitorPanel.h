@@ -42,6 +42,7 @@ public:
 	void mouseUp(const MouseEvent& e) override;
 	void mouseDoubleClick(const MouseEvent& e) override; // on a zone name : rename it
 	bool keyPressed(const KeyPress& key) override; // while drawing a free shape : Escape cancels, Backspace removes the last point
+	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override; // 3D view : zoom
 
 private:
 	//popup menu item ids (0 = menu dismissed)
@@ -50,6 +51,7 @@ private:
 	enum PersonMenuItem { PERSON_RELEASE_SLOT = 1, PERSON_ASSIGN_FIRST_SLOT = 100 };	// slot i : PERSON_ASSIGN_FIRST_SLOT + i
 
 	SpatialModule* getSpatialModule();
+	SpatialSurface* getShownSurface();	// surface shown in 2D (its slots, its video output), nullptr without module
 	void paintHeader(Graphics& g);
 	void paintTopView(Graphics& g, Rectangle<int> r);
 	void paintColumn(Graphics& g);
@@ -83,6 +85,7 @@ private:
 
 	//SwapSlots mode chip, at the left of the strip : opens a menu with both modes explained
 	Rectangle<int> slotModeRect;
+	Rectangle<int> slotEnableRect;	// on / off box of the Player Slots of the surface shown
 	bool slotModeHovered = false;
 	void showSlotModeMenu();
 	void changeSlotCount(int delta);
@@ -127,6 +130,42 @@ private:
 	String psnLabel;
 	void showPSNOutputMenu();
 
+	//surface shown in 2D (its zones, its people, its size) : chip in the header, opens the list of the surfaces
+	int shownSurface = 0;
+	Rectangle<int> surfaceChipRect;
+	void showSurfaceMenu();
+
+	//3D : all the surfaces (model is filtered on the surface shown), and the list of the surfaces with their Position and Rotation
+	TopViewModel model3D;
+	struct SurfaceEditor
+	{
+		WeakReference<ControllableContainer> surface;
+		String name;
+		Colour color;
+		std::unique_ptr<ControllableUI> position, rotation;
+		Rectangle<int> nameRect, positionLabelRect, rotationLabelRect;
+		Rectangle<int> slotsRect;	// on / off box of its Player Slots, on its name line
+		bool slotsOn = false;
+		bool open = false;	// Position and Rotation shown ; a click on the name folds / unfolds
+	};
+	OwnedArray<SurfaceEditor> surfaceEditors;
+	Rectangle<int> surfacesPanelRect, surfacesHeaderRect;
+	bool surfacesPanelOpen = false;	// folded : only the "Surfaces" header, the 3D view stays clear
+	Array<WeakReference<ControllableContainer>> openSurfaces;	// unfolded surfaces, kept when the list is rebuilt
+	bool handleSurfacesPanelClick(Point<int> pos);	// folds / unfolds, true when the click was on the panel
+	void updateSurfaceEditors();	// rebuilt when the surfaces change, shown in 3D only
+	void layoutSurfaceEditors();
+	void paintSurfacesPanel(Graphics& g);
+
+	//"2D | 3D" switch in the header : the 3D view is read only, zone editing stays in 2D
+	bool view3D = false;
+	Rectangle<int> viewSwitchRect;
+	Viewport3DRenderer::Camera camera3D;
+	int cameraDrag = 0;	// 1 orbit, 2 pan, 0 none
+	Point<float> cameraDragLast;
+	void paintViewSwitch(Graphics& g);
+	void setView3D(bool on);
+
 	//"Shortcuts" chip in the header : unfolds the list of shortcuts on hover, pinned open by a click
 	Rectangle<int> shortcutsRect;
 	bool shortcutsHovered = false;
@@ -159,7 +198,7 @@ private:
 	void showZoneColorEditor(SpatialZone* zone, Point<int> position);
 	void showColorEditor(Inspectable* owner, ColorParameter* color, Point<int> position);
 
-	//right click menu on a zone (top view or column), or "Create zone" on the empty scene
+	//right click menu on a zone (top view or column), or "Create zone" on the empty surface
 	void showContextMenu(SpatialZone* zone, Point<int> clickPosition, bool canCreate);
 	//right click on a free shape point : Linear / Quadratic / Cubic
 	void showPointMenu(SpatialZone* zone, int pointIndex, Point<int> clickPosition);
@@ -173,7 +212,7 @@ private:
 	void finishFreeShapeDrawing();
 	void cancelFreeShapeDrawing();
 	void paintFreeShapeDrawing(Graphics& g);
-	Point<float> toMeters(Point<float> screen) const;	// clamped to the scene
+	Point<float> toMeters(Point<float> screen) const;	// clamped to the surface
 
 	//rectangle / ellipse drawing : press, drag, release
 	int drawingBoxShape = -1;	// SpatialZone::RECTANGLE or ELLIPSE, -1 = not drawing
@@ -192,8 +231,8 @@ private:
 	void closeRenameEditor(bool apply);
 
 	//top view geometry from the last paint, used to convert mouse positions to meters
-	Rectangle<float> sceneScreenRect;
-	float sceneScale = 0;	// pixels per meter, 0 = no top view
+	Rectangle<float> surfaceScreenRect;
+	float surfaceScale = 0;	// pixels per meter, 0 = no top view
 
 	Rectangle<float> toScreen(Rectangle<float> meters) const;
 

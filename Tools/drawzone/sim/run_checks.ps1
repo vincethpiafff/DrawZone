@@ -9,37 +9,16 @@
 param([string]$Session = "D:\0-DRAWZONE\ChataigneProject\TEST_ZONES.noisette")
 
 $ErrorActionPreference = "Stop"
-$exe = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")) "Binaries\App\Chataigne.exe"
 $checkSim = Join-Path $PSScriptRoot "check_sim.ps1"
 $checkPsn = Join-Path $PSScriptRoot "check_psn.ps1"
 $checkModes = Join-Path $PSScriptRoot "check_psn_modes.ps1"
 $checkIds = Join-Path $PSScriptRoot "check_id_offset.ps1"
+$checkSurfaces = Join-Path $PSScriptRoot "check_psn_surfaces.ps1"
 $make = Join-Path $PSScriptRoot "make_psn_session.ps1"
 $dir = Join-Path $env:TEMP "drawzone_checks"
 [void](New-Item -ItemType Directory -Force $dir)
 
-function CloseChataigne
-{
-	$running = Get-Process Chataigne -ErrorAction SilentlyContinue
-	if (-not $running) { return }
-	$state = & $checkSim -ProjectOnly
-	if ($state -ne "saved") { "STOP : the session has unsaved changes ($state), Chataigne not closed"; exit 2 }
-	[void]$running.CloseMainWindow()
-	if (-not $running.WaitForExit(15000)) { "STOP : Chataigne did not close"; exit 2 }
-	Start-Sleep 1
-}
-
-function OpenSession([string]$file)
-{
-	CloseChataigne
-	Start-Process -FilePath $exe -ArgumentList "`"$file`"" -WorkingDirectory (Split-Path $exe)
-	$deadline = (Get-Date).AddSeconds(90)
-	while ((Get-Date) -lt $deadline)
-	{
-		try { $c = New-Object System.Net.Sockets.TcpClient("127.0.0.1", 42002); $c.Close(); break } catch { Start-Sleep 1 }
-	}
-	Start-Sleep 6
-}
+. (Join-Path $PSScriptRoot "common.ps1")	# CloseChataigne, OpenSession
 
 function Summary([string]$output) { ($output -split "`n") | Where-Object { $_ -match "FAIL|passed|STOP" } }
 
@@ -51,14 +30,16 @@ try
 	& $make -From $Session -To "$dir\no_psn.noisette" -NoPsn | Out-Null
 	& $make -From $Session -To "$dir\default_ids.noisette" -DefaultIds -OutputMode "Source IDs" | Out-Null
 	& $make -From $Session -To "$dir\source_ids.noisette" -OutputMode "Source IDs" | Out-Null
+	& $make -From $Session -To "$dir\surfaces.noisette" -Surfaces | Out-Null
+	& $make -From $Session -To "$dir\surfaces_mur_off.noisette" -Surfaces -MurSlotsOff | Out-Null
 
 	OpenSession "$dir\psn.noisette"
-	"== PSN, one source marked Use As Scene"
+	"== PSN, one source marked Use As Surface"
 	Summary (& $checkPsn | Out-String -Width 220)
 	$failed += $LASTEXITCODE
 
 	OpenSession "$dir\psn_no_choice.noisette"
-	"== PSN, no source marked Use As Scene"
+	"== PSN, no source marked Use As Surface"
 	Summary (& $checkPsn -NoChoice | Out-String -Width 220)
 	$failed += $LASTEXITCODE
 
@@ -70,6 +51,16 @@ try
 	OpenSession "$dir\default_ids.noisette"
 	"== Id Offset, default values"
 	Summary (& $checkIds | Out-String -Width 220)
+	$failed += $LASTEXITCODE
+
+	OpenSession "$dir\surfaces.noisette"
+	"== PSN, 2 surfaces, slots on"
+	Summary (& $checkSurfaces | Out-String -Width 220)
+	$failed += $LASTEXITCODE
+
+	OpenSession "$dir\surfaces_mur_off.noisette"
+	"== PSN, 2 surfaces, MUR slots off"
+	Summary (& $checkSurfaces -MurSlotsOff | Out-String -Width 220)
 	$failed += $LASTEXITCODE
 
 	OpenSession "$dir\no_psn.noisette"

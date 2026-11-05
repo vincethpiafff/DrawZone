@@ -39,9 +39,25 @@ public:
 	Array<SourceView> sources;
 	Colour getSourceColor(const void* id) const;	// transparent when unknown
 
+	//surfaces : each flat tracked area and where it stands in 3D
+	struct SurfaceView
+	{
+		WeakReference<ControllableContainer> surface;
+		const void* id = nullptr;	// TrackedPerson::surface, never dereferenced
+		String name;
+		Colour color;
+		Point<float> size;			// meters, 0 when unknown
+		float position[3] = { 0, 0, 0 };	// meters
+		float rotation[3] = { 0, 0, 0 };	// degrees
+		int personCount = 0;
+	};
+	Array<SurfaceView> surfaces;
+	int surfaceIndex = -1;	// surface shown (people, zones and size filtered), -1 = all surfaces
+
 	struct ZoneView
 	{
 		WeakReference<ControllableContainer> zone;
+		const void* surfaceId = nullptr;	// SurfaceView::id of its surface
 		String name;
 		Rectangle<float> bounds;	// meters
 		bool ellipse = false;
@@ -105,7 +121,8 @@ public:
 	static const int trailStepMs = 100;			// one trail point every 100 ms...
 	static const int trailLength = 20;			// ...kept for 2 s
 
-	void update(SpatialModule* sm);	// nullptr : no module, everything empty
+	//nullptr : no module, everything empty ; surfaceToShow : index of the surface kept (clamped), -1 = all surfaces
+	void update(SpatialModule* sm, int surfaceToShow = 0);
 	static Colour getPersonColor(int id);
 
 private:
@@ -117,7 +134,7 @@ class TopViewRenderer
 public:
 	struct Options
 	{
-		Colour background = TrackingMonitorStyle::sceneBg;
+		Colour background = TrackingMonitorStyle::surfaceBg;
 		bool grid = true;
 		bool zoneNames = true;
 		bool personIds = true;
@@ -128,9 +145,9 @@ public:
 		bool sourceRings = false;	// ring in the color of its source around each person (editing only)
 	};
 
-	//scene : the scene (0,0 to its size in meters) on screen ; clip : the area that may be painted
+	//surface : the surface (0,0 to its size in meters) on screen ; clip : the area that may be painted
 	//zoneOverlay : called after each zone (editing handles) ; afterZones : called once all zones are drawn
-	static void paint(Graphics& g, const TopViewModel& m, Rectangle<float> scene, float scale, Rectangle<float> clip, const Options& o,
+	static void paint(Graphics& g, const TopViewModel& m, Rectangle<float> surface, float scale, Rectangle<float> clip, const Options& o,
 		std::function<void(int zoneIndex, Rectangle<float> zoneRect)> zoneOverlay = nullptr,
 		std::function<void()> afterZones = nullptr);
 };

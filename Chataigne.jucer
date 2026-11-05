@@ -1439,6 +1439,10 @@
             <FILE id="dzSpCp" name="SpatialModule.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialModule.cpp"/>
             <FILE id="dzSpHd" name="SpatialModule.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialModule.h"/>
+            <FILE id="dzScCp" name="SpatialSurface.cpp" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialSurface.cpp"/>
+            <FILE id="dzScHd" name="SpatialSurface.h" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialSurface.h"/>
             <FILE id="dzSrCp" name="SpatialSource.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialSource.cpp"/>
             <FILE id="dzSrHd" name="SpatialSource.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialSource.h"/>
@@ -1467,6 +1471,10 @@
                     file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.cpp"/>
               <FILE id="dzTmHd" name="TrackingMonitorPanel.h" compile="0" resource="0"
                     file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.h"/>
+              <FILE id="dzV3Cp" name="Viewport3DRenderer.cpp" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/Viewport3DRenderer.cpp"/>
+              <FILE id="dzV3Hd" name="Viewport3DRenderer.h" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/Viewport3DRenderer.h"/>
             </GROUP>
           </GROUP>
           <GROUP id="buttplugModule" name="buttplug">

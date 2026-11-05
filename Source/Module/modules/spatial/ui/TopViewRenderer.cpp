@@ -8,10 +8,12 @@
   ==============================================================================
 */
 
-void TopViewModel::update(SpatialModule* sm)
+void TopViewModel::update(SpatialModule* sm, int surfaceToShow)
 {
 	hasModule = sm != nullptr;
 
+	surfaces.clearQuick();
+	surfaceIndex = -1;
 	sources.clearQuick();
 	zones.clearQuick();
 	slots.clearQuick();
@@ -24,6 +26,31 @@ void TopViewModel::update(SpatialModule* sm)
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
 
+		for (auto& sc : sm->surfaceManager.items)
+		{
+			SurfaceView v;
+			v.surface = sc;
+			v.id = sc;
+			v.name = sc->niceName;
+			v.color = sc->itemColor->getColor();
+			v.size = sc->size;
+			Vector3D<float> pos = sc->position->getVector(), rot = sc->rotation->getVector();
+			v.position[0] = pos.x; v.position[1] = pos.y; v.position[2] = pos.z;
+			v.rotation[0] = rot.x; v.rotation[1] = rot.y; v.rotation[2] = rot.z;
+			for (auto& p : snapshot.persons) if (p.surface == v.id) v.personCount++;
+			surfaces.add(v);
+		}
+
+		//one surface shown : only its people, its size
+		if (surfaceToShow >= 0 && !surfaces.isEmpty())
+		{
+			surfaceIndex = jlimit(0, surfaces.size() - 1, surfaceToShow);
+			const void* id = surfaces[surfaceIndex].id;
+			snapshot.persons.removeIf([id](const TrackedPerson& p) { return p.surface != id; });
+			snapshot.surfaceSize = surfaces[surfaceIndex].size;
+		}
+		const void* shownSurface = surfaceIndex >= 0 ? surfaces[surfaceIndex].id : nullptr;
+
 		{
 			const ScopedLock sl(sm->sourceManager.items.getLock());
 			for (auto& s : sm->sourceManager.items)
@@ -32,7 +59,7 @@ void TopViewModel::update(SpatialModule* sm)
 				sv.source = s;
 				sv.id = s;
 				sv.name = s->niceName;
-				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) sv.name += " :" + String(localPort); }
+				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) sv.name += a->getPortText();
 				sv.enabled = s->enabled->boolValue();
 				sv.reception = sv.enabled ? s->getReceptionText(sm) : String("Disabled");
 				sv.color = s->itemColor->getColor();
@@ -41,10 +68,16 @@ void TopViewModel::update(SpatialModule* sm)
 			}
 		}
 
+		std::vector<int> zoneViewIndex;	// index in zones of each zone of the module, -1 = not shown
 		for (auto& z : sm->zoneManager.items)
 		{
+			zoneViewIndex.push_back(-1);
+			if (surfaceIndex >= 0 && z->surfaceId != shownSurface) continue;
+			zoneViewIndex.back() = zones.size();
+
 			ZoneView zv;
 			zv.zone = z;
+			zv.surfaceId = z->surfaceId;
 			zv.name = z->niceName;
 			zv.bounds = z->getBounds();
 			zv.ellipse = z->isEllipse();
@@ -78,24 +111,36 @@ void TopViewModel::update(SpatialModule* sm)
 		selectedPersonId = -1;
 		for (auto& pp : sm->people) if (pp.second->isSelected) selectedPersonId = pp.first;
 
-		PlayerSlots& ps = sm->playerSlots;
-		slotsEnabled = ps.enabled->boolValue();
-		slotReleaseMode = (int)ps.releaseMode->getValueDataAsEnum<PlayerSlots::ReleaseMode>();
-		freeSlots = ps.freeSlots->intValue();
-		reclaimRadius = ps.reclaimRadius->floatValue();
-		holdTime = ps.holdTime->floatValue();
-		for (auto& s : ps.slots)
+		//slots of the surface shown, of every surface when all are shown (settings : the first surface)
+		slotsEnabled = false;
+		freeSlots = 0;
+		bool firstSurface = true;
+		for (int si = 0; si < sm->surfaceManager.items.size(); si++)
 		{
-			SlotView sv;
-			sv.slot = s;
-			sv.name = s->niceName;
-			sv.color = s->color->getColor();
-			sv.occupied = s->occupied->boolValue();
-			sv.held = s->isHeld();
-			sv.personId = s->personId->intValue();
-			sv.position = s->position->getPoint();
-			sv.holdRemaining = s->holdRemaining->floatValue();
-			slots.add(sv);
+			if (surfaceIndex >= 0 && si != surfaceIndex) continue;
+			PlayerSlots& ps = sm->surfaceManager.items[si]->playerSlots;
+			if (firstSurface)
+			{
+				slotReleaseMode = (int)ps.releaseMode->getValueDataAsEnum<PlayerSlots::ReleaseMode>();
+				reclaimRadius = ps.reclaimRadius->floatValue();
+				holdTime = ps.holdTime->floatValue();
+				firstSurface = false;
+			}
+			slotsEnabled |= ps.enabled->boolValue();
+			freeSlots += ps.freeSlots->intValue();
+			for (auto& s : ps.slots)
+			{
+				SlotView sv;
+				sv.slot = s;
+				sv.name = s->niceName;
+				sv.color = s->color->getColor();
+				sv.occupied = s->occupied->boolValue();
+				sv.held = s->isHeld();
+				sv.personId = s->personId->intValue();
+				sv.position = s->position->getPoint();
+				sv.holdRemaining = s->holdRemaining->floatValue();
+				slots.add(sv);
+			}
 		}
 
 		//zone and relative position computed by the module (Values > People) ; a person not there yet : in no zone
@@ -103,7 +148,8 @@ void TopViewModel::update(SpatialModule* sm)
 		{
 			auto it = sm->people.find(p.id);
 			bool known = it != sm->people.end();
-			personZones.add(known ? it->second->firstZoneIndex : -1);
+			int first = known ? it->second->firstZoneIndex : -1;
+			personZones.add(first >= 0 && first < (int)zoneViewIndex.size() ? zoneViewIndex[first] : -1);
 			personRelativePositions.add(known ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
 		}
 	}
@@ -175,26 +221,26 @@ void TopViewModel::updateMotions()
 	motions = updated;
 }
 
-void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> scene, float scale, Rectangle<float> clip, const Options& o,
+void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> surface, float scale, Rectangle<float> clip, const Options& o,
 	std::function<void(int zoneIndex, Rectangle<float> zoneRect)> zoneOverlay,
 	std::function<void()> afterZones)
 {
 	using namespace TrackingMonitorStyle;
 
-	Point<float> size = m.snapshot.sceneSize;
-	auto toScreen = [&](Rectangle<float> meters) { return Rectangle<float>(scene.getX() + meters.getX() * scale, scene.getY() + meters.getY() * scale, meters.getWidth() * scale, meters.getHeight() * scale); };
+	Point<float> size = m.snapshot.surfaceSize;
+	auto toScreen = [&](Rectangle<float> meters) { return Rectangle<float>(surface.getX() + meters.getX() * scale, surface.getY() + meters.getY() * scale, meters.getWidth() * scale, meters.getHeight() * scale); };
 
 	g.setColour(o.background);
-	g.fillRect(scene);
+	g.fillRect(surface);
 
 	//1 m grid
 	if (o.grid)
 	{
 		g.setColour(NORMAL_COLOR.withAlpha(.18f));
-		for (int i = 0; i <= (int)size.x; i++) g.drawVerticalLine((int)(scene.getX() + i * scale), scene.getY(), scene.getBottom());
-		for (int i = 0; i <= (int)size.y; i++) g.drawHorizontalLine((int)(scene.getY() + i * scale), scene.getX(), scene.getRight());
+		for (int i = 0; i <= (int)size.x; i++) g.drawVerticalLine((int)(surface.getX() + i * scale), surface.getY(), surface.getBottom());
+		for (int i = 0; i <= (int)size.y; i++) g.drawHorizontalLine((int)(surface.getY() + i * scale), surface.getX(), surface.getRight());
 		g.setColour(borderColor);
-		g.drawRect(scene, 1);
+		g.drawRect(surface, 1);
 	}
 
 	//Zones, under the people, glowing when someone is inside
@@ -203,14 +249,14 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 		auto& z = m.zones.getReference(i);
 		if (z.hidden) continue;
 
-		//only draw the part inside the scene : huge coordinates crash the renderer
+		//only draw the part inside the surface : huge coordinates crash the renderer
 		Rectangle<float> zr = toScreen(z.bounds).getIntersection(clip);
 		if (zr.isEmpty()) continue;
 
-		//an ellipse is drawn whole (its bounds stay near the scene), clipped to the scene
+		//an ellipse is drawn whole (its bounds stay near the surface), clipped to the surface
 		Rectangle<float> er = toScreen(z.bounds);
 		Path sp = z.outline; //free shape, meters to screen
-		sp.applyTransform(AffineTransform::scale(scale).translated(scene.getX(), scene.getY()));
+		sp.applyTransform(AffineTransform::scale(scale).translated(surface.getX(), surface.getY()));
 		Graphics::ScopedSaveState clipState(g);
 		g.reduceClipRegion(clip.getSmallestIntegerContainer());
 
@@ -253,7 +299,7 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 		{
 			if (!s.held) continue;
 
-			Point<float> centre = scene.getTopLeft() + s.position * scale;
+			Point<float> centre = surface.getTopLeft() + s.position * scale;
 			float radius = jmax(10.0f, m.reclaimRadius * scale);
 			Rectangle<float> circle = Rectangle<float>(radius * 2, radius * 2).withCentre(centre);
 
@@ -292,8 +338,8 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 			Colour c = TopViewModel::getPersonColor(p.id);
 			for (int i = 1; i < trail.size(); i++)
 			{
-				Point<float> a = scene.getTopLeft() + trail[i - 1] * scale;
-				Point<float> b = scene.getTopLeft() + trail[i] * scale;
+				Point<float> a = surface.getTopLeft() + trail[i - 1] * scale;
+				Point<float> b = surface.getTopLeft() + trail[i] * scale;
 				float age = (float)i / trail.size(); //0 = oldest, 1 = newest
 				g.setColour(c.withAlpha(.05f + .45f * age));
 				g.drawLine(Line<float>(a, b), 1.0f + 2.0f * age);
@@ -304,7 +350,7 @@ void TopViewRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float>
 	//People : dot with a halo and the id, arrow toward where they go when moving
 	for (auto& p : m.snapshot.persons)
 	{
-		Point<float> pos = scene.getTopLeft() + p.position * scale;
+		Point<float> pos = surface.getTopLeft() + p.position * scale;
 		Colour c = TopViewModel::getPersonColor(p.id);
 
 		auto it = m.motions.find(p.id);

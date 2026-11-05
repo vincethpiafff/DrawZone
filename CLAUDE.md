@@ -10,7 +10,7 @@ organicUI) : reçoit du tracking (Augmenta en OSC, PSN), dessine des zones
 Cœur : module **Spatial** dans le code, **Cockpit** à l'écran (D14), code dans
 `Source/Module/modules/spatial/` ; ses zones exposent des paramètres Chataigne.
 
-État : **v0.5.0** (31/10/2026 : entrée et sortie PSN, multi-sources). Suite : **v0.6**, viewport 3D.
+État : **v0.6.0** (06/11/2026 : surfaces sol / mur en 3D, slots et sortie vidéo par surface). Suite : **v0.7**, graphe nodal.
 
 ## Travailler avec Vincent
 
@@ -18,7 +18,8 @@ Cœur : module **Spatial** dans le code, **Cockpit** à l'écran (D14), code dan
   est visible dans Chataigne** : en **anglais**.
 - Vincent n'est pas développeur C++ (il fait du Python) : expliquer simplement.
 - Il valide chaque étape ; une liste de tâches qu'il a validée s'enchaîne jusqu'au
-  bout, chaque étape testée en simulation, arrêt et discussion à la moindre erreur.
+  bout, arrêt et discussion à la moindre erreur. Tests en simulation **jamais systématiques** :
+  seulement pour intégrer une feature qui touche positions, zones, slots ou PSN ; sinon compiler, relancer, Vincent teste.
 - Vérifier avant d'affirmer (lire le code, compiler, tester). Petites briques testables.
 - `TODO.md` : le lire en début de séance, le tenir à jour **en une ligne par étape**
   (✅ ❌ avec cause, ⏭️ ⬜ 💡). Réponses et docs courtes : moins de tokens.
@@ -46,7 +47,8 @@ D:\0-DRAWZONE\DrawZone  ce dépôt (github.com/vincethpiafff/DrawZone)
 
 ## Git
 
-- `master` = Chataigne de Ben (ne pas toucher) · `develop` · `feature/<nom>`.
+- Branches, commits (Conventional Commits en anglais), versions, fichiers à ne jamais commiter :
+  `docs/drawzone/CONTRIBUTING.md`. `master` = Chataigne de Ben : ne pas toucher.
 - `upstream` (Ben) et sous-modules `Modules/juce_*` et `D:\0-DRAWZONE\JUCE` : push
   bloqué (`NE_PAS_PUSHER`), ne jamais changer ; à refaire après un clone.
 - Ne pas déranger Ben : jamais de PR vers `benkuper/Chataigne` (base = `vincethpiafff/DrawZone`),
@@ -55,8 +57,6 @@ D:\0-DRAWZONE\DrawZone  ce dépôt (github.com/vincethpiafff/DrawZone)
 - `core.autocrlf=false` (dépôt et sous-modules). Fichiers de Ben en CRLF / mixtes :
   `git diff --stat` ne doit montrer que nos lignes ; pas de `sed` Git Bash sur eux,
   sinon `perl -0777 -pi`.
-- Conventional Commits en anglais (`feat(spatial): …`) ; tags SemVer annotés + `docs/drawzone/CHANGELOG.md`.
-- Ne jamais committer `Binaries/`, `dependencies_zips/`, `packages/`, `JucePrecompiledHeader_*`.
 
 ## Code de Ben
 

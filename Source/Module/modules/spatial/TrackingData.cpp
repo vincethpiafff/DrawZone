@@ -53,18 +53,6 @@ float TrackingData::RateCounter::getRate(uint32 now) const
 	return lastMessageMs == 0 || now - lastMessageMs > 1000 ? 0 : messagesPerSecond;
 }
 
-void TrackingData::setSceneSize(Point<float> sceneSize)
-{
-	const ScopedLock sl(lock);
-	data.sceneSize = sceneSize;
-}
-
-Point<float> TrackingData::getSceneSize()
-{
-	const ScopedLock sl(lock);
-	return data.sceneSize;
-}
-
 bool TrackingData::isIdUsed(int id) const
 {
 	for (auto& p : data.persons) if (p.id == id) return true;

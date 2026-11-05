@@ -67,7 +67,7 @@ pas envoyer par erreur chez Ben.
 
 ## Règles de code
 
-- Notre code dans nos fichiers : `Source/Module/modules/spatial/` (prévu),
+- Notre code dans nos fichiers : `Source/Module/modules/spatial/`,
   `Tools/drawzone/`, `docs/drawzone/`.
 - Dans les fichiers de Ben : modifications minimales, commentées
   `// DrawZone: <raison>`.
@@ -84,5 +84,6 @@ DrawZone sont en CRLF.
 ## Ce qui ne doit jamais être commité
 
 `Binaries/`, `dependencies_zips/`, `Builds/VisualStudio2022/packages/`,
-`Builds/VisualStudio2022/x64/`, `JucePrecompiledHeader_*`, `.vscode/`.
+`Builds/VisualStudio2022/x64/`, `JucePrecompiledHeader_*`, `.vscode/`. Seule exception :
+`Builds/VisualStudio2022/Chataigne_App.vcxproj`, commité avec notre chemin JUCE (D11).
 Tout est déjà dans le `.gitignore` de Ben ; vérifier `git status` avant chaque commit.

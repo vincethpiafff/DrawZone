@@ -5,8 +5,8 @@
 	Created: 28 Oct 2026
 	Author:  DrawZone
 
-	Video output of the top view (zones, people, player slots), drawn by
-	TopViewRenderer into an image at a fixed rate, and sent with Spout
+	Video output of one surface seen from above (zones, people, player slots),
+	one per surface, named like it ; drawn by TopViewRenderer into an image at a fixed rate, and sent with Spout
 	and / or NDI.
 
 	Spout : our own Spout library instance, fed with the image pixels
@@ -19,8 +19,8 @@
 	which takes the latest image ; nothing is sent while nobody receives.
 
 	Scale : pixel = (meters - area origin) x Pixels Per Meter.
-	Output Area : Scene (the image is exactly the scene), Custom Area (origin
-	and size in meters) or Fixed Resolution (the whole scene, centered).
+	Output Area : Surface (the image is exactly the surface), Custom Area (origin
+	and size in meters) or Fixed Resolution (the whole surface, centered).
 
   ==============================================================================
 */
@@ -30,20 +30,20 @@
 #include "../video/VideoNetworkRuntime.h"
 
 class SpatialModule;
+class SpatialSurface;
 
 class SpatialVideoOutput :
 	public ControllableContainer,
 	private Timer
 {
 public:
-	SpatialVideoOutput(SpatialModule* module);
+	SpatialVideoOutput(SpatialModule* module, SpatialSurface* surface);
 	~SpatialVideoOutput();
 
-	enum OutputArea { SCENE, CUSTOM_AREA, FIXED_RESOLUTION };
+	enum OutputArea { SURFACE, CUSTOM_AREA, FIXED_RESOLUTION };
 
 	BoolParameter* spout;
 	BoolParameter* ndi;
-	StringParameter* streamName;
 	EnumParameter* outputArea;
 	FloatParameter* pixelsPerMeter;
 	Point2DParameter* areaOrigin;	// meters, Custom Area
@@ -69,8 +69,11 @@ public:
 	void onContainerParameterChanged(Parameter* p) override;
 	void onControllableFeedbackUpdate(ControllableContainer* cc, Controllable* c) override;
 
+	String getStreamName() const;	// the name of its surface, for Spout and NDI
+
 private:
 	SpatialModule* module;
+	SpatialSurface* surface;	// owns this output
 	TopViewModel model;
 	uint32 lastResolutionTextMs = 0;
 
@@ -125,8 +128,8 @@ private:
 	Image renderFrame();
 	void sendSpout(const Image& image);
 
-	//image size and the scene rectangle in it, from the Output Area ; false when the scene size is unknown
-	bool computeGeometry(Point<float> sceneSize, int& w, int& h, Rectangle<float>& scene, float& scale) const;
+	//image size and the surface rectangle in it, from the Output Area ; false when the surface size is unknown
+	bool computeGeometry(Point<float> surfaceSize, int& w, int& h, Rectangle<float>& surfaceRect, float& scale) const;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialVideoOutput)
 };

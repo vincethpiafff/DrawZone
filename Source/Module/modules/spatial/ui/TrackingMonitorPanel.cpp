@@ -20,7 +20,7 @@ TrackingMonitorPanel::TrackingMonitorPanel(const String& contentName) :
 	};
 	addChildComponent(collapseButton);
 
-	createZoneButton.setTooltip("Create a zone at the center of the scene");
+	createZoneButton.setTooltip("Create a zone at the center of the surface");
 	createZoneButton.onClick = [this]() { createZone(); };
 	addChildComponent(createZoneButton);
 
@@ -62,6 +62,8 @@ void TrackingMonitorPanel::resized()
 	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
 	headerRect.removeFromRight(8);
 	psnRect = headerRect.removeFromRight(214).reduced(0, 1);
+	headerRect.removeFromRight(8);
+	viewSwitchRect = headerRect.removeFromRight(84).reduced(0, 1);
 	headerRect.removeFromRight(10);
 	r.removeFromTop(6);
 	sourceBarRect = r.removeFromTop(22);
@@ -73,6 +75,7 @@ void TrackingMonitorPanel::resized()
 	//not enough room : no top view, the column still shows zones and people
 	topViewRect = r.getWidth() > 80 && r.getHeight() > 80 ? r : Rectangle<int>();
 
+	layoutSurfaceEditors();
 	layoutColumn();
 	layoutSlotBar();
 }
@@ -82,6 +85,8 @@ void TrackingMonitorPanel::layoutSlotBar()
 	slotChipRects.clearQuick();
 
 	Rectangle<int> b = slotBarRect.reduced(6, 6);
+	slotEnableRect = hasModule ? b.removeFromLeft(72) : Rectangle<int>();
+	b.removeFromLeft(6);
 	slotModeRect = b.removeFromLeft(126);
 	b.removeFromLeft(10);
 	slotPlusButton.setBounds(b.removeFromRight(24));
@@ -198,6 +203,12 @@ SpatialModule* TrackingMonitorPanel::getSpatialModule()
 	return nullptr;
 }
 
+SpatialSurface* TrackingMonitorPanel::getShownSurface()
+{
+	SpatialModule* sm = getSpatialModule();
+	return sm != nullptr ? sm->getSurface(shownSurface) : nullptr;
+}
+
 bool TrackingMonitorPanel::isExpanded(ControllableContainer* zone) const
 {
 	if (zone == nullptr) return false;
@@ -213,9 +224,13 @@ Rectangle<int> TrackingMonitorPanel::getCardArrowRect(Rectangle<int> card)
 void TrackingMonitorPanel::timerCallback()
 {
 	SpatialModule* sm = getSpatialModule();
-	model.update(sm);
-	spoutOn = sm != nullptr && sm->videoOutput.spout->boolValue();
-	ndiOn = sm != nullptr && sm->videoOutput.ndi->boolValue();
+	model.update(sm, shownSurface);
+	if (model.surfaceIndex >= 0) shownSurface = model.surfaceIndex;
+	if (view3D) model3D.update(sm, -1);
+	updateSurfaceEditors();
+	SpatialSurface* surface = sm != nullptr ? sm->getSurface(shownSurface) : nullptr;
+	spoutOn = surface != nullptr && surface->videoOutput.spout->boolValue();
+	ndiOn = surface != nullptr && surface->videoOutput.ndi->boolValue();
 	psnOn = sm != nullptr && sm->psnOutput.enabled->boolValue();
 	psnLabel = "PSN Output";
 	if (sm != nullptr)
@@ -237,7 +252,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	using namespace TrackingMonitorStyle;
 
 	g.fillAll(panelBg);
-	sceneScale = 0; //set again by paintTopView if the top view is visible
+	surfaceScale = 0; //set again by paintTopView if the top view is visible
 	personRowRects.clearQuick();
 	personRowIds.clearQuick();
 
@@ -251,7 +266,11 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	paintHeader(g);
 	paintSourceBar(g);
-	if (!topViewRect.isEmpty()) paintTopView(g, topViewRect);
+	if (!topViewRect.isEmpty())
+	{
+		if (view3D) Viewport3DRenderer::paint(g, model3D, topViewRect.toFloat(), camera3D, model.surfaceIndex);
+		else paintTopView(g, topViewRect);
+	}
 	paintSlotBar(g);
 
 	g.setColour(columnBg);
@@ -266,6 +285,8 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
 	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
+	paintViewSwitch(g);
+	if (view3D) paintSurfacesPanel(g);
 	paintShortcuts(g); //last : the unfolded list goes over everything
 }
 
@@ -306,17 +327,17 @@ bool TrackingMonitorPanel::handleOutputChipClick(Point<int> pos, Rectangle<int> 
 	if (!chip.contains(pos)) return false;
 
 	if (getOutputBoxRect(chip).expanded(4).contains(pos)) output->setUndoableValue(output->boolValue(), !output->boolValue());
-	else if (SpatialModule* sm = getSpatialModule()) sm->videoOutput.selectThis();
+	else if (SpatialSurface* surface = getShownSurface()) surface->videoOutput.selectThis();
 	timerCallback();
 	return true;
 }
 
 Point<float> TrackingMonitorPanel::getPersonScreenPosition(int id) const
 {
-	if (sceneScale > 0)
+	if (surfaceScale > 0)
 	{
 		for (auto& p : snapshot.persons)
-			if (p.id == id) return sceneScreenRect.getTopLeft() + p.position * sceneScale;
+			if (p.id == id) return surfaceScreenRect.getTopLeft() + p.position * surfaceScale;
 	}
 	for (int i = 0; i < personRowIds.size(); i++) if (personRowIds[i] == id) return personRowRects[i].getCentre().toFloat();
 	return slotDragStart;
@@ -406,9 +427,24 @@ void TrackingMonitorPanel::paintHeader(Graphics& g)
 	g.drawText(String(snapshot.persons.size()), r.removeFromRight(40), Justification::centredRight);
 	r.removeFromRight(6);
 
-	g.setColour(dimText);
-	g.setFont(Font(13.0f));
-	g.drawText(String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
+	//surface shown : name and size, a click lists the surfaces
+	String surfaceText = model.surfaceIndex >= 0 ? model.surfaces[model.surfaceIndex].name : String("No surface");
+	surfaceText += sep + (snapshot.surfaceSize.x > 0 ? String(snapshot.surfaceSize.x, 1) + times + String(snapshot.surfaceSize.y, 1) + " m" : String("no size"));
+	Font surfaceFont(13.0f);
+	int chipWidth = jmin(r.getWidth(), surfaceFont.getStringWidth(surfaceText) + 40);
+	surfaceChipRect = r.removeFromLeft(chipWidth).reduced(0, 1);
+	if (chipWidth < 60) { surfaceChipRect = Rectangle<int>(); return; }
+	Rectangle<float> cf = surfaceChipRect.toFloat();
+	drawChip(g, cf, false);
+	if (model.surfaceIndex >= 0)
+	{
+		g.setColour(model.surfaces[model.surfaceIndex].color);
+		g.fillRoundedRectangle(Rectangle<float>(8, 8).withCentre(Point<float>(cf.getX() + 11, cf.getCentreY())), 2);
+	}
+	g.setFont(surfaceFont);
+	g.setColour(TEXT_COLOR);
+	g.drawText(surfaceText, cf.withTrimmedLeft(20).withTrimmedRight(16), Justification::centredLeft, true);
+	drawChevron(g, Point<float>(cf.getRight() - 10, cf.getCentreY()), false, dimText);
 }
 
 void TrackingMonitorPanel::paintSourceBar(Graphics& g)
@@ -449,34 +485,34 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 {
 	using namespace TrackingMonitorStyle;
 
-	Point<float> size = snapshot.sceneSize;
+	Point<float> size = snapshot.surfaceSize;
 	if (size.x <= 0 || size.y <= 0)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.5f));
-		g.drawFittedText(SpatialModule::getNoSceneSizeText(), r, Justification::centred, 1);
+		g.drawFittedText(SpatialModule::getNoSurfaceSizeText(), r, Justification::centred, 1);
 		return;
 	}
 
-	//room for the meter labels on the top and left edges (kept on both sides so the scene stays centered)
+	//room for the meter labels on the top and left edges (kept on both sides so the surface stays centered)
 	const int labelSize = 16;
 	Rectangle<float> area = r.toFloat().reduced(labelSize * 2.0f, (float)labelSize);
 
-	//keep the scene proportions, origin top left like Augmenta, centered in the panel
+	//keep the surface proportions, origin top left like Augmenta, centered in the panel
 	float scale = jmin(area.getWidth() / size.x, area.getHeight() / size.y);
-	Rectangle<float> scene = Rectangle<float>(size.x * scale, size.y * scale).withCentre(area.getCentre());
-	sceneScreenRect = scene;
-	sceneScale = scale;
+	Rectangle<float> surface = Rectangle<float>(size.x * scale, size.y * scale).withCentre(area.getCentre());
+	surfaceScreenRect = surface;
+	surfaceScale = scale;
 
-	//meter labels around the scene, thinned out when the meters get too small on screen
+	//meter labels around the surface, thinned out when the meters get too small on screen
 	int labelStep = 1;
 	while (labelStep * scale < 24) labelStep *= 2;
 
 	g.setFont(Font(11.0f));
 	g.setColour(TEXT_COLOR.withAlpha(.45f));
 	for (int i = 0; i <= (int)size.x; i += labelStep)
-		g.drawText(String(i), Rectangle<float>(scene.getX() + i * scale - 15, scene.getY() - labelSize, 30, (float)labelSize), Justification::centred);
+		g.drawText(String(i), Rectangle<float>(surface.getX() + i * scale - 15, surface.getY() - labelSize, 30, (float)labelSize), Justification::centred);
 	for (int i = 0; i <= (int)size.y; i += labelStep)
-		g.drawText(String(i), Rectangle<float>(scene.getX() - labelSize * 2, scene.getY() + i * scale - 8, (float)labelSize * 2 - 4, 16), Justification::centredRight);
+		g.drawText(String(i), Rectangle<float>(surface.getX() - labelSize * 2, surface.getY() + i * scale - 8, (float)labelSize * 2 - 4, 16), Justification::centredRight);
 
 	//same drawing as the video output, plus the selection and the editing handles
 	TopViewRenderer::Options o;
@@ -506,10 +542,10 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 				for (int pi = 0; pi < z.points.size() && pi < z.interpolations.size(); pi++)
 				{
 					if (z.interpolations[pi] == ZonePoint::LINEAR) continue;
-					Point<float> ps = scene.getTopLeft() + z.points[pi] * scale;
+					Point<float> ps = surface.getTopLeft() + z.points[pi] * scale;
 					for (auto& hm : { z.handlesIn[pi], z.handlesOut[pi] })
 					{
-						Point<float> hs = scene.getTopLeft() + hm * scale;
+						Point<float> hs = surface.getTopLeft() + hm * scale;
 						g.setColour(HIGHLIGHT_COLOR.withAlpha(.6f));
 						g.drawLine(Line<float>(ps, hs), 1.0f);
 						Path diamond;
@@ -526,14 +562,14 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 			{
 				auto& pm = z.points.getReference(pi);
 				bool curve = pi < z.interpolations.size() && z.interpolations[pi] != ZonePoint::LINEAR;
-				Rectangle<float> ph = h.expanded(1).withCentre(scene.getTopLeft() + pm * scale);
+				Rectangle<float> ph = h.expanded(1).withCentre(surface.getTopLeft() + pm * scale);
 				if (curve)
 				{
 					g.setColour(z.selected ? HIGHLIGHT_COLOR : c);
 					g.fillEllipse(ph);
 					continue;
 				}
-				g.setColour(sceneBg);
+				g.setColour(surfaceBg);
 				g.fillEllipse(ph);
 				g.setColour(z.selected ? HIGHLIGHT_COLOR : c);
 				g.drawEllipse(ph, 2.0f);
@@ -547,7 +583,7 @@ void TrackingMonitorPanel::paintTopView(Graphics& g, Rectangle<int> r)
 		if (drawingBoxShape >= 0) paintBoxDrawing(g);
 	};
 
-	TopViewRenderer::paint(g, model, scene, scale, scene.expanded(2), o, zoneHandles, drawingPreviews);
+	TopViewRenderer::paint(g, model, surface, scale, surface.expanded(2), o, zoneHandles, drawingPreviews);
 }
 
 void TrackingMonitorPanel::paintSlotBar(Graphics& g)
@@ -558,6 +594,9 @@ void TrackingMonitorPanel::paintSlotBar(Graphics& g)
 
 	g.setColour(columnBg);
 	g.fillRoundedRectangle(slotBarRect.toFloat(), 4);
+
+	//on / off of the Player Slots of the surface shown
+	if (!slotEnableRect.isEmpty()) paintOutputChip(g, slotEnableRect, slotsEnabled, false, "Slots");
 
 	//SwapSlots mode chip : icon, short name, chevron
 	if (!slotModeRect.isEmpty())
@@ -636,13 +675,13 @@ int TrackingMonitorPanel::getPersonAt(Point<float> pos) const
 {
 	for (int i = 0; i < personRowRects.size(); i++) if (personRowRects[i].contains(pos.toInt())) return personRowIds[i];
 
-	if (sceneScale <= 0 || !sceneScreenRect.contains(pos)) return -1;
+	if (surfaceScale <= 0 || !surfaceScreenRect.contains(pos)) return -1;
 
 	//top view : the dot, a bit larger than drawn ; the last drawn (on top) first
 	for (int i = snapshot.persons.size() - 1; i >= 0; i--)
 	{
 		auto& p = snapshot.persons.getReference(i);
-		Point<float> screen = sceneScreenRect.getTopLeft() + p.position * sceneScale;
+		Point<float> screen = surfaceScreenRect.getTopLeft() + p.position * surfaceScale;
 		if (screen.getDistanceFrom(pos) <= 10) return p.id;
 	}
 	return -1;
@@ -663,13 +702,16 @@ void TrackingMonitorPanel::assignSlot(int personId, int slotIndex)
 	SpatialModule* sm = getSpatialModule();
 	if (sm == nullptr) return;
 
-	if (slotIndex < 0) sm->playerSlots.releaseByHand(personId);
-	else
-	{
-		Point<float> meters;
-		for (auto& p : snapshot.persons) if (p.id == personId) meters = p.position;
-		sm->playerSlots.assignByHand(personId, meters, slotIndex);
-	}
+	//the slots of the surface of the person
+	Point<float> meters;
+	const void* surfaceId = nullptr;
+	for (auto& p : snapshot.persons) if (p.id == personId) { meters = p.position; surfaceId = p.surface; }
+	SpatialSurface* surface = nullptr;
+	for (auto& s : sm->surfaceManager.items) if (s == surfaceId) surface = s;
+	if (surface == nullptr) return;
+
+	if (slotIndex < 0) surface->playerSlots.releaseByHand(personId);
+	else surface->playerSlots.assignByHand(personId, meters, slotIndex);
 	timerCallback();
 }
 
@@ -738,7 +780,7 @@ void TrackingMonitorPanel::paintShortcuts(Graphics& g)
 	struct Line { const char* keys; const char* action; };
 	const char* sections[] = { "PLAYER SLOTS", "ZONES", "FREE SHAPE DRAWING" };
 	const Line slotLines[] = { { "Click a person", "select it (Inspector)" }, { "1 - 9  (numpad too)", "assign slot 1 - 9" }, { "0  /  Del", "release its slot" }, { "Right click a person", "assign / release slot" } };
-	const Line zoneLines[] = { { "Double click a name", "rename (zone or slot)" }, { "Right click the scene", "create / draw a zone" }, { "Right click a zone", "duplicate, delete, color..." } };
+	const Line zoneLines[] = { { "Double click a name", "rename (zone or slot)" }, { "Right click the surface", "create / draw a zone" }, { "Right click a zone", "duplicate, delete, color..." } };
 	const Line drawLines[] = { { "Enter / double click", "close the shape" }, { "Backspace", "remove the last point" }, { "Esc", "cancel" } };
 
 	Rectangle<int> panel = getShortcutsPanelRect();
@@ -853,14 +895,14 @@ void TrackingMonitorPanel::showPSNOutputMenu()
 
 void TrackingMonitorPanel::showSlotModeMenu()
 {
-	SpatialModule* sm = getSpatialModule();
-	if (sm == nullptr) return;
+	SpatialSurface* surface = getShownSurface();
+	if (surface == nullptr) return;
 
 	PopupMenu m;
 	m.addCustomItem(PlayerSlots::NEXT_PERSON + 1, std::make_unique<SlotModeMenuItem>(PlayerSlots::NEXT_PERSON, slotReleaseMode == PlayerSlots::NEXT_PERSON));
 	m.addCustomItem(PlayerSlots::HOLD_SPOT + 1, std::make_unique<SlotModeMenuItem>(PlayerSlots::HOLD_SPOT, slotReleaseMode == PlayerSlots::HOLD_SPOT));
 
-	WeakReference<ControllableContainer> slotsRef(&sm->playerSlots);
+	WeakReference<ControllableContainer> slotsRef(&surface->playerSlots);
 	WeakReference<Component> panelRef(this);
 	m.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(slotModeRect)), [slotsRef, panelRef](int result)
 		{
@@ -883,9 +925,9 @@ int TrackingMonitorPanel::getSlotChipAt(Point<int> pos) const
 
 void TrackingMonitorPanel::changeSlotCount(int delta)
 {
-	SpatialModule* sm = getSpatialModule();
-	if (sm == nullptr) return;
-	IntParameter* count = sm->playerSlots.slotCount;
+	SpatialSurface* surface = getShownSurface();
+	if (surface == nullptr) return;
+	IntParameter* count = surface->playerSlots.slotCount;
 	int newCount = jlimit((int)count->minimumValue, (int)count->maximumValue, count->intValue() + delta);
 	if (newCount != count->intValue()) count->setUndoableValue(count->intValue(), newCount);
 	timerCallback();
@@ -893,9 +935,9 @@ void TrackingMonitorPanel::changeSlotCount(int delta)
 
 void TrackingMonitorPanel::showSlotMenu(int slotIndex, Point<int> clickPosition)
 {
-	SpatialModule* sm = getSpatialModule();
-	if (sm == nullptr) return;
-	PlayerSlots& ps = sm->playerSlots;
+	SpatialSurface* surface = getShownSurface();
+	if (surface == nullptr) return;
+	PlayerSlots& ps = surface->playerSlots;
 	PlayerSlot* slot = slotIndex >= 0 && slotIndex < ps.slots.size() ? ps.slots[slotIndex] : nullptr;
 
 	PopupMenu m;
@@ -1213,14 +1255,14 @@ void TrackingMonitorPanel::paintRail(Graphics& g)
 
 Rectangle<float> TrackingMonitorPanel::toScreen(Rectangle<float> meters) const
 {
-	return Rectangle<float>(sceneScreenRect.getX() + meters.getX() * sceneScale, sceneScreenRect.getY() + meters.getY() * sceneScale,
-		meters.getWidth() * sceneScale, meters.getHeight() * sceneScale);
+	return Rectangle<float>(surfaceScreenRect.getX() + meters.getX() * surfaceScale, surfaceScreenRect.getY() + meters.getY() * surfaceScale,
+		meters.getWidth() * surfaceScale, meters.getHeight() * surfaceScale);
 }
 
 TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) const
 {
 	ZoneHit hit;
-	if (sceneScale <= 0) return hit;
+	if (surfaceScale <= 0) return hit;
 
 	//last drawn = on top, so test from the end
 	for (int i = zones.size() - 1; i >= 0; i--)
@@ -1238,7 +1280,7 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 				for (int side = 1; side <= 2; side++)
 				{
 					Point<float> hm = side == 1 ? zones[i].handlesIn[p] : zones[i].handlesOut[p];
-					if ((sceneScreenRect.getTopLeft() + hm * sceneScale).getDistanceFrom(pos) > handleSize) continue;
+					if ((surfaceScreenRect.getTopLeft() + hm * surfaceScale).getDistanceFrom(pos) > handleSize) continue;
 					hit.zoneIndex = i;
 					hit.pointIndex = p;
 					hit.handle = side;
@@ -1250,7 +1292,7 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 		//free shape points first : they often sit on the corners of the box
 		for (int p = 0; p < zones[i].points.size(); p++)
 		{
-			if ((sceneScreenRect.getTopLeft() + zones[i].points[p] * sceneScale).getDistanceFrom(pos) <= handleSize)
+			if ((surfaceScreenRect.getTopLeft() + zones[i].points[p] * surfaceScale).getDistanceFrom(pos) <= handleSize)
 			{
 				hit.zoneIndex = i;
 				hit.pointIndex = p;
@@ -1271,7 +1313,7 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 
 		//same test as the zone itself (rectangle, ellipse, free shape whose curves can go out of the box)
 		SpatialZone* z = dynamic_cast<SpatialZone*>(zones[i].zone.get());
-		if (z != nullptr && z->contains((pos - sceneScreenRect.getTopLeft()) / sceneScale))
+		if (z != nullptr && z->contains((pos - surfaceScreenRect.getTopLeft()) / surfaceScale))
 		{
 			hit.zoneIndex = i;
 			return hit;
@@ -1347,7 +1389,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 {
 	if (drawingBoxShape >= 0)
 	{
-		if (e.mods.isRightButtonDown() || sceneScale <= 0 || !sceneScreenRect.contains(e.position)) return;
+		if (e.mods.isRightButtonDown() || surfaceScale <= 0 || !surfaceScreenRect.contains(e.position)) return;
 		boxStart = boxEnd = toMeters(e.position);
 		boxDragging = true;
 		return;
@@ -1355,7 +1397,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 	if (drawingFreeShape)
 	{
-		if (e.mods.isRightButtonDown() || sceneScale <= 0 || !sceneScreenRect.contains(e.position)) return;
+		if (e.mods.isRightButtonDown() || surfaceScale <= 0 || !surfaceScreenRect.contains(e.position)) return;
 
 		//the first click of a double click already added the last point
 		if (e.getNumberOfClicks() >= 2)
@@ -1364,7 +1406,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 			return;
 		}
 
-		if (drawPoints.size() >= 3 && (sceneScreenRect.getTopLeft() + drawPoints[0] * sceneScale).getDistanceFrom(e.position) <= handleSize + 2)
+		if (drawPoints.size() >= 3 && (surfaceScreenRect.getTopLeft() + drawPoints[0] * surfaceScale).getDistanceFrom(e.position) <= handleSize + 2)
 		{
 			finishFreeShapeDrawing();
 			return;
@@ -1386,11 +1428,34 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
 
+	if (surfaceChipRect.contains(e.getPosition()))
+	{
+		showSurfaceMenu();
+		return;
+	}
+
+	//2D / 3D switch ; in 3D the view only moves the camera : left drag orbit, right or middle drag pan
+	if (viewSwitchRect.contains(e.getPosition()))
+	{
+		setView3D(e.position.x >= viewSwitchRect.getCentreX());
+		return;
+	}
+	if (view3D && handleSurfacesPanelClick(e.getPosition())) return;	// the list of the surfaces (fold / unfold), not the camera
+	if (view3D && topViewRect.contains(e.getPosition()))
+	{
+		cameraDrag = e.mods.isLeftButtonDown() ? 1 : 2;
+		cameraDragLast = e.position;
+		return;
+	}
+
 	//Spout / NDI chips : the box turns the output on / off, the rest shows its parameters
 	if (SpatialModule* sm = getSpatialModule())
 	{
-		if (handleOutputChipClick(e.getPosition(), spoutRect, sm->videoOutput.spout)) return;
-		if (handleOutputChipClick(e.getPosition(), ndiRect, sm->videoOutput.ndi)) return;
+		if (SpatialSurface* surface = getShownSurface())
+		{
+			if (handleOutputChipClick(e.getPosition(), spoutRect, surface->videoOutput.spout)) return;
+			if (handleOutputChipClick(e.getPosition(), ndiRect, surface->videoOutput.ndi)) return;
+		}
 
 		for (int i = 0; i < sourceChipRects.size() && i < model.sources.size(); i++)
 		{
@@ -1430,6 +1495,16 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	//slots strip : click selects the slot (Inspector), right click opens the slots menu
 	if (slotBarRect.contains(e.getPosition()))
 	{
+		if (slotEnableRect.contains(e.getPosition()))
+		{
+			if (SpatialSurface* surface = getShownSurface())
+			{
+				BoolParameter* on = surface->playerSlots.enabled;
+				on->setUndoableValue(on->boolValue(), !on->boolValue());
+			}
+			timerCallback();
+			return;
+		}
 		if (slotModeRect.contains(e.getPosition()))
 		{
 			showSlotModeMenu();
@@ -1482,7 +1557,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	if (e.mods.isRightButtonDown())
 	{
 		if (zone != nullptr && hit.pointIndex >= 0 && hit.handle == 0) showPointMenu(zone, hit.pointIndex, e.getPosition());
-		else showContextMenu(zone, e.getPosition(), sceneScale > 0 && sceneScreenRect.contains(e.position));
+		else showContextMenu(zone, e.getPosition(), surfaceScale > 0 && surfaceScreenRect.contains(e.position));
 		return;
 	}
 
@@ -1517,6 +1592,16 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 {
+	if (cameraDrag != 0)
+	{
+		Point<float> delta = e.position - cameraDragLast;
+		cameraDragLast = e.position;
+		if (cameraDrag == 1) camera3D.orbit(delta.x, delta.y);
+		else camera3D.pan(delta.x, delta.y, (float)topViewRect.getHeight());
+		repaint(topViewRect);
+		return;
+	}
+
 	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
 	{
 		slotDragMouse = e.position;
@@ -1535,9 +1620,9 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 	}
 
 	SpatialZone* zone = dynamic_cast<SpatialZone*>(dragZone.get());
-	if (zone == nullptr || sceneScale <= 0) return;
+	if (zone == nullptr || surfaceScale <= 0) return;
 
-	Point<float> delta = e.getOffsetFromDragStart().toFloat() / sceneScale;
+	Point<float> delta = e.getOffsetFromDragStart().toFloat() / surfaceScale;
 
 	if (dragPoint >= 0 && dragHandle > 0)
 	{
@@ -1557,8 +1642,8 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 		//the box (Center + Size) follows the points
 		Array<Point<float>> points = dragStartPointsMeters;
 		if (dragPoint >= points.size()) return;
-		Rectangle<float> scene(snapshot.sceneSize.x, snapshot.sceneSize.y);
-		points.set(dragPoint, scene.getConstrainedPoint(points[dragPoint] + delta));
+		Rectangle<float> surface(snapshot.surfaceSize.x, snapshot.surfaceSize.y);
+		points.set(dragPoint, surface.getConstrainedPoint(points[dragPoint] + delta));
 		zone->setFreePointsMeters(points);
 	}
 	else if (dragCorner < 0)
@@ -1572,8 +1657,8 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 		Point<float> fixedCorner = corners[(dragCorner + 2) % 4];
 		Point<float> movedCorner = corners[dragCorner] + delta;
 
-		Rectangle<float> scene(snapshot.sceneSize.x, snapshot.sceneSize.y);
-		Rectangle<float> r = Rectangle<float>(fixedCorner, movedCorner).getIntersection(scene);
+		Rectangle<float> surface(snapshot.surfaceSize.x, snapshot.surfaceSize.y);
+		Rectangle<float> r = Rectangle<float>(fixedCorner, movedCorner).getIntersection(surface);
 
 		zone->size->setPoint(r.getWidth(), r.getHeight());
 		zone->center->setPoint(r.getCentre());
@@ -1593,6 +1678,12 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
 {
+	if (cameraDrag != 0)
+	{
+		cameraDrag = 0;
+		return;
+	}
+
 	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
 	{
 		int personId = slotDragPersonId >= 0 ? slotDragPersonId : getPersonAt(e.position);
@@ -1655,6 +1746,11 @@ void TrackingMonitorPanel::addZone(SpatialZone* z, bool select)
 		return;
 	}
 
+	//in the surface shown
+	sm->surfaceManager.setupTarget(z->surfaceTarget);
+	if (model.surfaceIndex >= 0)
+		if (ControllableContainer* surface = model.surfaces[model.surfaceIndex].surface.get()) z->surfaceTarget->setValueFromTarget(surface);
+
 	sm->zoneManager.addItem(z);
 	if (select) z->selectThis();
 	timerCallback();
@@ -1669,7 +1765,7 @@ void TrackingMonitorPanel::createZoneAt(Point<float> positionMeters)
 
 void TrackingMonitorPanel::createZone()
 {
-	addZone(new SpatialZone(), false); //a new zone starts at the center of the scene
+	addZone(new SpatialZone(), false); //a new zone starts at the center of the surface
 }
 
 void TrackingMonitorPanel::showZoneColorEditor(SpatialZone* zone, Point<int> position)
@@ -1697,6 +1793,13 @@ void TrackingMonitorPanel::showColorEditor(Inspectable* owner, ColorParameter* c
 void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 {
 	if (drawingFreeShape || drawingBoxShape >= 0 || Time::getMillisecondCounter() - drawFinishedMs < 500) return;
+
+	if (view3D && topViewRect.contains(e.getPosition()))
+	{
+		camera3D.fitted = false;
+		repaint(topViewRect);
+		return;
+	}
 
 	//double click on a slot chip : rename the slot
 	int chipIndex = getSlotChipAt(e.getPosition());
@@ -1727,7 +1830,7 @@ void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 	ZoneHit hit = hitTest(e.position);
 	if (hit.zoneIndex < 0) return;
 
-	Rectangle<float> label = toScreen(zones[hit.zoneIndex].bounds).getIntersection(sceneScreenRect.expanded(2)).reduced(5, 3).withHeight(16);
+	Rectangle<float> label = toScreen(zones[hit.zoneIndex].bounds).getIntersection(surfaceScreenRect.expanded(2)).reduced(5, 3).withHeight(16);
 	if (!label.expanded(0, 3).contains(e.position)) return;
 
 	Rectangle<int> r = label.withWidth(jmax(label.getWidth(), 140.0f)).expanded(2, 3).toNearestInt();
@@ -1784,7 +1887,7 @@ void TrackingMonitorPanel::showContextMenu(SpatialZone* zone, Point<int> clickPo
 
 	if (m.getNumItems() == 0) return;
 
-	Point<float> clickMeters = sceneScale > 0 ? (clickPosition.toFloat() - sceneScreenRect.getTopLeft()) / sceneScale : Point<float>();
+	Point<float> clickMeters = surfaceScale > 0 ? (clickPosition.toFloat() - surfaceScreenRect.getTopLeft()) / surfaceScale : Point<float>();
 	WeakReference<ControllableContainer> zoneRef(zone);
 	WeakReference<Component> panelRef(this);
 	m.showMenuAsync(PopupMenu::Options(), [zoneRef, panelRef, clickMeters, clickPosition](int result)
@@ -1858,12 +1961,13 @@ void TrackingMonitorPanel::showPointMenu(SpatialZone* zone, int pointIndex, Poin
 
 Point<float> TrackingMonitorPanel::toMeters(Point<float> screen) const
 {
-	if (sceneScale <= 0) return Point<float>();
-	return Rectangle<float>(snapshot.sceneSize.x, snapshot.sceneSize.y).getConstrainedPoint((screen - sceneScreenRect.getTopLeft()) / sceneScale);
+	if (surfaceScale <= 0) return Point<float>();
+	return Rectangle<float>(snapshot.surfaceSize.x, snapshot.surfaceSize.y).getConstrainedPoint((screen - surfaceScreenRect.getTopLeft()) / surfaceScale);
 }
 
 void TrackingMonitorPanel::startFreeShapeDrawing()
 {
+	setView3D(false);
 	drawingBoxShape = -1;
 	drawingFreeShape = true;
 	drawPoints.clear();
@@ -1903,6 +2007,7 @@ void TrackingMonitorPanel::cancelFreeShapeDrawing()
 
 void TrackingMonitorPanel::startBoxDrawing(int boxShape)
 {
+	setView3D(false);
 	drawingFreeShape = false;
 	drawingBoxShape = boxShape;
 	boxDragging = false;
@@ -1949,7 +2054,7 @@ void TrackingMonitorPanel::paintBoxDrawing(Graphics& g)
 	if (boxDragging)
 	{
 		Graphics::ScopedSaveState clipState(g);
-		g.reduceClipRegion(sceneScreenRect.expanded(2).getSmallestIntegerContainer());
+		g.reduceClipRegion(surfaceScreenRect.expanded(2).getSmallestIntegerContainer());
 
 		Rectangle<float> r = toScreen(Rectangle<float>(boxStart, boxEnd));
 		g.setColour(HIGHLIGHT_COLOR.withAlpha(.15f));
@@ -1973,7 +2078,7 @@ void TrackingMonitorPanel::paintDrawingHelp(Graphics& g, const String& text)
 {
 	using namespace TrackingMonitorStyle;
 
-	Rectangle<float> helpR = sceneScreenRect.withHeight(22).reduced(4, 2);
+	Rectangle<float> helpR = surfaceScreenRect.withHeight(22).reduced(4, 2);
 	g.setColour(panelBg.withAlpha(.85f));
 	g.fillRoundedRectangle(helpR, 3);
 	g.setColour(TEXT_COLOR);
@@ -2019,12 +2124,12 @@ void TrackingMonitorPanel::paintFreeShapeDrawing(Graphics& g)
 	using namespace TrackingMonitorStyle;
 
 	Graphics::ScopedSaveState clipState(g);
-	g.reduceClipRegion(sceneScreenRect.expanded(handleSize).getSmallestIntegerContainer());
+	g.reduceClipRegion(surfaceScreenRect.expanded(handleSize).getSmallestIntegerContainer());
 
 	Array<Point<float>> screen;
-	for (auto& pm : drawPoints) screen.add(sceneScreenRect.getTopLeft() + pm * sceneScale);
+	for (auto& pm : drawPoints) screen.add(surfaceScreenRect.getTopLeft() + pm * surfaceScale);
 
-	bool mouseInScene = sceneScreenRect.contains(drawMouse);
+	bool mouseInSurface = surfaceScreenRect.contains(drawMouse);
 	bool canClose = screen.size() >= 3 && screen[0].getDistanceFrom(drawMouse) <= handleSize + 2;
 
 	//placed segments, then the next one following the mouse
@@ -2036,7 +2141,7 @@ void TrackingMonitorPanel::paintFreeShapeDrawing(Graphics& g)
 		g.setColour(HIGHLIGHT_COLOR);
 		g.strokePath(p, PathStrokeType(2.0f));
 
-		if (mouseInScene)
+		if (mouseInSurface)
 		{
 			g.setColour(HIGHLIGHT_COLOR.withAlpha(.6f));
 			g.drawLine(Line<float>(screen.getLast(), canClose ? screen[0] : drawMouse), 1.0f);
@@ -2047,14 +2152,241 @@ void TrackingMonitorPanel::paintFreeShapeDrawing(Graphics& g)
 	{
 		Rectangle<float> ph = Rectangle<float>(handleSize + 2, handleSize + 2).withCentre(screen[i]);
 		if (i == 0 && screen.size() >= 3) ph = ph.expanded(canClose ? 4.0f : 2.0f); //the first point closes the shape
-		g.setColour(i == 0 && canClose ? HIGHLIGHT_COLOR : sceneBg);
+		g.setColour(i == 0 && canClose ? HIGHLIGHT_COLOR : surfaceBg);
 		g.fillEllipse(ph);
 		g.setColour(HIGHLIGHT_COLOR);
 		g.drawEllipse(ph, 2.0f);
 	}
 
-	//help line on top of the scene
+	//help line on top of the surface
 	String help = drawPoints.size() < 3 ? "Click to add points (at least 3)" : "Click the first point, double click or press Enter to close";
 	help += sep + "Backspace : remove the last point" + sep + "Esc : cancel";
 	paintDrawingHelp(g, help);
+}
+
+void TrackingMonitorPanel::setView3D(bool on)
+{
+	if (view3D == on) return;
+	view3D = on;
+	if (on) model3D.update(getSpatialModule(), -1);
+	updateSurfaceEditors();
+	cameraDrag = 0;
+	hoveredZone = -1;
+	repaint();
+}
+
+void TrackingMonitorPanel::paintViewSwitch(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	if (viewSwitchRect.isEmpty()) return;
+	Rectangle<float> r = viewSwitchRect.toFloat();
+	drawChip(g, r, false);
+
+	Rectangle<float> half2D = r.withWidth(r.getWidth() / 2), half3D = half2D.withX(half2D.getRight());
+	g.setColour(activeColor.withAlpha(.25f));
+	g.fillRoundedRectangle((view3D ? half3D : half2D).reduced(2), 3);
+
+	g.setFont(Font(12.0f, Font::bold));
+	g.setColour(view3D ? dimText : activeText);
+	g.drawText("2D", half2D, Justification::centred);
+	g.setColour(view3D ? activeText : dimText);
+	g.drawText("3D", half3D, Justification::centred);
+}
+
+void TrackingMonitorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
+{
+	if (!view3D || !topViewRect.contains(e.getPosition()))
+	{
+		Component::mouseWheelMove(e, wheel);
+		return;
+	}
+	camera3D.zoom(std::pow(1.15f, wheel.deltaY * 4));
+	repaint(topViewRect);
+}
+
+void TrackingMonitorPanel::showSurfaceMenu()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	PopupMenu menu;
+	menu.addSectionHeader("Surface shown in 2D");
+	for (int i = 0; i < model.surfaces.size(); i++)
+	{
+		auto& s = model.surfaces.getReference(i);
+		String size = s.size.x > 0 ? String(s.size.x, 1) + " x " + String(s.size.y, 1) + " m" : String("no size");
+		menu.addItem(i + 1, s.name + "   (" + size + ", " + String(s.personCount) + " people)", true, i == model.surfaceIndex);
+	}
+	menu.addSeparator();
+	menu.addItem(-1, "Show the Surfaces settings");
+
+	menu.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(surfaceChipRect)), [this](int result)
+		{
+			SpatialModule* sm = getSpatialModule();
+			if (sm == nullptr || result == 0) return;
+			if (result == -1)
+			{
+				sm->surfaceManager.selectThis();
+				return;
+			}
+			shownSurface = result - 1;
+			hoveredZone = -1;
+			timerCallback();
+		});
+}
+
+void TrackingMonitorPanel::updateSurfaceEditors()
+{
+	bool show = view3D && hasModule && !topViewRect.isEmpty();
+	SpatialModule* sm = show ? getSpatialModule() : nullptr;
+
+	//same surfaces as the editors : only the names and colors change
+	bool same = sm != nullptr && sm->surfaceManager.items.size() == surfaceEditors.size();
+	if (same)
+		for (int i = 0; i < surfaceEditors.size(); i++)
+			if (surfaceEditors[i]->surface.get() != sm->surfaceManager.items[i]) same = false;
+
+	if (same)
+	{
+		for (int i = 0; i < surfaceEditors.size(); i++)
+		{
+			surfaceEditors[i]->name = sm->surfaceManager.items[i]->niceName;
+			surfaceEditors[i]->color = sm->surfaceManager.items[i]->itemColor->getColor();
+			surfaceEditors[i]->slotsOn = sm->surfaceManager.items[i]->playerSlots.enabled->boolValue();
+		}
+		return;
+	}
+
+	surfaceEditors.clear();	// the parameter UIs go with them
+	if (sm != nullptr)
+	{
+		for (auto& s : sm->surfaceManager.items)
+		{
+			SurfaceEditor* e = new SurfaceEditor();
+			e->surface = s;
+			e->name = s->niceName;
+			e->color = s->itemColor->getColor();
+			for (auto& o : openSurfaces) if (o.get() == s) e->open = true;
+			e->slotsOn = s->playerSlots.enabled->boolValue();
+			e->position.reset(s->position->createDefaultUI());
+			e->rotation.reset(s->rotation->createDefaultUI());
+			addAndMakeVisible(e->position.get());
+			addAndMakeVisible(e->rotation.get());
+			surfaceEditors.add(e);
+		}
+	}
+	layoutSurfaceEditors();
+	repaint();
+}
+
+void TrackingMonitorPanel::layoutSurfaceEditors()
+{
+	surfacesPanelRect = Rectangle<int>();
+	surfacesHeaderRect = Rectangle<int>();
+	if (surfaceEditors.isEmpty() || topViewRect.isEmpty()) return;
+
+	//folded : the header only ; unfolded : one line per surface, its Position and Rotation when that surface is unfolded too
+	const int headerHeight = 22, rowHeight = 20, nameHeight = 20, gap = 6, labelWidth = 62;
+	int height = headerHeight;
+	if (surfacesPanelOpen)
+		for (auto& e : surfaceEditors) height += nameHeight + (e->open ? rowHeight * 2 + gap : 0);
+	height += surfacesPanelOpen ? gap : 0;
+	int width = surfacesPanelOpen ? 380 : 150;
+	surfacesPanelRect = Rectangle<int>(topViewRect.getX() + 8, topViewRect.getY() + 8, jmin(width, topViewRect.getWidth() - 16), jmin(height, topViewRect.getHeight() - 40));
+
+	Rectangle<int> r = surfacesPanelRect.reduced(8, 0);
+	surfacesHeaderRect = r.removeFromTop(headerHeight);
+	for (auto& e : surfaceEditors)
+	{
+		bool shown = surfacesPanelOpen && r.getHeight() >= nameHeight;
+		e->nameRect = shown ? r.removeFromTop(nameHeight) : Rectangle<int>();
+		e->slotsRect = shown ? e->nameRect.removeFromRight(66).reduced(0, 1) : Rectangle<int>();
+		bool fits = shown && e->open && r.getHeight() >= rowHeight * 2;
+		if (fits)
+		{
+			Rectangle<int> pos = r.removeFromTop(rowHeight);
+			Rectangle<int> rot = r.removeFromTop(rowHeight);
+			r.removeFromTop(gap);
+			e->positionLabelRect = pos.removeFromLeft(labelWidth);
+			e->rotationLabelRect = rot.removeFromLeft(labelWidth);
+			e->position->setBounds(pos.reduced(0, 1));
+			e->rotation->setBounds(rot.reduced(0, 1));
+		}
+		e->position->setVisible(fits);
+		e->rotation->setVisible(fits);
+	}
+}
+
+static void paintFoldArrow(Graphics& g, Rectangle<float> r, bool open)
+{
+	Path p;
+	Point<float> c = r.getCentre();
+	if (open) p.addTriangle(c.x - 4, c.y - 2, c.x + 4, c.y - 2, c.x, c.y + 3);
+	else p.addTriangle(c.x - 2, c.y - 4, c.x - 2, c.y + 4, c.x + 3, c.y);
+	g.fillPath(p);
+}
+
+void TrackingMonitorPanel::paintSurfacesPanel(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+	if (surfacesPanelRect.isEmpty()) return;
+
+	g.setColour(columnBg.withAlpha(.9f));
+	g.fillRoundedRectangle(surfacesPanelRect.toFloat(), 4);
+	g.setColour(borderColor);
+	g.drawRoundedRectangle(surfacesPanelRect.toFloat().reduced(.5f), 4, 1);
+
+	Rectangle<float> h = surfacesHeaderRect.toFloat();
+	g.setColour(dimText);
+	paintFoldArrow(g, h.removeFromLeft(12), surfacesPanelOpen);
+	g.setFont(Font(12.0f, Font::bold));
+	g.setColour(TEXT_COLOR);
+	g.drawText("Surfaces (" + String(surfaceEditors.size()) + ")", h.withTrimmedLeft(4), Justification::centredLeft, true);
+
+	for (auto& e : surfaceEditors)
+	{
+		if (e->nameRect.isEmpty()) continue;
+		Rectangle<float> n = e->nameRect.toFloat();
+		g.setColour(dimText);
+		paintFoldArrow(g, n.removeFromLeft(12), e->open);
+		g.setColour(e->color);
+		g.fillRoundedRectangle(Rectangle<float>(8, 8).withCentre(Point<float>(n.getX() + 8, n.getCentreY())), 2);
+		g.setFont(Font(13.0f, Font::bold));
+		g.setColour(TEXT_COLOR);
+		g.drawText(e->name, n.withTrimmedLeft(18), Justification::centredLeft, true);
+		paintOutputChip(g, e->slotsRect, e->slotsOn, false, "Slots");
+		if (!e->position->isVisible()) continue;
+		g.setFont(Font(12.0f));
+		g.setColour(dimText);
+		g.drawText("Position", e->positionLabelRect, Justification::centredLeft);
+		g.drawText("Rotation", e->rotationLabelRect, Justification::centredLeft);
+	}
+}
+
+bool TrackingMonitorPanel::handleSurfacesPanelClick(Point<int> pos)
+{
+	if (!surfacesPanelRect.contains(pos)) return false;
+
+	if (surfacesHeaderRect.contains(pos)) surfacesPanelOpen = !surfacesPanelOpen;
+	for (auto& e : surfaceEditors)
+	{
+		if (e->slotsRect.contains(pos))
+		{
+			if (SpatialSurface* s = dynamic_cast<SpatialSurface*>(e->surface.get()))
+			{
+				BoolParameter* on = s->playerSlots.enabled;
+				on->setUndoableValue(on->boolValue(), !on->boolValue());
+				e->slotsOn = on->boolValue();
+			}
+			continue;
+		}
+		if (!e->nameRect.contains(pos)) continue;
+		e->open = !e->open;
+		openSurfaces.removeAllInstancesOf(e->surface);
+		if (e->open) openSurfaces.add(e->surface);
+	}
+	layoutSurfaceEditors();
+	repaint();
+	return true;
 }

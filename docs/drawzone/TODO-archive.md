@@ -1,4 +1,4 @@
-# Archive du TODO — DrawZone, Phases 0 à 2, v0.1 à v0.5, revue du 28/10
+# Archive du TODO — DrawZone, Phases 0 à 2, v0.1 à v0.6, revues du 28/10 et du 06/11, journal du 23 au 26/10
 
 Sorti de `TODO.md` le 29/10/2026 (tâche d'optimisation 25) pour qu'il reste court.
 Contenu inchangé, rien n'a été réécrit. v0.5 et revue du 28/10 ajoutées le 05/11/2026. Travail en cours : `TODO.md`.
@@ -732,3 +732,280 @@ Recommandation : 1, 2, 4, 5 et 21 au début de la brique PSN (même code) ;
 | 23 | ⏸️ reportée | Limite connue | Tracking Monitor | N'affiche que le premier module Cockpit | Reportée : c'est une fonction (choix du module dans le Monitor), à décider avec Vincent dans l'idée « Tracking Monitor plus user friendly » | Moyen |
 | 24 | ✅ 29/10 | Doc en double | `docs/drawzone/JOURNAL.md` | Journal arrêté au 26/10, doublon de `TODO.md` | Le figer avec un renvoi vers `TODO.md`, ou le supprimer | Petit |
 | 25 | ✅ 29/10 | Doc | `TODO.md` (≈ 570 lignes) | Devient long à relire | Archiver les versions terminées (v0.1 à v0.4) dans un fichier à part | Petit |
+
+---
+
+## Journal de bord du 23 au 26/10/2026 (ex-`JOURNAL.md`, versé ici le 06/11/2026, contenu inchangé)
+
+
+> **Figé le 29/10/2026** (tâche d'optimisation 24) : il faisait doublon avec
+> `TODO.md`, qui garde désormais seul la trace de chaque séance (versions
+> terminées : `docs/drawzone/TODO-archive.md`). Ce journal reste pour l'historique
+> du 23 au 26/10/2026.
+
+Résumé de chaque séance de travail : ce qui a été fait, les problèmes
+rencontrés, où on s'est arrêté.
+
+---
+
+### 26/10/2026 — MCP branché, réception Augmenta et Tracking Monitor
+
+- MCP : jeton lu dans le presse-papier (après 3 échecs avec `setx`),
+  `.mcp.json` dans `D:\DRAWZONE` (hors dépôt, jeton non écrit). Claude Code
+  relié à Chataigne en **lecture seule** (profil Inspect, `"readOnly": true`).
+  Raté : 1re connexion refusée car Chataigne n'était pas lancé.
+- Module Spatial vide testé avec Fusion : il reçoit ~50 messages/s.
+- Demande de Vincent : une fenêtre de monitoring plutôt que des logs qui
+  défilent. Plan en 3 briques validé :
+  - **A** : décodage Augmenta (`/scene`, `/object/enter|update|leave`) dans
+    une liste de personnes indépendante du protocole (`TrackingData`),
+    valeur « Person Count », liste vidée quand la source est muette
+    (> 1 s, choix de Vincent). Validée ;
+  - **B** : panneau « Tracking Monitor » (menu Windows), en-tête d'état et
+    tableau rafraîchis 10 fois/s. Validé ;
+  - **C** : vue de dessus — prochaine étape.
+- Ratés : `build_dev.bat` ne se lance pas depuis le terminal de Claude
+  (MSBuild appelé directement), `FontOptions` (JUCE 8) absent de notre
+  JUCE 7. Tous notés dans `TODO.md`.
+- Règle confirmée par Vincent : une brique = un cycle compilation → test,
+  jamais deux changements testés ensemble.
+- Suite de la soirée :
+  - vue de dessus dans le Tracking Monitor (axes Augmenta vérifiés :
+    origine en haut à gauche, y vers le bas) ;
+  - **zones rectangulaires** (liste « Zones », valeurs Presence et Person
+    Count par zone, sauvegardées avec la session), dessinées dans le
+    moniteur, bornes calées sur la scène reçue ;
+  - **édition à la souris** dans le moniteur : déplacer, poignées,
+    Ctrl+Z, clic droit Create / Duplicate / Delete / Hide, bouton « Show
+    hidden zones ».
+- Ratés : plantage du moniteur avec une zone de 22 millions de mètres
+  (borne infinie) → bornes = scène + dessin découpé ; compilation qui
+  croyait tout à jour après un échec → recompilation complète.
+- Règles ajoutées : tout ce qui est visible dans Chataigne en anglais ;
+  sessions de test dans `D:\DRAWZONE\ChataigneProject\` ; messages de
+  Claude plus courts.
+- Idées notées : moniteur plus « user friendly », vue 2D en Spout / NDI.
+- Arrêt : tout est committé en local sur `feature/spatial-module`, rien
+  poussé. Reprise : objectif v0.1 atteint (booléen « présence ») → bilan
+  v0.1, puis tag `v0.1.0` à décider avec Vincent.
+
+---
+
+### 24/10/2026 — Première session dans VS Code avec Claude Code
+
+- Lecture de `CLAUDE.md`, `JOURNAL.md`, `ROADMAP.md` et `TODO.md`, résumé du
+  projet validé par Vincent.
+- Petit raté : `TODO.md` n'a pas été trouvé à la première lecture, car il a été
+  ajouté au dépôt pendant la séance. Relu ensuite.
+- `TODO.md` devient le **document de traçabilité** du projet (réussites,
+  échecs et corrections, idées). Section « Idées » ajoutée, règle ajoutée
+  dans `CLAUDE.md`.
+- `D:\DRAWZONE\DrawZone_old` : déjà supprimé.
+- GitHub Actions : la CI de Ben tournait encore (run déclenché par notre
+  push) → désactivée par Vincent. Push bloqué (`NE_PAS_PUSHER`) sur les
+  sous-modules et JUCE. Règles « ne pas déranger Ben » dans `CLAUDE.md`.
+- Vocabulaire : « le repo » = `D:\DRAWZONE` ; captures dans
+  `D:\DRAWZONE\screenshots\` (hors Git).
+- v0.1 démarrée :
+  - protocole Augmenta v2 documenté (ordre des arguments pris dans le
+    plugin officiel Unreal) ; décision **D12** : `SpatialModule` hérite de
+    `OSCModule` ; idée « slots de joueurs » placée en v0.2 ;
+  - branche `feature/spatial-module` : module Spatial vide (catégorie
+    « DrawZone »), enregistré, `.jucer` réenregistré, compilé (0 erreur) ;
+  - découverte : notre build envoyait des données aux serveurs de Ben
+    (mises à jour, rapports de plantage, statistiques Matomo, conversion
+    de fichiers) → bloc `// DrawZone:` dans `Source/Main.cpp`, compilé.
+- Workflow de test : Claude lance Chataigne et lit les logs (fichier
+  « Save logs » OK). Branchement MCP sur le serveur de Ben en cours :
+  serveur OK, **jeton pas encore enregistré** (voir `TODO.md`).
+- Ratés : `sed` qui convertit les fins de ligne du `.jucer`, outil
+  d'édition qui uniformise `Main.cpp`, Projucer `--resave` qui rend la main
+  trop tôt, consigne `setx` ambiguë. Tous notés dans `TODO.md`.
+- Arrêt de séance : rien de la v0.1 n'est committé (branche
+  `feature/spatial-module`, modifications locales). Reprise : jeton MCP,
+  puis test du module Spatial vide.
+
+---
+
+### 23/10/2026 — Conception et v0.0 (dans claude.ai, avant VS Code)
+
+#### Conception
+
+- Idée de départ : un outil pour dessiner des zones d'interaction sur des
+  surfaces, alimenté par des systèmes de tracking (Augmenta, Naostage,
+  ZacTrack) via OSC, PSN, TUIO, avec une logique conditionnelle et des
+  sorties OSC (booléens, pourcentages, durées).
+- Évolution : logique « façon game design », inspirée des Blueprints d'Unreal.
+- Choix de partir de Chataigne (voir DECISIONS.md D1, D2), Windows d'abord,
+  2D avant 3D.
+- Nom de projet : **DrawZone** (provisoire).
+
+#### Installation (v0.0)
+
+1. Build Tools VS 2022 installés (le lien `aka.ms` ne répondait pas dans
+   Firefox → page « older downloads » / winget).
+2. Fork GitHub `vincethpiafff/DrawZone`, clone de JUCE `develop-local`.
+3. **Premier échec de compilation** : `JucePrecompiledHeader_Release.cpp`
+   introuvable. Cause : le projet VS de Ben est généré pour sa machine
+   (`D:\Projects\Dev\JUCE`) et les en-têtes précompilés ne sont pas versionnés.
+   → Compilation du Projucer.
+4. **Projucer bloqué** : « Incompatible License and Splash Screen Setting ».
+   → Lecture du code source du Projucer : recompilation avec
+   `JUCER_ENABLE_GPL_MODE=1`.
+5. **1000 lignes parasites** dans `BinaryData` après enregistrement. Cause :
+   conversion LF → CRLF de Git for Windows. → Ancien clone renommé
+   `DrawZone_old`, nouveau clone avec `core.autocrlf=false`. Ensuite, un seul
+   fichier modifié : le `.vcxproj`.
+6. **Deuxième échec** : `WebView2.h` introuvable (paquet NuGet non restauré
+   sans IDE). → Copie du paquet déjà présent dans `Builds/VisualStudio2022_CI/packages`
+   (même version 1.0.902.49).
+7. **Compilation réussie** (0 erreur, 2 avertissements du code de Ben).
+8. **DLL manquantes** au lancement (JoyShockLibrary, Kinect20, Servus, SDL2).
+   → Extraction du pack de dépendances de Ben à côté de l'exe.
+9. **Chataigne démarre.** Messages `DNSServiceDiscovery error -65563` sans
+   conséquence (Bonjour absent).
+10. **Test Augmenta Fusion réussi** : messages reçus sur le module OSC, port 12000.
+11. Commit `3d851a53` sur `develop`, tag `v0.0.0`, poussés sur GitHub.
+
+#### Fin de séance
+
+- Rédaction de la documentation de transfert (ce dossier, `CLAUDE.md`,
+  `.github/README.md`) et du script `Tools/drawzone/setup_windows.bat`.
+- Reste à faire :
+  - vérifier que les GitHub Actions sont désactivées sur le fork ;
+  - supprimer `D:\DRAWZONE\DrawZone_old` (plus utile) ;
+  - démarrer la v0.1 dans VS Code avec Claude Code.
+
+---
+
+## v0.6 (terminée le 06/11/2026) et revue du 06/11/2026
+
+Sorti de `TODO.md` le 06/11/2026 à la clôture, contenu inchangé.
+
+### v0.6, viewport 3D
+
+But (💬 31/10) : plusieurs scènes reçues de Fusion, placées en 3D par DrawZone ;
+d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes simples.
+
+- ✅ 31/10 étude, sans code. Une seule source Augmenta reçoit l'OSC (un port par
+  module) ; `/scene` v2 sans nom ; piste non vérifiée : un port par scène Fusion.
+- Briques proposées : 1 vue 3D lecture seule (dessin JUCE du Monitor, sans OpenGL) ·
+  2 source Augmenta avec son port · 3 placement 3D par scène · 4 formes simples ·
+  5 test plusieurs scènes Fusion.
+- 💬 05/11 Vincent : test à 2 systèmes de tracking → bonus (cas réel) ; tests de dév avec
+  Fusion ; module TrackSimu en v0.9, après le graphe nodal (D16).
+- 💬 05/11 Vincent : briques 1 à 4 validées, zones **A** (chaque zone appartient à une scène).
+- ⬜ Vincent, avant la brique 2 : 2e scène Fusion, sortie OSC sur 12001 → capture.
+- ⏭️ 05/11 brique 1, code (branche `feature/viewport-3d`) : `ui/Viewport3DRenderer.h/.cpp` (sol + grille 1 m, axes,
+  zones au sol, personnes = ombre + corps + tête à leur hauteur, 1,7 m par défaut) ; bascule « 2D | 3D »
+  dans l'en-tête du Monitor ; 3D en lecture seule : glisser = orbite, clic droit = déplacer, molette = zoom,
+  double clic = recadrer ; dessiner une zone repasse en 2D ; `.jucer` + Projucer (+38 lignes).
+- ✅ 05/11 recompilation complète 0 erreur ; `run_checks.ps1` : PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4,
+  Augmenta 36 / 36 ; bascule visible (capture) ; logs propres. ❌ clic auto sur « 3D » : Windows refuse
+  le premier plan, clic parti ailleurs → pas d'automatisation de souris. ✅ Vincent : « ok », brique 1 validée.
+- ✅ 05/11 capture Fusion : 1 port par scène confirmé (12001 : `/scene` 8 x 3, `/fusion`, `/object/update` + `/extra`,
+  1 message par paquet, sans bundle) ; 213 msg/s expliqué (2 personnes x 2 messages x ≈ 48 Hz + `/scene` et `/fusion` à 10 Hz).
+- ⏭️ 05/11 brique 2, code : `Port` par source Augmenta (port du module → entrée du module, autre port → `OSCReceiver`
+  à elle) ; nouvelle source : port + 1, Id Offset + 100 ; recompilation complète 0 erreur.
+  ❌ tests 17/30, 3/6, 3/4, 14/36 : Port vaut 12000 par défaut, les copies de test mettent le module sur 12999,
+  donc la source ouvre 12000 (Fusion) et n'entend plus le simulateur. Même risque pour une ancienne session
+  dont l'entrée OSC n'est pas sur 12000. **Arrêt, décision avec Vincent.**
+- ✅ 05/11 💬 Vincent : option A. Case **Use Module Input** (cochée par défaut et pour les anciennes sessions ; Port grisé) ;
+  nouvelle source : décochée, port 12001+, Id Offset +100. Test ajouté (`check_sim.ps1`, 2e scène sur 12998, Offset 8 m).
+  Recompilation complète 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta **41 / 41**.
+  Test : les logs ignorent `CommunityModuleManager` (liste en ligne, « Failed to connect » le 05/11). 
+- ❌ 05/11 💬 Vincent : une source ajoutée arrive avec Use Module Input coché. Cause probable : le menu passe le JSON
+  de la source à `addItemInternal` quand plusieurs conteneurs sont sélectionnés (`addItemForSelected`), le test
+  `data.isVoid()` l'écartait. Correction : « nouvelle » = pas en chargement de fichier. Compilé 0 erreur ;
+  PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41 (le menu n'est pas testable en simulation).
+  ✅ Vincent : « OK », brique 2 validée.
+- 💬 05/11 Vincent, pour la brique 3 : en 2D, un sélecteur de la scène affichée (SOL ou MUR) ; en 3D, une liste
+  des scènes avec Position et Rotation X / Y / Z modifiables.
+- 💬 05/11 Vincent : option A, bloc **Scenes** (une source et une zone appartiennent à une scène).
+- ⏭️ 05/11 brique 3, code : `SpatialScene.h/.cpp` (Size Mode Auto / Manual, Size, Position et Rotation X / Y / Z,
+  Status) ; paramètre Scene (`TargetParameter`) dans chaque source et chaque zone, vide = 1re scène ; Use As Scene
+  par scène ; zones calculées avec les personnes de leur scène ; ancien bloc Scene caché, repris dans la 1re scène ;
+  Monitor : pastille de scène dans l'en-tête (menu), 2D filtrée sur la scène, nouvelle zone dans la scène affichée ;
+  3D : chaque scène à sa place, liste des scènes avec Position / Rotation modifiables ; sortie vidéo = 1re scène.
+- ❌ 05/11 Chataigne plante au démarrage (`SpatialSceneManager::addItemInternal`, journal du CrashHandler dans
+  `%APPDATA%Chataigneog_*.txt`) : `itemColor` nul, `setHasCustomColor(true)` oublié → corrigé.
+- ✅ 05/11 recompilation 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41. Tests : libellé
+  « Waiting for the scene size » accepté, logs `CommunityModuleManager` et `HelpBox` ignorés (internet, pas DrawZone).
+  ⬜ test de Vincent. Limites : slots tenus et sortie PSN sans notion de scène.
+- ✅ 05/11 reprise : 1er passage PSN 28 / 30 ×2, Augmenta 40 : session enregistrée avec Spout et NDI décochés, donc
+  Resolution vide (calculée seulement si sortie active). `make_psn_session.ps1` coche Spout dans chaque copie →
+  PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41.
+- ✅ 05/11 💬 Vincent : brique 3 validée → `50c515de`.
+- ✅ 05/11 💬 Vincent : en 3D, personne = cercle + croix sur le centroïde (plus de corps ni de tête) ; compilé 0 erreur ;
+  ✅ Vincent : « ok ». Tests en simulation désormais seulement si logique ou données changent (`CLAUDE.md`).
+- ⏸️ 05/11 💬 Vincent : brique 4 (formes / zones en 3D) → bonus, si un jour un tracking 3D (ZacTrack, lidar 3D).
+- 💬 05/11 Vincent : scène → **surface** (un plan du monde réel : sol, mur) ; slots par surface ; PSN = nom du slot / tracker
+  + surface puis valeurs, format « JOUEUR 1 (SOL) », n° = centaine par surface (SOL 1.., MUR 101..) ; 1 sortie vidéo
+  par surface, flux nommé comme la surface.
+- ✅ 06/11 S1-S4 : Scene → Surface partout (code, Chataigne, tests, ROADMAP, D17) ; Player Slots et Video Output dans chaque
+  surface (Values > Slots > <surface>, flux Spout / NDI = nom de la surface, champ Stream Name retiré) ; valeur Surface par
+  personne ; PSN « JOUEUR 1 (SOL) », SOL 1.., MUR 101.. ; anciennes sessions reprises (blocs Scene, Scenes, Player Slots,
+  Video Output → 1re surface). Bug corrigé : options Display de la sortie vidéo non enregistrées.
+  Recompilation complète 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 46 / 46 (+5 : MUR, ses slots,
+  sa sortie vidéo) ; test ponctuel PSN : SOL → 1 « JOUEUR 1 (SOL) », MUR → 101 « Slot 1 (MUR) ». Copies de test : surfaces
+  SOL + MUR fixes. ⚠️ adresses changées : Values > Slots > <surface> > <slot> (State Machine à repointer). ⬜ test de Vincent.
+- ⏭️ 06/11 💬 Vincent : slots on/off par surface (off → PSN avec l’id du tracking, conflit d’id signalé dans le Status) ;
+  vue 3D : liste des surfaces repliable (en-tête « Surfaces », chaque surface dépliable). Test `check_psn_surfaces.ps1`
+  (2 surfaces, MUR slots on → 60101, off → 1005).
+- ✅ 06/11 brique 5 : deux scènes Fusion reçues en même temps, SOL sur 12000 et MUR sur 12001 (MCP : 215 et 214 msg/s,
+  2 personnes chacune, tailles 8 x 4,5 et 8 x 3) ; 💬 Vincent : « ok commit et on clôture ».
+
+### Étape d'optimisation, revue du 06/11/2026
+
+Relu sans rien modifier : `spatial/` (≈ 7 300 lignes), `Tools/drawzone/`, tous les `.md`. Suite des numéros de la revue
+du 28/10 (archive). Recommandation : B4 à décider d'abord, puis B5, B6, le nettoyage 26 + 29 à 34, les docs D1 à D6 à
+la clôture de la v0.6, 28 ensuite ; 27 (gros) plus tard.
+
+#### 🐞 Bugs
+
+| # | État | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|
+| B4 | ✅ 06/11 | `SpatialPSNOutput` | Numéros PSN qui se chevauchent : slots 1.., 101.. ; ids du tracking d'une surface sans slots : Augmenta 101.. (Id Offset par défaut), PSN 1.. → la personne n'est pas envoyée (signalé dans le Status) | 💬 Vincent : plage haute. Slots 60001.. (60101.. pour la 2e surface), tests mis à jour | Petit |
+| B5 | ✅ 06/11 | `SpatialVideoOutput::timerCallback` | Spout / NDI continuent quand le module Cockpit est désactivé (la sortie PSN, elle, s'arrête) | Fait : rien n'est envoyé, Resolution « Nothing sent : the module is disabled » | Petit |
+| B6 | ✅ 06/11 | Surfaces | Deux surfaces de même nom : deux flux Spout / NDI identiques, adresses en double dans Values > Slots | Fait : avertissement dans le Status de la surface | Petit |
+
+#### 🟠 Nettoyage et doublons
+
+| # | État | Type | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|---|
+| 26 | ✅ 06/11 | Reste de la 1re version | `TrackingData`, `SpatialModule::updateZones` | Taille « de scène » unique gardée dans `TrackingData` (`getSurfaceSize` jamais appelé) ; `zonesSurfaceSize` recopiée sans raison | Retirer de `TrackingData` ; une zone ajoutée par l'Inspector se centre sur sa surface | Petit |
+| 27 | ⬜ plus tard | Taille | `TrackingMonitorPanel.cpp` (2 300 lignes) | Un seul fichier pour la vue 2D, l'édition, la colonne, les slots, la 3D | Le couper en 4 fichiers (édition des zones, colonne, barre des slots, panneau 3D) | Gros |
+| 28 | ✅ 06/11 | Doublon | `Tools/drawzone/sim/*.ps1` | `Check`, `Near`, `Sim`, client MCP recopiés dans 6 scripts ; fermer / ouvrir Chataigne dans `run_checks` et `build_and_check` | Un `common.ps1` partagé | Moyen |
+| 29 | ✅ 06/11 | Code mort | `SpatialModule::onControllableFeedbackUpdateInternal` | Ne fait qu'appeler la classe mère | Supprimer | Petit |
+| 30 | ✅ 06/11 | Lisibilité | `SpatialSourceManager::addItemInternal` | `if (maxOffset >= 0)` écrit deux fois de suite | Un seul bloc | Petit |
+| 31 | ✅ 06/11 | Rangement | `Viewport3DRenderer.cpp` | `Viewport3DDetail` coupé en deux par `Camera::pan` | Regrouper | Petit |
+| 32 | ✅ 06/11 | Commentaire | `SpatialZone.cpp` | Commentaire des bornes (« finite bounds… ») posé au-dessus de `contains()` | Le remettre près de `setBounds` | Petit |
+| 33 | ❌ 06/11 | Bruit | `build_dev.bat` | Chaque build affiche « 'C:\Program' is not recognized » (guillemets autour de vswhere) | Écartée : `build_dev.bat` est un fichier de Ben (règle : on n'y touche pas) et le message est sans effet, MSBuild est trouvé ensuite | Petit |
+| 34 | ✅ 06/11 | Robustesse | `AugmentaSource` (port propre) | Le thread réseau lit `niceName` sans verrou : copie de texte pendant un renommage | Garder le nom dans une copie protégée, mise à jour à 4 Hz | Petit |
+
+#### 📄 Fichiers .md (moins de lignes à relire, une seule source par sujet)
+
+| # | État | Fichier | Constat | Proposition | Effort |
+|---|---|---|---|---|---|
+| D1 | ✅ 06/11 | `.github/README.md` | Statut « v0.0.0 » faux ; tableau de version recopié de la ROADMAP ; lien vers le journal figé | Statut à jour, renvoi vers la ROADMAP au lieu du tableau | Petit |
+| D2 | ✅ 06/11 | `ROADMAP.md` | « Détail des prochaines versions » = v0.1 à v0.4, finies (≈ 60 lignes, déjà dans le CHANGELOG) | Supprimer ; garder tableau, bonus, points durs | Petit |
+| D3 | ✅ 06/11 | `CONTRIBUTING.md` / `CLAUDE.md` | Branches, fichiers à ne jamais commiter, fins de ligne, code de Ben écrits deux fois ; « spatial/ (prévu) » périmé | Une source : CONTRIBUTING pour les règles, CLAUDE.md garde le propre à Claude + renvoi | Moyen |
+| D4 | ✅ 06/11 | `JOURNAL.md` | Figé depuis le 29/10, encore lié depuis le README | Le verser dans `TODO-archive.md`, supprimer le fichier | Petit |
+| D5 | ✅ 06/11 | `TODO.md` | Partie v0.6 ≈ 70 lignes ; question « place du bloc Scene » périmée | À la clôture : v0.6 vers l'archive, question retirée | Petit |
+| D6 | ✅ 06/11 | `CHANGELOG.md`, `CLAUDE.md` | « Non publié » vide malgré la v0.6 ; CLAUDE.md dit « État : v0.5.0 » | Remplir à la clôture (tag v0.6.0) | Petit |
+
+- ✅ 06/11 revue faite (B4-B6, 26, 28-34, D1-D4) : recompilation complète 0 erreur (C4101 / C4206 de Ben) ; PSN 30 / 30 ×2,
+  Source IDs 6 / 6, Id Offset 4 / 4, 2 surfaces 5 / 5 ×2 (slots MUR on → 60101, off → 1005), Augmenta 46 / 46.
+  ❌ puis ✅ `make_psn_session.ps1` : variable `$surfaces` = paramètre `-Surfaces` (PowerShell ignore la casse) → `$surfacesJson`.
+  ⬜ test de Vincent, puis commit sur son accord.
+- ✅ 06/11 💬 Vincent : on / off des slots dans le viewport → case « Slots » dans la barre des slots (surface affichée) et sur
+  chaque ligne de la liste des surfaces en 3D. Compilé 0 erreur ; affichage seul, pas de test en simulation. ✅ Vincent : « ok tout bon ».
+- ✅ 06/11 commit `1924154c` (surfaces, slots on/off, panneau 3D, revue). Reste : brique 5 (test Fusion de Vincent), puis clôture.
+- ❌ 06/11 💬 Vincent : AUGMENTA 1 marche en Use Module Input, pas en Port 12000 ; AUGMENTA 2 l'inverse. Cause : 12000 déjà
+  ouvert par l'entrée OSC du module ; une seule source reçoit cette entrée. → 💬 « Port seul » : case Use Module Input retirée,
+  source sur le port de l'entrée OSC = entrée du module, autre port = ouvert par elle, même port = « Not used » ; anciennes
+  sessions converties (marque `drawzoneFormat` 2). Compilé 0 erreur ; pas de simulation (💬 : réservée aux intégrations de
+  features). MCP : AUGMENTA 1 « port 12000 (module input) », AUGMENTA 2 « port 12001 », 214 msg/s chacune. ✅ Vincent : « ok », commit `7073aed7`.
+- ✅ 06/11 clôture v0.6 (💬 « ok commit et on clôture », « push aussi ») : CHANGELOG 0.6.0, ROADMAP, README, CLAUDE.md ;
+  fusion `--no-ff` dans `develop`, tag `v0.6.0`, push vers `origin` (`develop`, `feature/viewport-3d`, tag). `upstream` non touché.
+

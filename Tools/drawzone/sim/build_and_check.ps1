@@ -12,17 +12,10 @@ param([switch]$Rebuild)
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
-$exe = Join-Path $root "Binaries\App\Chataigne.exe"
 $msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
 
-$running = Get-Process Chataigne -ErrorAction SilentlyContinue
-if ($running)
-{
-	$check = & (Join-Path $PSScriptRoot "check_sim.ps1") -ProjectOnly
-	if ($check -ne "saved") { "STOP : the session has unsaved changes ($check), Chataigne not closed"; exit 2 }
-	[void]$running.CloseMainWindow()
-	if (-not $running.WaitForExit(15000)) { "STOP : Chataigne did not close"; exit 2 }
-}
+. (Join-Path $PSScriptRoot "common.ps1")
+CloseChataigne
 
 & $msbuild (Join-Path $root "Builds\VisualStudio2022\Chataigne.sln") /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64 /p:WholeProgramOptimization=false /p:LinkTimeCodeGeneration=Default /m /v:minimal /nologo $(if ($Rebuild) { "/t:Rebuild" }) | Select-String -Pattern "error|warning C|LNK"
 if ($LASTEXITCODE -ne 0) { "STOP : build failed"; exit 1 }
