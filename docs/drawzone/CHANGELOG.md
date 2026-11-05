@@ -5,7 +5,9 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
-v0.6 : plusieurs surfaces (sol, mur…) placées dans une vue 3D, chacune avec ses
+## [0.6.0] - 2026-11-06
+
+Plusieurs surfaces (sol, mur…) placées dans une vue 3D, chacune avec ses
 zones, ses slots et sa sortie vidéo.
 
 ### Ajouté

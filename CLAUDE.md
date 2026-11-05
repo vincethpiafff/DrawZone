@@ -10,7 +10,7 @@ organicUI) : reçoit du tracking (Augmenta en OSC, PSN), dessine des zones
 Cœur : module **Spatial** dans le code, **Cockpit** à l'écran (D14), code dans
 `Source/Module/modules/spatial/` ; ses zones exposent des paramètres Chataigne.
 
-État : **v0.5.0** (31/10/2026 : entrée et sortie PSN, multi-sources). Suite : **v0.6**, viewport 3D.
+État : **v0.6.0** (06/11/2026 : surfaces sol / mur en 3D, slots et sortie vidéo par surface). Suite : **v0.7**, graphe nodal.
 
 ## Travailler avec Vincent
 
