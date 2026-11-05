@@ -22,6 +22,7 @@
 #include "SpatialZone.h"
 #include "PlayerSlots.h"
 #include "ui/TopViewRenderer.h"
+#include "ui/Viewport3DRenderer.h"
 #include "SpatialVideoOutput.h"
 #include "SpatialPSNOutput.h"
 

@@ -15,10 +15,18 @@ d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes s
   module) ; `/scene` v2 sans nom ; piste non vérifiée : un port par scène Fusion.
 - Briques proposées : 1 vue 3D lecture seule (dessin JUCE du Monitor, sans OpenGL) ·
   2 source Augmenta avec son port · 3 placement 3D par scène · 4 formes simples ·
-  5 test plusieurs scènes + 2 systèmes de tracking (ex. Fusion OSC + Naostage PSN).
-- ⬜ Vincent : valider les briques ; zone liée à une scène (A, recommandé, utile pour
-  un mur) ou commune au sol (B).
+  5 test plusieurs scènes Fusion.
+- 💬 05/11 Vincent : test à 2 systèmes de tracking → bonus (cas réel) ; tests de dév avec
+  Fusion ; module TrackSimu en v0.9, après le graphe nodal (D16).
+- 💬 05/11 Vincent : briques 1 à 4 validées, zones **A** (chaque zone appartient à une scène).
 - ⬜ Vincent, avant la brique 2 : 2e scène Fusion, sortie OSC sur 12001 → capture.
+- ⏭️ 05/11 brique 1, code (branche `feature/viewport-3d`) : `ui/Viewport3DRenderer.h/.cpp` (sol + grille 1 m, axes,
+  zones au sol, personnes = ombre + corps + tête à leur hauteur, 1,7 m par défaut) ; bascule « 2D | 3D »
+  dans l'en-tête du Monitor ; 3D en lecture seule : glisser = orbite, clic droit = déplacer, molette = zoom,
+  double clic = recadrer ; dessiner une zone repasse en 2D ; `.jucer` + Projucer (+38 lignes).
+- ✅ 05/11 recompilation complète 0 erreur ; `run_checks.ps1` : PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4,
+  Augmenta 36 / 36 ; bascule visible (capture) ; logs propres. ❌ clic auto sur « 3D » : Windows refuse
+  le premier plan, clic parti ailleurs → pas d'automatisation de souris. ✅ Vincent : « ok », brique 1 validée.
 
 ## ⬜ Questions ouvertes
 

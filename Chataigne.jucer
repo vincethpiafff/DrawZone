@@ -1467,6 +1467,10 @@
                     file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.cpp"/>
               <FILE id="dzTmHd" name="TrackingMonitorPanel.h" compile="0" resource="0"
                     file="Source/Module/modules/spatial/ui/TrackingMonitorPanel.h"/>
+              <FILE id="dzV3Cp" name="Viewport3DRenderer.cpp" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/Viewport3DRenderer.cpp"/>
+              <FILE id="dzV3Hd" name="Viewport3DRenderer.h" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/Viewport3DRenderer.h"/>
             </GROUP>
           </GROUP>
           <GROUP id="buttplugModule" name="buttplug">

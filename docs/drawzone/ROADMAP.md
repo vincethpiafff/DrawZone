@@ -14,9 +14,10 @@ Nom : le module « Spatial » s'affiche **Cockpit** depuis le 28/10/2026 (D14).
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
 | **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ✅ v0.4.0 (28/10/2026) |
 | **v0.5** | Entrée PSN, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | ✅ v0.5.0 (31/10/2026) |
-| **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ avec, en même temps, le test de l'interface avec plusieurs scènes et plusieurs systèmes de tracking en entrée (ex. Fusion en OSC + Naostage en PSN) |
+| **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ test avec plusieurs scènes Fusion (2 systèmes de tracking : bonus, D16) |
 | **v0.7** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
 | **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
+| **v0.9** | Module TrackSimu (D16) | Blobs simulés dans Chataigne : une ou plusieurs scènes 2D sur des plans X / Y / Z, déplacés à la main ou par des mouvements (marche humaine, toucher d'une surface) | |
 | **v1.0** | Stabilisation | Mode show, sauvegarde robuste, documentation | |
 | **v2.x** | Capteurs bruts et calibration | LiDAR 2D/3D, caméras de profondeur (Orbbec…) | |
 
@@ -81,6 +82,10 @@ Tracking Monitor. Reportés : slots par zone et autres règles d'attribution
 
 Les versions suivantes sont décalées d'un cran : PSN / TUIO en v0.5,
 viewport 3D en v0.6, graphe nodal en v0.7 et v0.8.
+
+## Bonus (le jour où le cas réel se présente)
+
+- Test de l'interface avec deux systèmes de tracking en même temps (ex. Fusion en OSC + Naostage en PSN), D16.
 
 ## Points durs connus
 

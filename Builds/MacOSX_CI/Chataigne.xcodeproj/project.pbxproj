@@ -196,6 +196,7 @@
 		19E9399CD34EDAE0468721D9 /* LoupedeckCommands.h */ /* LoupedeckCommands.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LoupedeckCommands.h; path = ../../Source/Module/modules/controller/loupedeck/commands/LoupedeckCommands.h; sourceTree = SOURCE_ROOT; };
 		1B9A73C8CB3C33D68C682295 /* SendStreamRawDataCommand.h */ /* SendStreamRawDataCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SendStreamRawDataCommand.h; path = ../../Source/Module/modules/common/streaming/commands/SendStreamRawDataCommand.h; sourceTree = SOURCE_ROOT; };
 		1BB541E7AC82CF6E1A3C781C /* include_juce_dmx.cpp */ /* include_juce_dmx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_dmx.cpp; path = ../../JuceLibraryCode/include_juce_dmx.cpp; sourceTree = SOURCE_ROOT; };
+		1BBFE313156089CA630BA59A /* Viewport3DRenderer.h */ /* Viewport3DRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Viewport3DRenderer.h; path = ../../Source/Module/modules/spatial/ui/Viewport3DRenderer.h; sourceTree = SOURCE_ROOT; };
 		1BD724662F7C81A7DBEDBA66 /* WakeOnLanCommand.h */ /* WakeOnLanCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = WakeOnLanCommand.h; path = ../../Source/Module/modules/system/os/commands/WakeOnLanCommand.h; sourceTree = SOURCE_ROOT; };
 		1BFA6EEFCE2A4D8498AB36DA /* SendStreamValuesCommand.cpp */ /* SendStreamValuesCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SendStreamValuesCommand.cpp; path = ../../Source/Module/modules/common/streaming/commands/SendStreamValuesCommand.cpp; sourceTree = SOURCE_ROOT; };
 		1C70373EF477EE7507E94DA2 /* ConductorCueUI.h */ /* ConductorCueUI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConductorCueUI.h; path = ../../Source/Common/Processor/Conductor/ui/ConductorCueUI.h; sourceTree = SOURCE_ROOT; };
@@ -605,6 +606,7 @@
 		903CDCB0E4926FADC367A3D0 /* StateModule.h */ /* StateModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StateModule.h; path = ../../Source/Module/modules/state/StateModule.h; sourceTree = SOURCE_ROOT; };
 		90580D87459A72831017387A /* OSCQueryModuleEditor.cpp */ /* OSCQueryModuleEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = OSCQueryModuleEditor.cpp; path = ../../Source/Module/modules/oscquery/generic/ui/OSCQueryModuleEditor.cpp; sourceTree = SOURCE_ROOT; };
 		90BB7E4DA8885328DB33049C /* SendStreamValuesCommand.h */ /* SendStreamValuesCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SendStreamValuesCommand.h; path = ../../Source/Module/modules/common/streaming/commands/SendStreamValuesCommand.h; sourceTree = SOURCE_ROOT; };
+		9130C3F69F9A7A7E93233DAC /* Viewport3DRenderer.cpp */ /* Viewport3DRenderer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Viewport3DRenderer.cpp; path = ../../Source/Module/modules/spatial/ui/Viewport3DRenderer.cpp; sourceTree = SOURCE_ROOT; };
 		917521599B52D2E67AA82FF6 /* StreamDeckV1.cpp */ /* StreamDeckV1.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StreamDeckV1.cpp; path = ../../Source/Module/modules/controller/streamdeck/models/StreamDeckV1.cpp; sourceTree = SOURCE_ROOT; };
 		917F8F23507E7AE42797E326 /* CustomOSCModule.cpp */ /* CustomOSCModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CustomOSCModule.cpp; path = ../../Source/Module/modules/osc/custom/CustomOSCModule.cpp; sourceTree = SOURCE_ROOT; };
 		91F013D5F5CD4BC069CEF902 /* ChataigneAudioLayerPanel.cpp */ /* ChataigneAudioLayerPanel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChataigneAudioLayerPanel.cpp; path = ../../Source/TimeMachine/Sequence/layers/audio/ui/ChataigneAudioLayerPanel.cpp; sourceTree = SOURCE_ROOT; };
@@ -3238,6 +3240,8 @@
 				3307095B648CE969EB3CEAEE,
 				3209B2CE127190995B03A01D,
 				6545877641D887408FD7997D,
+				9130C3F69F9A7A7E93233DAC,
+				1BBFE313156089CA630BA59A,
 			);
 			name = ui;
 			sourceTree = "<group>";

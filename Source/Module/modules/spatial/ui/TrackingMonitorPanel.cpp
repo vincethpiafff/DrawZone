@@ -62,6 +62,8 @@ void TrackingMonitorPanel::resized()
 	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
 	headerRect.removeFromRight(8);
 	psnRect = headerRect.removeFromRight(214).reduced(0, 1);
+	headerRect.removeFromRight(8);
+	viewSwitchRect = headerRect.removeFromRight(84).reduced(0, 1);
 	headerRect.removeFromRight(10);
 	r.removeFromTop(6);
 	sourceBarRect = r.removeFromTop(22);
@@ -251,7 +253,11 @@ void TrackingMonitorPanel::paint(Graphics& g)
 
 	paintHeader(g);
 	paintSourceBar(g);
-	if (!topViewRect.isEmpty()) paintTopView(g, topViewRect);
+	if (!topViewRect.isEmpty())
+	{
+		if (view3D) Viewport3DRenderer::paint(g, model, topViewRect.toFloat(), camera3D);
+		else paintTopView(g, topViewRect);
+	}
 	paintSlotBar(g);
 
 	g.setColour(columnBg);
@@ -266,6 +272,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
 	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
+	paintViewSwitch(g);
 	paintShortcuts(g); //last : the unfolded list goes over everything
 }
 
@@ -1386,6 +1393,19 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
 
+	//2D / 3D switch ; in 3D the view only moves the camera : left drag orbit, right or middle drag pan
+	if (viewSwitchRect.contains(e.getPosition()))
+	{
+		setView3D(e.position.x >= viewSwitchRect.getCentreX());
+		return;
+	}
+	if (view3D && topViewRect.contains(e.getPosition()))
+	{
+		cameraDrag = e.mods.isLeftButtonDown() ? 1 : 2;
+		cameraDragLast = e.position;
+		return;
+	}
+
 	//Spout / NDI chips : the box turns the output on / off, the rest shows its parameters
 	if (SpatialModule* sm = getSpatialModule())
 	{
@@ -1517,6 +1537,16 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 {
+	if (cameraDrag != 0)
+	{
+		Point<float> delta = e.position - cameraDragLast;
+		cameraDragLast = e.position;
+		if (cameraDrag == 1) camera3D.orbit(delta.x, delta.y);
+		else camera3D.pan(delta.x, delta.y, (float)topViewRect.getHeight());
+		repaint(topViewRect);
+		return;
+	}
+
 	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
 	{
 		slotDragMouse = e.position;
@@ -1593,6 +1623,12 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
 {
+	if (cameraDrag != 0)
+	{
+		cameraDrag = 0;
+		return;
+	}
+
 	if (slotDragPersonId >= 0 || slotDragSlot >= 0)
 	{
 		int personId = slotDragPersonId >= 0 ? slotDragPersonId : getPersonAt(e.position);
@@ -1697,6 +1733,13 @@ void TrackingMonitorPanel::showColorEditor(Inspectable* owner, ColorParameter* c
 void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 {
 	if (drawingFreeShape || drawingBoxShape >= 0 || Time::getMillisecondCounter() - drawFinishedMs < 500) return;
+
+	if (view3D && topViewRect.contains(e.getPosition()))
+	{
+		camera3D.fitted = false;
+		repaint(topViewRect);
+		return;
+	}
 
 	//double click on a slot chip : rename the slot
 	int chipIndex = getSlotChipAt(e.getPosition());
@@ -1864,6 +1907,7 @@ Point<float> TrackingMonitorPanel::toMeters(Point<float> screen) const
 
 void TrackingMonitorPanel::startFreeShapeDrawing()
 {
+	setView3D(false);
 	drawingBoxShape = -1;
 	drawingFreeShape = true;
 	drawPoints.clear();
@@ -1903,6 +1947,7 @@ void TrackingMonitorPanel::cancelFreeShapeDrawing()
 
 void TrackingMonitorPanel::startBoxDrawing(int boxShape)
 {
+	setView3D(false);
 	drawingFreeShape = false;
 	drawingBoxShape = boxShape;
 	boxDragging = false;
@@ -2057,4 +2102,43 @@ void TrackingMonitorPanel::paintFreeShapeDrawing(Graphics& g)
 	String help = drawPoints.size() < 3 ? "Click to add points (at least 3)" : "Click the first point, double click or press Enter to close";
 	help += sep + "Backspace : remove the last point" + sep + "Esc : cancel";
 	paintDrawingHelp(g, help);
+}
+
+void TrackingMonitorPanel::setView3D(bool on)
+{
+	if (view3D == on) return;
+	view3D = on;
+	cameraDrag = 0;
+	hoveredZone = -1;
+	repaint();
+}
+
+void TrackingMonitorPanel::paintViewSwitch(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+
+	if (viewSwitchRect.isEmpty()) return;
+	Rectangle<float> r = viewSwitchRect.toFloat();
+	drawChip(g, r, false);
+
+	Rectangle<float> half2D = r.withWidth(r.getWidth() / 2), half3D = half2D.withX(half2D.getRight());
+	g.setColour(activeColor.withAlpha(.25f));
+	g.fillRoundedRectangle((view3D ? half3D : half2D).reduced(2), 3);
+
+	g.setFont(Font(12.0f, Font::bold));
+	g.setColour(view3D ? dimText : activeText);
+	g.drawText("2D", half2D, Justification::centred);
+	g.setColour(view3D ? activeText : dimText);
+	g.drawText("3D", half3D, Justification::centred);
+}
+
+void TrackingMonitorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
+{
+	if (!view3D || !topViewRect.contains(e.getPosition()))
+	{
+		Component::mouseWheelMove(e, wheel);
+		return;
+	}
+	camera3D.zoom(std::pow(1.15f, wheel.deltaY * 4));
+	repaint(topViewRect);
 }

@@ -32,3 +32,7 @@ Ajouter en bas, en 2 ou 3 lignes. Numéros de version : ceux de l'époque (voir 
   code **Spatial** (renommer le code coûterait pour rien). `ModuleFactory::create`
   charge un ancien type « Spatial » comme Cockpit.
 - **D15 (30/10)** Pas d'entrée TUIO (choix de Vincent) : Augmenta (OSC) et PSN seulement.
+- **D16 (05/11)** Test avec deux systèmes de tracking à la fois : reporté en bonus,
+  fait le jour où le cas se présente en vrai. Tests de développement : Augmenta Fusion.
+  Nouveau module **TrackSimu** (simulateur de blobs dans Chataigne, scènes 2D sur des
+  plans X / Y / Z, à la main ou par mouvements humains / toucher), après le graphe nodal.

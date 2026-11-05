@@ -2155,6 +2155,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\buttplug\ButtplugModule.cpp">
       <Filter>Chataigne\Source\Module\modules\buttplug</Filter>
     </ClCompile>
@@ -5326,6 +5329,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h">

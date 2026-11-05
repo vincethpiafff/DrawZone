@@ -13,6 +13,7 @@
 #include "SpatialZone.cpp"
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
+#include "ui/Viewport3DRenderer.cpp"
 #include "SpatialVideoOutput.cpp"
 #include "SpatialPSNOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"

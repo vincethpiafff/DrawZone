@@ -967,6 +967,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\buttplug\ButtplugModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3363,6 +3366,7 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TrackingMonitorPanel.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\Viewport3DRenderer.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\ButtplugModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\buttplug\commands\ButtplugCommand.h"/>
     <ClInclude Include="..\..\Source\Module\modules\websocket\ui\WebSocketServerModuleUI.h"/>

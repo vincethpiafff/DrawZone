@@ -42,6 +42,7 @@ public:
 	void mouseUp(const MouseEvent& e) override;
 	void mouseDoubleClick(const MouseEvent& e) override; // on a zone name : rename it
 	bool keyPressed(const KeyPress& key) override; // while drawing a free shape : Escape cancels, Backspace removes the last point
+	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override; // 3D view : zoom
 
 private:
 	//popup menu item ids (0 = menu dismissed)
@@ -126,6 +127,15 @@ private:
 	bool psnOn = false, psnHovered = false;
 	String psnLabel;
 	void showPSNOutputMenu();
+
+	//"2D | 3D" switch in the header : the 3D view is read only, zone editing stays in 2D
+	bool view3D = false;
+	Rectangle<int> viewSwitchRect;
+	Viewport3DRenderer::Camera camera3D;
+	int cameraDrag = 0;	// 1 orbit, 2 pan, 0 none
+	Point<float> cameraDragLast;
+	void paintViewSwitch(Graphics& g);
+	void setView3D(bool on);
 
 	//"Shortcuts" chip in the header : unfolds the list of shortcuts on hover, pinned open by a click
 	Rectangle<int> shortcutsRect;
