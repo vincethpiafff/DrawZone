@@ -47,7 +47,8 @@ D:\0-DRAWZONE\DrawZone  ce dépôt (github.com/vincethpiafff/DrawZone)
 
 ## Git
 
-- `master` = Chataigne de Ben (ne pas toucher) · `develop` · `feature/<nom>`.
+- Branches, commits (Conventional Commits en anglais), versions, fichiers à ne jamais commiter :
+  `docs/drawzone/CONTRIBUTING.md`. `master` = Chataigne de Ben : ne pas toucher.
 - `upstream` (Ben) et sous-modules `Modules/juce_*` et `D:\0-DRAWZONE\JUCE` : push
   bloqué (`NE_PAS_PUSHER`), ne jamais changer ; à refaire après un clone.
 - Ne pas déranger Ben : jamais de PR vers `benkuper/Chataigne` (base = `vincethpiafff/DrawZone`),
@@ -56,8 +57,6 @@ D:\0-DRAWZONE\DrawZone  ce dépôt (github.com/vincethpiafff/DrawZone)
 - `core.autocrlf=false` (dépôt et sous-modules). Fichiers de Ben en CRLF / mixtes :
   `git diff --stat` ne doit montrer que nos lignes ; pas de `sed` Git Bash sur eux,
   sinon `perl -0777 -pi`.
-- Conventional Commits en anglais (`feat(spatial): …`) ; tags SemVer annotés + `docs/drawzone/CHANGELOG.md`.
-- Ne jamais committer `Binaries/`, `dependencies_zips/`, `packages/`, `JucePrecompiledHeader_*`.
 
 ## Code de Ben
 

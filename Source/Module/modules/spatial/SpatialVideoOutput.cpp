@@ -8,20 +8,20 @@
   ==============================================================================
 */
 
-SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module) :
+SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module, SpatialSurface* surface) :
 	ControllableContainer("Video Output"),
 	display("Display"),
-	module(module)
+	module(module),
+	surface(surface)
 {
-	spout = addBoolParameter("Spout", "Send the top view (zones, people, player slots) as a Spout texture, for video software on this computer (Smode, Resolume, TouchDesigner...). Needs Use OpenGL Renderer in the preferences", false);
-	ndi = addBoolParameter("NDI", "Send the top view as an NDI source on the network (Smode, Resolume, TouchDesigner, OBS...). Needs the NDI runtime", false);
-	streamName = addStringParameter("Stream Name", "Name of the Spout sender and of the NDI source", "DrawZone");
+	spout = addBoolParameter("Spout", "Send this surface seen from above (zones, people, player slots) as a Spout texture named like the surface, for video software on this computer (Smode, Resolume, TouchDesigner...). Needs Use OpenGL Renderer in the preferences", false);
+	ndi = addBoolParameter("NDI", "Send this surface as an NDI source named like the surface, on the network (Smode, Resolume, TouchDesigner, OBS...). Needs the NDI runtime", false);
 
-	outputArea = addEnumParameter("Output Area", "Part of the floor in the image. Scene : exactly the scene, its size is Scene x Pixels Per Meter. Custom Area : Area Origin and Area Size, in meters. Fixed Resolution : the whole scene, centered in Width x Height");
-	outputArea->addOption("Scene", SCENE)->addOption("Custom Area", CUSTOM_AREA)->addOption("Fixed Resolution", FIXED_RESOLUTION);
+	outputArea = addEnumParameter("Output Area", "Part of the floor in the image. Surface : exactly the surface, its size is Surface x Pixels Per Meter. Custom Area : Area Origin and Area Size, in meters. Fixed Resolution : the whole surface, centered in Width x Height");
+	outputArea->addOption("Surface", SURFACE)->addOption("Custom Area", CUSTOM_AREA)->addOption("Fixed Resolution", FIXED_RESOLUTION);
 
 	pixelsPerMeter = addFloatParameter("Pixels Per Meter", "Scale of the image : number of pixels for one meter (100 = 1 px per cm)", 100, 1, 1000);
-	areaOrigin = addPoint2DParameter("Area Origin", "Custom Area : top left corner of the area, in meters from the top left corner of the scene (negative = margin around the scene)");
+	areaOrigin = addPoint2DParameter("Area Origin", "Custom Area : top left corner of the area, in meters from the top left corner of the surface (negative = margin around the surface)");
 	areaSize = addPoint2DParameter("Area Size", "Custom Area : width and height of the area, in meters");
 	areaSize->setDefaultPoint(10, 6);
 	width = addIntParameter("Width", "Fixed Resolution : width of the image, in pixels", 1920, 16, maxSize);
@@ -32,7 +32,7 @@ SpatialVideoOutput::SpatialVideoOutput(SpatialModule* module) :
 	resolution->setControllableFeedbackOnly(true);
 	resolution->isSavable = false;
 
-	showGrid = display.addBoolParameter("Grid", "Draw the 1 m grid and the scene border", true);
+	showGrid = display.addBoolParameter("Grid", "Draw the 1 m grid and the surface border", true);
 	showZoneNames = display.addBoolParameter("Zone Names", "Draw the name of each zone", true);
 	showPersonIds = display.addBoolParameter("Person Ids", "Draw the id of each person", true);
 	showTrails = display.addBoolParameter("Trails", "Draw the recent path of each person", true);
@@ -54,7 +54,7 @@ SpatialVideoOutput::~SpatialVideoOutput()
 
 void SpatialVideoOutput::onContainerParameterChanged(Parameter* p)
 {
-	if (p == spout || p == ndi || p == streamName || p == fps) updateSender();
+	if (p == spout || p == ndi || p == fps) updateSender();
 	if (p == outputArea) updateParametersState();
 }
 
@@ -137,9 +137,9 @@ void SpatialVideoOutput::releaseSpout()
 	spoutState = nullptr;
 }
 
-bool SpatialVideoOutput::computeGeometry(Point<float> sceneSize, int& w, int& h, Rectangle<float>& scene, float& scale) const
+bool SpatialVideoOutput::computeGeometry(Point<float> surfaceSize, int& w, int& h, Rectangle<float>& surfaceRect, float& scale) const
 {
-	if (sceneSize.x <= 0 || sceneSize.y <= 0) return false;
+	if (surfaceSize.x <= 0 || surfaceSize.y <= 0) return false;
 
 	switch (outputArea->getValueDataAsEnum<OutputArea>())
 	{
@@ -151,22 +151,22 @@ bool SpatialVideoOutput::computeGeometry(Point<float> sceneSize, int& w, int& h,
 		w = roundToInt(size.x * scale);
 		h = roundToInt(size.y * scale);
 		Point<float> origin = areaOrigin->getPoint();
-		scene = Rectangle<float>(-origin.x * scale, -origin.y * scale, sceneSize.x * scale, sceneSize.y * scale);
+		surfaceRect = Rectangle<float>(-origin.x * scale, -origin.y * scale, surfaceSize.x * scale, surfaceSize.y * scale);
 		break;
 	}
 
 	case FIXED_RESOLUTION:
 		w = width->intValue();
 		h = height->intValue();
-		scale = jmin(w / sceneSize.x, h / sceneSize.y);
-		scene = Rectangle<float>(sceneSize.x * scale, sceneSize.y * scale).withCentre(Point<float>(w / 2.0f, h / 2.0f));
+		scale = jmin(w / surfaceSize.x, h / surfaceSize.y);
+		surfaceRect = Rectangle<float>(surfaceSize.x * scale, surfaceSize.y * scale).withCentre(Point<float>(w / 2.0f, h / 2.0f));
 		break;
 
-	default: //Scene
+	default: //Surface
 		scale = pixelsPerMeter->floatValue();
-		w = roundToInt(sceneSize.x * scale);
-		h = roundToInt(sceneSize.y * scale);
-		scene = Rectangle<float>(sceneSize.x * scale, sceneSize.y * scale);
+		w = roundToInt(surfaceSize.x * scale);
+		h = roundToInt(surfaceSize.y * scale);
+		surfaceRect = Rectangle<float>(surfaceSize.x * scale, surfaceSize.y * scale);
 		break;
 	}
 
@@ -177,7 +177,7 @@ bool SpatialVideoOutput::computeGeometry(Point<float> sceneSize, int& w, int& h,
 		w = roundToInt(w * ratio);
 		h = roundToInt(h * ratio);
 		scale *= ratio;
-		scene = Rectangle<float>(scene.getX() * ratio, scene.getY() * ratio, scene.getWidth() * ratio, scene.getHeight() * ratio);
+		surfaceRect = Rectangle<float>(surfaceRect.getX() * ratio, surfaceRect.getY() * ratio, surfaceRect.getWidth() * ratio, surfaceRect.getHeight() * ratio);
 	}
 
 	w = jmax(16, w);
@@ -190,19 +190,27 @@ void SpatialVideoOutput::timerCallback()
 	Image image = renderFrame();
 	if (!image.isValid()) return;
 	if (spout->boolValue()) sendSpout(image);
-	if (ndiSender != nullptr) ndiSender->pushFrame(image, transparentBackground->boolValue(), streamName->stringValue().trim(), fps->floatValue());
+	if (ndiSender != nullptr) ndiSender->pushFrame(image, transparentBackground->boolValue(), getStreamName(), fps->floatValue());
 }
 
 Image SpatialVideoOutput::renderFrame()
 {
-	model.update(module);
+	//nothing sent while the module is off, like the PSN output
+	if (module == nullptr || !module->enabled->boolValue())
+	{
+		resolution->setValue("Nothing sent : the module is disabled");
+		return Image();
+	}
+	int index = module->surfaceManager.items.indexOf(surface);
+	if (index < 0) return Image();
+	model.update(module, index);
 
 	int w = 0, h = 0;
-	Rectangle<float> scene;
+	Rectangle<float> surfaceRect;
 	float scale = 0;
-	if (!computeGeometry(model.snapshot.sceneSize, w, h, scene, scale))
+	if (!computeGeometry(model.snapshot.surfaceSize, w, h, surfaceRect, scale))
 	{
-		resolution->setValue(SpatialModule::getNoSceneSizeText());
+		resolution->setValue(SpatialModule::getNoSurfaceSizeText());
 		return Image();
 	}
 
@@ -221,7 +229,7 @@ Image SpatialVideoOutput::renderFrame()
 		o.trails = showTrails->boolValue();
 		o.slots = showSlotLabels->boolValue();
 		o.heldSpots = showHeldSpots->boolValue();
-		TopViewRenderer::paint(g, model, scene, scale, image.getBounds().toFloat(), o);
+		TopViewRenderer::paint(g, model, surfaceRect, scale, image.getBounds().toFloat(), o);
 	}
 
 	//JUCE images are premultiplied, Spout and NDI receivers expect straight alpha
@@ -276,7 +284,7 @@ void SpatialVideoOutput::sendSpout(const Image& image)
 	if (spoutState->frameQueued.exchange(true)) return;
 
 	std::shared_ptr<SpoutState> state = spoutState;
-	String name = streamName->stringValue();
+	String name = getStreamName();
 	gl->executeOnGLThread([state, image, name](OpenGLContext&)
 		{
 			state->frameQueued = false;
@@ -411,4 +419,10 @@ void SpatialVideoOutput::NDISender::destroySender()
 	VideoNetworkRuntime::NDI::get().send_destroy(sender);
 	sender = nullptr;
 	senderName.clear();
+}
+
+String SpatialVideoOutput::getStreamName() const
+{
+	String name = surface->niceName.trim();
+	return name.isNotEmpty() ? name : String("DrawZone");
 }

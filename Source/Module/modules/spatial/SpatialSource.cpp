@@ -22,22 +22,36 @@ SpatialSource::SpatialSource(const String& name, var params, int defaultIdOffset
 	//color of its people in the Tracking Monitor, the default comes from the manager
 	setHasCustomColor(true);
 
-	sceneTarget = addTargetParameter("Scene", "Scene fed by this source (Scenes block). Empty : the first scene");
-	useAsScene = addBoolParameter("Use As Scene", "The size of its scene comes from this source (Scenes > Size Mode : Auto). Needed when several sources of a scene know their area. Only one source per scene", false);
+	surfaceTarget = addTargetParameter("Surface", "Surface fed by this source (Surfaces block). Empty : the first surface");
+	useAsSurface = addBoolParameter("Use As Surface", "The size of its surface comes from this source (Surfaces > Size Mode : Auto). Needed when several sources of a surface know their area. Only one source per surface", false);
 	idOffset = addIntParameter("Id Offset", "Added to the ids of this source, so that ids stay the same whichever source starts first. Give each source its own range", defaultIdOffset, 0, 1000000);
-	offset = addPoint2DParameter("Offset", "Where the origin of this source lands in the scene, in meters from the top left corner of the scene (applied last)");
+	offset = addPoint2DParameter("Offset", "Where the origin of this source lands in the surface, in meters from the top left corner of the surface (applied last)");
 	rotation = addFloatParameter("Rotation", "Rotation of this source around its origin, in degrees, clockwise", 0, -360, 360);
-	scale = addFloatParameter("Scale", "Scale of this source (1 = its meters are scene meters)", 1, .01f, 100);
+	scale = addFloatParameter("Scale", "Scale of this source (1 = its meters are surface meters)", 1, .01f, 100);
 	flipX = addBoolParameter("Flip X", "Mirror this source left / right (within its area when it has one, around its origin otherwise)", false);
 	flipY = addBoolParameter("Flip Y", "Mirror this source top / bottom (within its area when it has one, around its origin otherwise)", false);
 	resetParameters = addTrigger("Reset All Parameters", "Put Offset, Rotation, Scale and Flip back to their default values (the source as it is sent)");
 	status = addStringParameter("Status", "What this source receives", "");
 	status->setControllableFeedbackOnly(true);
 	status->isSavable = false;
+	nameForThreads = niceName;
 }
 
 SpatialSource::~SpatialSource()
 {
+}
+
+String SpatialSource::getNameForThreads() const
+{
+	const ScopedLock sl(nameLock);
+	return nameForThreads;
+}
+
+void SpatialSource::onContainerNiceNameChanged()
+{
+	BaseItem::onContainerNiceNameChanged();
+	const ScopedLock sl(nameLock);
+	nameForThreads = niceName;
 }
 
 void SpatialSource::moveParametersToEnd(const Array<Controllable*>& parameters)
@@ -59,24 +73,24 @@ void SpatialSource::onContainerTriggerTriggered(Trigger* t)
 void SpatialSource::onContainerParameterChangedInternal(Parameter* p)
 {
 	BaseItem::onContainerParameterChangedInternal(p);
-	if (p != useAsScene || !useAsScene->boolValue()) return;
+	if (p != useAsSurface || !useAsSurface->boolValue()) return;
 	if (SpatialSourceManager* m = dynamic_cast<SpatialSourceManager*>(parentContainer.get()))
 	{
-		//one per scene ; not while loading : the scenes of the sources are not known yet
-		if (m->isCurrentlyLoadingData || m->sceneManager == nullptr || (Engine::mainEngine != nullptr && Engine::mainEngine->isLoadingFile)) return;
-		SpatialScene* scene = m->sceneManager->getScene(sceneTarget);
-		for (auto& s : m->items) if (s != this && m->sceneManager->getScene(s->sceneTarget) == scene) s->useAsScene->setValue(false);
+		//one per surface ; not while loading : the surfaces of the sources are not known yet
+		if (m->isCurrentlyLoadingData || m->surfaceManager == nullptr || (Engine::mainEngine != nullptr && Engine::mainEngine->isLoadingFile)) return;
+		SpatialSurface* surface = m->surfaceManager->getSurface(surfaceTarget);
+		for (auto& s : m->items) if (s != this && m->surfaceManager->getSurface(s->surfaceTarget) == surface) s->useAsSurface->setValue(false);
 	}
 }
 
-Point<float> SpatialSource::toScene(Point<float> p, Point<float> area) const
+Point<float> SpatialSource::toSurface(Point<float> p, Point<float> area) const
 {
 	if (flipX->boolValue()) p.x = area.x > 0 ? area.x - p.x : -p.x;
 	if (flipY->boolValue()) p.y = area.y > 0 ? area.y - p.y : -p.y;
 	return scaleAndRotate(p) + offset->getPoint();
 }
 
-Point<float> SpatialSource::vectorToScene(Point<float> v) const
+Point<float> SpatialSource::vectorToSurface(Point<float> v) const
 {
 	if (flipX->boolValue()) v.x = -v.x;
 	if (flipY->boolValue()) v.y = -v.y;
@@ -91,7 +105,7 @@ Point<float> SpatialSource::scaleAndRotate(Point<float> v) const
 	return Point<float>(v.x * c - v.y * s, v.x * s + v.y * c);
 }
 
-float SpatialSource::angleToScene(float degrees) const
+float SpatialSource::angleToSurface(float degrees) const
 {
 	if (flipX->boolValue()) degrees = 180 - degrees;
 	if (flipY->boolValue()) degrees = -degrees;
@@ -175,9 +189,9 @@ void AugmentaSource::oscBundleReceived(const OSCBundle& bundle)
 	}
 }
 
-Point<float> AugmentaSource::getSceneArea()
+Point<float> AugmentaSource::getSurfaceArea()
 {
-	const ScopedLock sl(sceneLock);
+	const ScopedLock sl(surfaceLock);
 	return augmentaSceneSize;
 }
 
@@ -192,7 +206,7 @@ void AugmentaSource::processMessage(const OSCMessage& msg, SpatialModule* module
 	if (address == "/scene")
 	{
 		if (msg.size() < 4) return;
-		const ScopedLock sl(sceneLock);
+		const ScopedLock sl(surfaceLock);
 		augmentaSceneSize = Point<float>(OSCHelpers::getFloatArg(msg[2]), OSCHelpers::getFloatArg(msg[3]));
 	}
 	else if (address == "/object/enter" || address == "/object/update")
@@ -210,24 +224,24 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 {
 	if (msg.size() < 15) return;
 
-	Point<float> area = getSceneArea();
+	Point<float> area = getSurfaceArea();
 	if (area.x <= 0 || area.y <= 0) return; //no /scene yet : Augmenta positions (0-1 in its scene) can't be placed
 
 	TrackedPerson p;
 	p.sourceId = OSCHelpers::getIntArg(msg[1]);
 	p.idOffset = idOffset->intValue();
-	p.sourceName = niceName;
+	p.sourceName = getNameForThreads();
 	p.source = this;
-	p.scene = sceneId.load();
+	p.surface = surfaceId.load();
 	p.age = OSCHelpers::getFloatArg(msg[3]);
 
-	//normalized in the Augmenta scene -> Augmenta meters -> scene meters
+	//normalized in the Augmenta scene -> Augmenta meters -> surface meters
 	Point<float> meters(OSCHelpers::getFloatArg(msg[4]) * area.x, OSCHelpers::getFloatArg(msg[5]) * area.y);
-	p.position = toScene(meters, area);
+	p.position = toSurface(meters, area);
 
 	Point<float> v(OSCHelpers::getFloatArg(msg[6]) * area.x, OSCHelpers::getFloatArg(msg[7]) * area.y);
-	p.velocity = vectorToScene(v);
-	p.orientation = angleToScene(OSCHelpers::getFloatArg(msg[8]));
+	p.velocity = vectorToSurface(v);
+	p.orientation = angleToSurface(OSCHelpers::getFloatArg(msg[8]));
 	p.height = OSCHelpers::getFloatArg(msg[14]);
 	p.lastUpdateMs = Time::getMillisecondCounter();
 
@@ -260,7 +274,7 @@ void AugmentaSource::update(SpatialModule* module)
 	else if (!useModuleInput->boolValue() && bindFailed) status->setValue("Could not open port " + String(p) + " (used by another program or module)");
 	else
 	{
-		Point<float> area = getSceneArea();
+		Point<float> area = getSurfaceArea();
 		String s = getReceptionText(module) + ", " + String(module->trackingData.getNumPersons(this)) + " people";
 		if (area.x > 0) s += ", Augmenta scene " + String(area.x, 1) + " x " + String(area.y, 1) + " m";
 		else s += ", waiting for /scene";
@@ -280,8 +294,8 @@ PSNSource::PSNSource(var params) :
 	upAxis = addEnumParameter("Up Axis", "Vertical axis of the positions received. Y : PosiStageNet standard. Z : systems with a vertical Z axis, like Kratos without remap");
 	upAxis->addOption("Y", UP_Y)->addOption("Z", UP_Z);
 	ignoreOrigin = addBoolParameter("Ignore Trackers At Origin", "Don't create a person for a tracker at 0, 0, 0 (within 1 mm) : many PSN systems send their unused trackers there", true);
-	areaPosition = addPoint2DParameter("Area Position", "PSN sends no scene size. Corner of the area to use as the scene, in the coordinates of the tracking system. Kratos : Area > Position X, Y");
-	areaSize = addPoint2DParameter("Area Size", "PSN sends no scene size. Size of the area to use as the scene, in meters (0 = no area). Kratos : Area > Scale X, Y");
+	areaPosition = addPoint2DParameter("Area Position", "PSN sends no surface size. Corner of the area to use as the surface, in the coordinates of the tracking system. Kratos : Area > Position X, Y");
+	areaSize = addPoint2DParameter("Area Size", "PSN sends no surface size. Size of the area to use as the surface, in meters (0 = no area). Kratos : Area > Scale X, Y");
 	areaSize->setBounds(0, 0, 1000, 1000);
 
 	moveParametersToEnd({ areaPosition, areaSize, upAxis, offset, rotation, scale, flipX, flipY, resetParameters, multicastAddress, multicastPort, ignoreOrigin, status });
@@ -332,7 +346,7 @@ void PSNSource::update(SpatialModule* module)
 		String s = getReceptionText(module) + ", " + String(module->trackingData.getNumPersons(this)) + " people, " + group;
 		const ScopedLock sl(systemNameLock);
 		if (systemName.isNotEmpty()) s += ", from " + systemName;
-		if (systemName.containsIgnoreCase("kratos") && (upAxis->getValueDataAsEnum<UpAxis>() != UP_Z || getSceneArea().x <= 0))
+		if (systemName.containsIgnoreCase("kratos") && (upAxis->getValueDataAsEnum<UpAxis>() != UP_Z || getSurfaceArea().x <= 0))
 			s += ". Kratos : set Up Axis to Z, and Area Position / Size from Kratos > Area";
 		status->setValue(s + getIdConflictText(module));
 		break;
@@ -340,7 +354,7 @@ void PSNSource::update(SpatialModule* module)
 	}
 }
 
-Point<float> PSNSource::getSceneArea()
+Point<float> PSNSource::getSurfaceArea()
 {
 	Point<float> a = areaSize->getPoint();
 	return a.x > 0 && a.y > 0 ? a : Point<float>();
@@ -348,7 +362,7 @@ Point<float> PSNSource::getSceneArea()
 
 Point<float> PSNSource::getAreaOrigin(bool upY)
 {
-	Point<float> area = getSceneArea();
+	Point<float> area = getSurfaceArea();
 	if (area.x <= 0) return Point<float>();
 	Point<float> pos = areaPosition->getPoint();
 	return upY ? pos : Point<float>(pos.x, -(pos.y + area.y)); //Z up : y is turned over, so its far end is the top
@@ -433,7 +447,7 @@ void PSNSource::processFrame(const psn::tracker_map& trackers, const String& sys
 {
 	const float originTolerance = .001f; // meters
 	bool upY = upAxis->getValueDataAsEnum<UpAxis>() == UP_Y;
-	Point<float> area = getSceneArea();
+	Point<float> area = getSurfaceArea();
 	Point<float> areaOrigin = getAreaOrigin(upY);
 	uint32 now = Time::getMillisecondCounter();
 	std::map<int, uint32> seen;
@@ -450,27 +464,27 @@ void PSNSource::processFrame(const psn::tracker_map& trackers, const String& sys
 		TrackedPerson p;
 		p.sourceId = t.get_id();
 		p.idOffset = idOffset->intValue();
-		p.sourceName = niceName;
+		p.sourceName = getNameForThreads();
 		p.source = this;
-		p.scene = sceneId.load();
+		p.surface = surfaceId.load();
 
 		auto first = firstSeenMs.find(p.sourceId);
 		uint32 firstMs = first != firstSeenMs.end() ? first->second : now;
 		seen[p.sourceId] = firstMs;
 		p.age = (now - firstMs) / 1000.0f;
 
-		//without area, PSN has no scene and its meters are absolute
-		p.position = toScene(toGround(pos, upY) - areaOrigin, area);
+		//without area, PSN has no surface and its meters are absolute
+		p.position = toSurface(toGround(pos, upY) - areaOrigin, area);
 		p.height = upY ? pos.y : pos.z;
 		//"Kratos LEAD", like "Augmenta 0" for an Augmenta person
 		String name(t.get_name());
 		p.trackerName = name.isEmpty() || system.isEmpty() ? name : system + " " + name;
-		if (t.is_speed_set()) p.velocity = vectorToScene(toGround(t.get_speed(), upY));
+		if (t.is_speed_set()) p.velocity = vectorToSurface(toGround(t.get_speed(), upY));
 		if (t.is_ori_set())
 		{
 			//radians around the up axis, counterclockwise seen from above
 			psn::float3 ori = t.get_ori();
-			p.orientation = angleToScene(-radiansToDegrees(upY ? ori.y : ori.z));
+			p.orientation = angleToSurface(-radiansToDegrees(upY ? ori.y : ori.z));
 		}
 		p.lastUpdateMs = now;
 
@@ -498,7 +512,7 @@ SpatialSourceManager::~SpatialSourceManager()
 
 void SpatialSourceManager::addItemInternal(SpatialSource* item, var data)
 {
-	if (sceneManager != nullptr) sceneManager->setupTarget(item->sceneTarget);
+	if (surfaceManager != nullptr) surfaceManager->setupTarget(item->surfaceTarget);
 
 	//a new Augmenta source, not loaded from a file (data is no clue : the menu may pass the item's own JSON) :
 	//the next port and the next range of ids, for one more Fusion scene
@@ -515,8 +529,8 @@ void SpatialSourceManager::addItemInternal(SpatialSource* item, var data)
 		{
 			added->useModuleInput->setValue(false);
 			added->port->setValue(maxPort + 1);
+			added->idOffset->setValue(maxOffset + 100);
 		}
-		if (maxOffset >= 0) added->idOffset->setValue(maxOffset + 100);
 	}
 
 	//distinct hues, spread by the golden ratio after the first 4 ; a color chosen by the user is kept
@@ -534,16 +548,16 @@ AugmentaSource* SpatialSourceManager::getAugmentaSource()
 	return nullptr;
 }
 
-Point<float> SpatialSourceManager::getSceneArea(const void* scene, String* from)
+Point<float> SpatialSourceManager::getSurfaceArea(const void* surface, String* from)
 {
 	Point<float> known;
 	String knownFrom;
 	int numKnown = 0;
 	for (auto& s : items)
 	{
-		if (!s->enabled->boolValue() || s->sceneId.load() != scene) continue;
-		Point<float> a = s->getSceneArea();
-		if (s->useAsScene->boolValue())
+		if (!s->enabled->boolValue() || s->surfaceId.load() != surface) continue;
+		Point<float> a = s->getSurfaceArea();
+		if (s->useAsSurface->boolValue())
 		{
 			if (from != nullptr) *from = s->niceName;
 			return a;
@@ -563,6 +577,6 @@ Point<float> SpatialSourceManager::getSceneArea(const void* scene, String* from)
 SpatialSource* SpatialSourceManager::createItemFromData(var data)
 {
 	SpatialSource* s = SpatialSectionManager<SpatialSource>::createItemFromData(data);
-	if (s != nullptr && sceneManager != nullptr) sceneManager->setupTarget(s->sceneTarget);
+	if (s != nullptr && surfaceManager != nullptr) surfaceManager->setupTarget(s->surfaceTarget);
 	return s;
 }

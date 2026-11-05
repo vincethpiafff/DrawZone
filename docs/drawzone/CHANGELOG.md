@@ -5,6 +5,46 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+v0.6 : plusieurs surfaces (sol, mur…) placées dans une vue 3D, chacune avec ses
+zones, ses slots et sa sortie vidéo.
+
+### Ajouté
+- **Vue 3D** dans le Tracking Monitor (bascule 2D | 3D) : surfaces, grille 1 m,
+  zones, personnes en cercle + croix sur le centroïde ; glisser = orbite, clic
+  droit = déplacer, molette = zoom, double clic = recadrer. Liste des surfaces
+  repliable, Position / Rotation modifiables.
+- **Bloc Surfaces** (ex-« Scene ») : Size Mode Auto / Manual, Position et
+  Rotation X / Y / Z en 3D, Status. Paramètre **Surface** sur chaque source et
+  chaque zone (vide = 1re surface) ; une zone ne compte que les personnes de sa
+  surface.
+- Source Augmenta : **Use Module Input** ou son propre **Port** (une scène Fusion
+  par port) ; une nouvelle source prend le port suivant et Id Offset + 100.
+- **Player Slots par surface**, à couper par surface (Enabled) ; valeurs dans
+  Values > Slots > *surface*. Valeur **Surface** de chaque personne.
+- **Une sortie vidéo par surface** : flux Spout / NDI nommé comme la surface.
+- Sortie PSN : noms « JOUEUR 1 (SOL) » ; slots à partir de **60001** (60101 pour
+  la 2e surface…) ; une surface sans slots envoie ses personnes avec l'id du
+  tracking.
+
+### Modifié
+- « Scene » devient **Surface** partout (D17) ; « scène » reste le mot d'Augmenta
+  (`/scene`, scènes Fusion). Les anciennes sessions s'ouvrent : blocs Scene,
+  Player Slots et Video Output repris dans la 1re surface.
+- Champ Stream Name retiré : le flux porte le nom de la surface.
+- Adresses des slots : Values > Slots > *surface* > *slot* (State Machine à
+  repointer).
+
+### Corrigé
+- Options Display de la sortie vidéo non enregistrées dans la session.
+- La sortie vidéo envoyait encore quand le module était désactivé.
+
+### Technique
+- Tests : copies de session à deux surfaces fixes (SOL, MUR),
+  `check_psn_surfaces.ps1`, fonctions communes dans `common.ps1`.
+
+### Limites connues
+- Zones à plat sur leur surface : les volumes attendront un tracking 3D (D17).
+
 ## [0.5.0] - 2026-10-31
 
 Plusieurs systèmes de tracking dans la même scène : Augmenta et PosiStageNet

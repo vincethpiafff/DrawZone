@@ -5,7 +5,7 @@
 	Created: 26 Oct 2026
 	Author:  DrawZone
 
-	Interaction zone (rectangle, ellipse or free shape), defined in scene meters (origin top left).
+	Interaction zone (rectangle, ellipse or free shape), defined in surface meters (origin top left).
 	Its values (presence, person count) live in a container that the
 	Spatial module shows in its Values, so they can be used anywhere
 	in Chataigne (State Machine, Mappings...).
@@ -44,11 +44,11 @@ public:
 	SpatialZone(var params = var());
 	~SpatialZone();
 
-	//zones are in meters and don't depend on the scene : a smaller scene must not move or shrink them
+	//zones are in meters and don't depend on the surface : a smaller surface must not move or shrink them
 	static constexpr float maxMeters = 1000;
 
-	TargetParameter* sceneTarget;	// scene of the zone, empty = the first one
-	const void* sceneId = nullptr;	// that scene, set by the module (message thread)
+	TargetParameter* surfaceTarget;	// surface of the zone, empty = the first one
+	const void* surfaceId = nullptr;	// that surface, set by the module (message thread)
 
 	enum Shape { RECTANGLE, ELLIPSE, FREE_SHAPE };
 	EnumParameter* shape;
@@ -122,19 +122,19 @@ class SpatialZoneManager :
 public:
 	SpatialZoneManager() : SpatialSectionManager("Zones", SpatialSection::ZONES) {}
 
-	SpatialSceneManager* sceneManager = nullptr;	// set by the module before anything is loaded
+	SpatialSurfaceManager* surfaceManager = nullptr;	// set by the module before anything is loaded
 
-	//the Scene parameter picks among the scenes before the zone loads
+	//the Surface parameter picks among the surfaces before the zone loads
 	SpatialZone* createItemFromData(var data) override
 	{
 		SpatialZone* z = SpatialSectionManager<SpatialZone>::createItemFromData(data);
-		if (z != nullptr && sceneManager != nullptr) sceneManager->setupTarget(z->sceneTarget);
+		if (z != nullptr && surfaceManager != nullptr) surfaceManager->setupTarget(z->surfaceTarget);
 		return z;
 	}
 
 	void addItemInternal(SpatialZone* item, var) override
 	{
-		if (sceneManager != nullptr) sceneManager->setupTarget(item->sceneTarget);
+		if (surfaceManager != nullptr) surfaceManager->setupTarget(item->surfaceTarget);
 	}
 };
 

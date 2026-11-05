@@ -18,13 +18,13 @@
 #include "TrackingData.h"
 #include "ui/SpatialStyle.h"
 #include "ui/SpatialSectionEditor.h"
-#include "SpatialScene.h"
-#include "SpatialSource.h"
-#include "SpatialZone.h"
 #include "PlayerSlots.h"
 #include "ui/TopViewRenderer.h"
 #include "ui/Viewport3DRenderer.h"
 #include "SpatialVideoOutput.h"
+#include "SpatialSurface.h"
+#include "SpatialSource.h"
+#include "SpatialZone.h"
 #include "SpatialPSNOutput.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
@@ -37,7 +37,8 @@ public:
 	IntParameter* personId;
 	StringParameter* sourceName;			// source of the person
 	IntParameter* sourceId;				// id given by its source
-	Point2DParameter* position;			// meters, origin top left of the scene
+	StringParameter* surfaceName;		// surface the person is on
+	Point2DParameter* position;			// meters, origin top left of the surface
 	StringParameter* zoneName;			// zone(s) the person is in, empty outside
 	Point2DParameter* relativePosition;	// 0-1 in the zone or zones overlap, -1 outside
 	StringParameter* slotName;			// player slot of the person, empty without a slot
@@ -51,7 +52,7 @@ public:
 	int firstZoneIndex = -1;	// index of the first zone the person is in, -1 = none (for the top view)
 
 	void update(Point<float> positionMeters, const Array<SpatialZone*>& zones);
-	void updateTracking(const TrackedPerson& p, const String& slot);
+	void updateTracking(const TrackedPerson& p, const String& slot, const String& surface);
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialPerson)
 };
@@ -60,7 +61,8 @@ class SpatialModule :
 	public OSCModule,
 	public Timer,
 	public BaseManager<SpatialZone>::ManagerListener,
-	public BaseManager<SpatialSource>::ManagerListener
+	public BaseManager<SpatialSource>::ManagerListener,
+	public BaseManager<SpatialSurface>::ManagerListener
 {
 public:
 	SpatialModule();
@@ -70,8 +72,8 @@ public:
 	static const uint32 personTimeoutMs = 1000;
 	//no message at all for this long : the source is shown as silent
 	static const uint32 sourceTimeoutMs = 1000;
-	//shown by the Monitor and the video output while the scene size is unknown
-	static String getNoSceneSizeText() { return "Waiting for the scene size (a source of this scene knowing its area, Use As Scene on one if there are several, or Scenes > Size Mode : Manual)"; }
+	//shown by the Monitor and the video output while the surface size is unknown
+	static String getNoSurfaceSizeText() { return "Waiting for the surface size (a source of this surface knowing its area, Use As Surface on one if there are several, or Surfaces > Size Mode : Manual)"; }
 	//zones are evaluated on the message thread at this rate
 	static const int zoneUpdateRateHz = 50;
 	//status texts (sources) are rebuilt at this rate only
@@ -80,18 +82,18 @@ public:
 
 	TrackingData trackingData;
 
-	//tracking systems (Augmenta, PSN...), each with its transform to the scene
+	//tracking systems (Augmenta, PSN...), each with its transform to the surface
 	SpatialSourceManager sourceManager;
 
-	//flat tracked areas (floor, wall...), each placed in 3D ; sources feed a scene, zones belong to one
-	SpatialSceneManager sceneManager;
-	void updateScenes(bool updateStatus);	// sizes (Auto : from the sources of each scene), links of sources and zones
+	//flat tracked areas (floor, wall...), each placed in 3D ; sources feed a surface, zones belong to one
+	SpatialSurfaceManager surfaceManager;
+	void updateSurfaces(bool updateStatus);	// sizes (Auto : from the sources of each surface), links of sources and zones
 
-	//Scene block of the sessions before v0.6 (one scene) : still loaded, hidden, moved into the first scene
-	enum SceneSizeMode { SCENE_AUTO, SCENE_MANUAL };
-	ControllableContainer sceneCC;
-	EnumParameter* sceneSizeMode;
-	Point2DParameter* sceneSizeManual;
+	//Scene block of the sessions before v0.6 (one scene) : still loaded, hidden, moved into the first surface
+	enum LegacySceneSizeMode { LEGACY_SCENE_AUTO, LEGACY_SCENE_MANUAL };
+	ControllableContainer legacySceneCC;
+	EnumParameter* legacySceneSizeMode;
+	Point2DParameter* legacySceneSizeManual;
 	void afterLoadJSONDataInternal() override;
 
 	//Inspector : section look (icon badge, state chips), blocks of the session first, network last, all folded
@@ -101,14 +103,15 @@ public:
 
 	SpatialZoneManager zoneManager;
 	ControllableContainer zonesValuesCC;
-	Point<float> zonesSceneSize;	//where a new zone starts : the center of this scene
 
 	ControllableContainer peopleValuesCC;
 	std::map<int, SpatialPerson*> people;	// by person id, owned by peopleValuesCC
 
-	PlayerSlots playerSlots;
+	ControllableContainer slotsValuesCC;	// Values > Slots : the slots of each surface
+	//the player slot of a person, nullptr when none ; surface : where that slot is
+	PlayerSlot* getSlotForPerson(int personId, SpatialSurface** surface = nullptr) const;
+	SpatialSurface* getSurface(int index) const;	// clamped, nullptr without surface
 
-	SpatialVideoOutput videoOutput;	// top view sent as video (Spout, NDI)
 	SpatialPSNOutput psnOutput;		// player slots sent as PSN trackers
 
 	void processMessageInternal(const OSCMessage& msg) override;
@@ -126,7 +129,15 @@ public:
 	void itemRemoved(SpatialSource* source) override;
 	void itemsRemoved(Array<SpatialSource*> sources) override;
 
-	void onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c) override;
+	void itemAdded(SpatialSurface* surface) override;
+	void itemsAdded(Array<SpatialSurface*> surfaces) override;
+	void itemRemoved(SpatialSurface* surface) override;
+	void itemsRemoved(Array<SpatialSurface*> surfaces) override;
+
+	//sessions saved before surfaces (Scenes block of the first v0.6 builds, module-wide Player Slots and Video Output) : moved into the surfaces
+	void loadJSONDataItemInternal(var data) override;
+	static var migrateParams(var params);
+
 
 	static SpatialModule* create() { return new SpatialModule(); }
 	virtual String getDefaultTypeString() const override { return "Cockpit"; }

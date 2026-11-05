@@ -1439,9 +1439,10 @@
             <FILE id="dzSpCp" name="SpatialModule.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialModule.cpp"/>
             <FILE id="dzSpHd" name="SpatialModule.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialModule.h"/>
-            <FILE id="dzScCp" name="SpatialScene.cpp" compile="0" resource="0"
-                  file="Source/Module/modules/spatial/SpatialScene.cpp"/>
-            <FILE id="dzScHd" name="SpatialScene.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialScene.h"/>
+            <FILE id="dzScCp" name="SpatialSurface.cpp" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialSurface.cpp"/>
+            <FILE id="dzScHd" name="SpatialSurface.h" compile="0" resource="0"
+                  file="Source/Module/modules/spatial/SpatialSurface.h"/>
             <FILE id="dzSrCp" name="SpatialSource.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/SpatialSource.cpp"/>
             <FILE id="dzSrHd" name="SpatialSource.h" compile="0" resource="0" file="Source/Module/modules/spatial/SpatialSource.h"/>

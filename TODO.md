@@ -62,15 +62,73 @@ d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes s
 - ✅ 05/11 💬 Vincent : brique 3 validée → `50c515de`.
 - ✅ 05/11 💬 Vincent : en 3D, personne = cercle + croix sur le centroïde (plus de corps ni de tête) ; compilé 0 erreur ;
   ✅ Vincent : « ok ». Tests en simulation désormais seulement si logique ou données changent (`CLAUDE.md`).
-- ⏸️ 05/11/2026 fin de séance. Reprise : test de Vincent sur la brique 3 (5 points donnés le 05/11), puis commit sur son
-  accord (brique 3 non commitée sur `feature/viewport-3d`) ; ensuite brique 4, formes simples.
+- ⏸️ 05/11 💬 Vincent : brique 4 (formes / zones en 3D) → bonus, si un jour un tracking 3D (ZacTrack, lidar 3D).
+- 💬 05/11 Vincent : scène → **surface** (un plan du monde réel : sol, mur) ; slots par surface ; PSN = nom du slot / tracker
+  + surface puis valeurs, format « JOUEUR 1 (SOL) », n° = centaine par surface (SOL 1.., MUR 101..) ; 1 sortie vidéo
+  par surface, flux nommé comme la surface.
+- ✅ 06/11 S1-S4 : Scene → Surface partout (code, Chataigne, tests, ROADMAP, D17) ; Player Slots et Video Output dans chaque
+  surface (Values > Slots > <surface>, flux Spout / NDI = nom de la surface, champ Stream Name retiré) ; valeur Surface par
+  personne ; PSN « JOUEUR 1 (SOL) », SOL 1.., MUR 101.. ; anciennes sessions reprises (blocs Scene, Scenes, Player Slots,
+  Video Output → 1re surface). Bug corrigé : options Display de la sortie vidéo non enregistrées.
+  Recompilation complète 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 46 / 46 (+5 : MUR, ses slots,
+  sa sortie vidéo) ; test ponctuel PSN : SOL → 1 « JOUEUR 1 (SOL) », MUR → 101 « Slot 1 (MUR) ». Copies de test : surfaces
+  SOL + MUR fixes. ⚠️ adresses changées : Values > Slots > <surface> > <slot> (State Machine à repointer). ⬜ test de Vincent.
+- ⏭️ 06/11 💬 Vincent : slots on/off par surface (off → PSN avec l’id du tracking, conflit d’id signalé dans le Status) ;
+  vue 3D : liste des surfaces repliable (en-tête « Surfaces », chaque surface dépliable). Test `check_psn_surfaces.ps1`
+  (2 surfaces, MUR slots on → 60101, off → 1005).
+- ⬜ brique 5 : test à plusieurs scènes Fusion (SOL 12000 + MUR 12001).
+
+## 🔧 Étape d'optimisation, revue du 06/11/2026
+
+Relu sans rien modifier : `spatial/` (≈ 7 300 lignes), `Tools/drawzone/`, tous les `.md`. Suite des numéros de la revue
+du 28/10 (archive). Recommandation : B4 à décider d'abord, puis B5, B6, le nettoyage 26 + 29 à 34, les docs D1 à D6 à
+la clôture de la v0.6, 28 ensuite ; 27 (gros) plus tard.
+
+#### 🐞 Bugs
+
+| # | État | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|
+| B4 | ✅ 06/11 | `SpatialPSNOutput` | Numéros PSN qui se chevauchent : slots 1.., 101.. ; ids du tracking d'une surface sans slots : Augmenta 101.. (Id Offset par défaut), PSN 1.. → la personne n'est pas envoyée (signalé dans le Status) | 💬 Vincent : plage haute. Slots 60001.. (60101.. pour la 2e surface), tests mis à jour | Petit |
+| B5 | ✅ 06/11 | `SpatialVideoOutput::timerCallback` | Spout / NDI continuent quand le module Cockpit est désactivé (la sortie PSN, elle, s'arrête) | Fait : rien n'est envoyé, Resolution « Nothing sent : the module is disabled » | Petit |
+| B6 | ✅ 06/11 | Surfaces | Deux surfaces de même nom : deux flux Spout / NDI identiques, adresses en double dans Values > Slots | Fait : avertissement dans le Status de la surface | Petit |
+
+#### 🟠 Nettoyage et doublons
+
+| # | État | Type | Où | Constat | Proposition | Effort |
+|---|---|---|---|---|---|---|
+| 26 | ✅ 06/11 | Reste de la 1re version | `TrackingData`, `SpatialModule::updateZones` | Taille « de scène » unique gardée dans `TrackingData` (`getSurfaceSize` jamais appelé) ; `zonesSurfaceSize` recopiée sans raison | Retirer de `TrackingData` ; une zone ajoutée par l'Inspector se centre sur sa surface | Petit |
+| 27 | ⬜ plus tard | Taille | `TrackingMonitorPanel.cpp` (2 300 lignes) | Un seul fichier pour la vue 2D, l'édition, la colonne, les slots, la 3D | Le couper en 4 fichiers (édition des zones, colonne, barre des slots, panneau 3D) | Gros |
+| 28 | ✅ 06/11 | Doublon | `Tools/drawzone/sim/*.ps1` | `Check`, `Near`, `Sim`, client MCP recopiés dans 6 scripts ; fermer / ouvrir Chataigne dans `run_checks` et `build_and_check` | Un `common.ps1` partagé | Moyen |
+| 29 | ✅ 06/11 | Code mort | `SpatialModule::onControllableFeedbackUpdateInternal` | Ne fait qu'appeler la classe mère | Supprimer | Petit |
+| 30 | ✅ 06/11 | Lisibilité | `SpatialSourceManager::addItemInternal` | `if (maxOffset >= 0)` écrit deux fois de suite | Un seul bloc | Petit |
+| 31 | ✅ 06/11 | Rangement | `Viewport3DRenderer.cpp` | `Viewport3DDetail` coupé en deux par `Camera::pan` | Regrouper | Petit |
+| 32 | ✅ 06/11 | Commentaire | `SpatialZone.cpp` | Commentaire des bornes (« finite bounds… ») posé au-dessus de `contains()` | Le remettre près de `setBounds` | Petit |
+| 33 | ❌ 06/11 | Bruit | `build_dev.bat` | Chaque build affiche « 'C:\Program' is not recognized » (guillemets autour de vswhere) | Écartée : `build_dev.bat` est un fichier de Ben (règle : on n'y touche pas) et le message est sans effet, MSBuild est trouvé ensuite | Petit |
+| 34 | ✅ 06/11 | Robustesse | `AugmentaSource` (port propre) | Le thread réseau lit `niceName` sans verrou : copie de texte pendant un renommage | Garder le nom dans une copie protégée, mise à jour à 4 Hz | Petit |
+
+#### 📄 Fichiers .md (moins de lignes à relire, une seule source par sujet)
+
+| # | État | Fichier | Constat | Proposition | Effort |
+|---|---|---|---|---|---|
+| D1 | ✅ 06/11 | `.github/README.md` | Statut « v0.0.0 » faux ; tableau de version recopié de la ROADMAP ; lien vers le journal figé | Statut à jour, renvoi vers la ROADMAP au lieu du tableau | Petit |
+| D2 | ✅ 06/11 | `ROADMAP.md` | « Détail des prochaines versions » = v0.1 à v0.4, finies (≈ 60 lignes, déjà dans le CHANGELOG) | Supprimer ; garder tableau, bonus, points durs | Petit |
+| D3 | ✅ 06/11 | `CONTRIBUTING.md` / `CLAUDE.md` | Branches, fichiers à ne jamais commiter, fins de ligne, code de Ben écrits deux fois ; « spatial/ (prévu) » périmé | Une source : CONTRIBUTING pour les règles, CLAUDE.md garde le propre à Claude + renvoi | Moyen |
+| D4 | ✅ 06/11 | `JOURNAL.md` | Figé depuis le 29/10, encore lié depuis le README | Le verser dans `TODO-archive.md`, supprimer le fichier | Petit |
+| D5 | ⏭️ question retirée ; v0.6 à archiver à la clôture | `TODO.md` | Partie v0.6 ≈ 70 lignes ; question « place du bloc Scene » périmée | À la clôture : v0.6 vers l'archive, question retirée | Petit |
+| D6 | ⏭️ CHANGELOG « Non publié » rempli ; CLAUDE.md et tag à la clôture | `CHANGELOG.md`, `CLAUDE.md` | « Non publié » vide malgré la v0.6 ; CLAUDE.md dit « État : v0.5.0 » | Remplir à la clôture (tag v0.6.0) | Petit |
+
+- ✅ 06/11 revue faite (B4-B6, 26, 28-34, D1-D4) : recompilation complète 0 erreur (C4101 / C4206 de Ben) ; PSN 30 / 30 ×2,
+  Source IDs 6 / 6, Id Offset 4 / 4, 2 surfaces 5 / 5 ×2 (slots MUR on → 60101, off → 1005), Augmenta 46 / 46.
+  ❌ puis ✅ `make_psn_session.ps1` : variable `$surfaces` = paramètre `-Surfaces` (PowerShell ignore la casse) → `$surfacesJson`.
+  ⬜ test de Vincent, puis commit sur son accord.
+- ✅ 06/11 💬 Vincent : on / off des slots dans le viewport → case « Slots » dans la barre des slots (surface affichée) et sur
+  chaque ligne de la liste des surfaces en 3D. Compilé 0 erreur ; affichage seul, pas de test en simulation. ⬜ œil de Vincent.
 
 ## ⬜ Questions ouvertes
 
 - Choix de la carte réseau pour l'entrée PSN (la sortie l'a déjà).
 - Kratos réel : signe de l'orientation non vérifié ; 2 émetteurs sur un même groupe
   PSN se mélangent (limite connue).
-- Place du bloc Scene dans l'Inspector (entre Video Output et Zones) à confirmer.
 
 ## ⬜ Plus tard
 

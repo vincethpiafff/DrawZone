@@ -10,14 +10,7 @@ $psnSim = Join-Path $PSScriptRoot "psn_sim.ps1"
 $augmentaSim = Join-Path $PSScriptRoot "augmenta_sim.ps1"
 $capture = Join-Path $PSScriptRoot "psn_capture.ps1"
 
-$results = New-Object System.Collections.Generic.List[object]
-function Check([string]$name, [bool]$ok, [string]$got)
-{
-	$results.Add([pscustomobject]@{ Result = $(if ($ok) { "PASS" } else { "FAIL" }); Check = $name; Got = $got })
-}
-function Near($a, $b, [float]$tol = 0.02) { return [math]::Abs([float]$a - [float]$b) -le $tol }
-function Near3($v, $x, $y, $z) { return $null -ne $v -and (Near $v[0] $x) -and (Near $v[1] $y) -and (Near $v[2] $z) }
-function Sim([string]$file, [object[]]$simArgs) { return Start-Process powershell -ArgumentList (@("-ExecutionPolicy", "Bypass", "-File", $file) + $simArgs) -WindowStyle Hidden -PassThru }
+. (Join-Path $PSScriptRoot "common.ps1")
 
 #PSN Z : x = 2, y = 3 -> scene (2 + 8, -2 + 12 - 3) = (10, 7), height 1.7
 $p = Sim $psnSim @("-Via", "127.0.0.1", "-Port", 56576, "-Id", 88, "-X", 2, "-Y", 3, "-Z", 1.7, "-Vx", 0.5, "-Vy", -0.25, "-Seconds", 7)
@@ -38,7 +31,5 @@ Start-Sleep -Milliseconds 1500
 $o = & $capture -Via "127.0.0.1"
 Check "nothing sent once they are gone" ($o.ids.Count -eq 0) ($o.ids -join ",")
 
-$results | Format-Table -AutoSize -Wrap
-$failed = @($results | Where-Object Result -eq "FAIL").Count
-"$($results.Count - $failed) / $($results.Count) passed"
-exit $failed
+ShowResults
+exit $script:failedChecks

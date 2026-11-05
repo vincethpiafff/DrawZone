@@ -18,7 +18,7 @@
 namespace TrackingMonitorStyle
 {
 	const Colour panelBg(0xff141414);
-	const Colour sceneBg(0xff0c0c0c);
+	const Colour surfaceBg(0xff0c0c0c);
 	const Colour columnBg(0xff1a1a1a);
 	const Colour rowBg(0xff222222);
 	const Colour borderColor(0xff333333);

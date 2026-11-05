@@ -176,6 +176,7 @@
 		119888D65DE05EACD18D1B11 /* HTTP.png */ /* HTTP.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = HTTP.png; path = ../../Resources/Modules/HTTP.png; sourceTree = SOURCE_ROOT; };
 		12DDF7A00AC1057D87937493 /* State.cpp */ /* State.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = State.cpp; path = ../../Source/StateMachine/State/State.cpp; sourceTree = SOURCE_ROOT; };
 		1324A112A1CE733670690A95 /* QLabWorkspaceCommand.h */ /* QLabWorkspaceCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QLabWorkspaceCommand.h; path = ../../Source/Module/modules/osc/qlab/commands/QLabWorkspaceCommand.h; sourceTree = SOURCE_ROOT; };
+		13B879B984B7AA99BAA8A334 /* SpatialSurface.cpp */ /* SpatialSurface.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialSurface.cpp; path = ../../Source/Module/modules/spatial/SpatialSurface.cpp; sourceTree = SOURCE_ROOT; };
 		13C16FF3A375B8FF066BC8A9 /* AutomationMappingLayerTimeline.cpp */ /* AutomationMappingLayerTimeline.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AutomationMappingLayerTimeline.cpp; path = ../../Source/TimeMachine/Sequence/layers/mapping/automation/ui/AutomationMappingLayerTimeline.cpp; sourceTree = SOURCE_ROOT; };
 		13D0FC5619BE282325760A65 /* ProcessorIncludes2.cpp */ /* ProcessorIncludes2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ProcessorIncludes2.cpp; path = ../../Source/Common/Processor/ProcessorIncludes2.cpp; sourceTree = SOURCE_ROOT; };
 		14E5D0E29E9A6BEAD9C32A03 /* include_juce_audio_processors.mm */ /* include_juce_audio_processors.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors.mm; path = ../../JuceLibraryCode/include_juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
@@ -400,7 +401,6 @@
 		55137897DDA67599E742298A /* CustomValuesCommandArgumentManager.h */ /* CustomValuesCommandArgumentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CustomValuesCommandArgumentManager.h; path = ../../Source/Common/Command/CustomValues/CustomValuesCommandArgumentManager.h; sourceTree = SOURCE_ROOT; };
 		551FD83435B424DA6DDE4ACA /* CustomValuesCommandArgumentEditor.h */ /* CustomValuesCommandArgumentEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CustomValuesCommandArgumentEditor.h; path = ../../Source/Common/Command/CustomValues/ui/CustomValuesCommandArgumentEditor.h; sourceTree = SOURCE_ROOT; };
 		559E44E0FE4589B5870942EE /* ConditionManagerEditor.cpp */ /* ConditionManagerEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConditionManagerEditor.cpp; path = ../../Source/Common/Processor/Action/Condition/ui/ConditionManagerEditor.cpp; sourceTree = SOURCE_ROOT; };
-		55CC27911FA7444F9C0BEADE /* SpatialScene.cpp */ /* SpatialScene.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialScene.cpp; path = ../../Source/Module/modules/spatial/SpatialScene.cpp; sourceTree = SOURCE_ROOT; };
 		55E5E4547FF6CFC7E6F7C586 /* ChataigneSequence.cpp */ /* ChataigneSequence.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChataigneSequence.cpp; path = ../../Source/TimeMachine/Sequence/ChataigneSequence.cpp; sourceTree = SOURCE_ROOT; };
 		565E20FE17BBEB8D15B5519E /* ConditionFilter.cpp */ /* ConditionFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConditionFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/condition/ConditionFilter.cpp; sourceTree = SOURCE_ROOT; };
 		5781A95A86CBB04AF916EC28 /* MappingFilter.h */ /* MappingFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MappingFilter.h; path = ../../Source/Common/Processor/Mapping/Filter/MappingFilter.h; sourceTree = SOURCE_ROOT; };
@@ -548,6 +548,7 @@
 		7FCA3E8E57D8AE1C556395CD /* MQTTCommands.cpp */ /* MQTTCommands.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MQTTCommands.cpp; path = ../../Source/Module/modules/mqtt/commands/MQTTCommands.cpp; sourceTree = SOURCE_ROOT; };
 		7FCAFC7304EC00159AB9C5F2 /* ScriptCallbackCommand.h */ /* ScriptCallbackCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ScriptCallbackCommand.h; path = ../../Source/Module/modules/common/commands/scriptcallback/ScriptCallbackCommand.h; sourceTree = SOURCE_ROOT; };
 		80749B405D075CEECFB28D3B /* MouseModule.cpp */ /* MouseModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MouseModule.cpp; path = ../../Source/Module/modules/controller/mouse/MouseModule.cpp; sourceTree = SOURCE_ROOT; };
+		811652AC92D7B062E0FCB262 /* SpatialSurface.h */ /* SpatialSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialSurface.h; path = ../../Source/Module/modules/spatial/SpatialSurface.h; sourceTree = SOURCE_ROOT; };
 		829270114E6479B154663AFB /* StreamDeckModule.cpp */ /* StreamDeckModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = StreamDeckModule.cpp; path = ../../Source/Module/modules/controller/streamdeck/StreamDeckModule.cpp; sourceTree = SOURCE_ROOT; };
 		830C08E624F7EF32DD46FE2B /* AudioModuleHardwareEditor.h */ /* AudioModuleHardwareEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AudioModuleHardwareEditor.h; path = ../../Source/Module/modules/audio/ui/AudioModuleHardwareEditor.h; sourceTree = SOURCE_ROOT; };
 		838C8313674554E96077F76A /* AutomationMappingLayerPanel.cpp */ /* AutomationMappingLayerPanel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = AutomationMappingLayerPanel.cpp; path = ../../Source/TimeMachine/Sequence/layers/mapping/automation/ui/AutomationMappingLayerPanel.cpp; sourceTree = SOURCE_ROOT; };
@@ -738,7 +739,6 @@
 		B34DD1312FE1422CAC5C4781 /* OSCCommand.cpp */ /* OSCCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = OSCCommand.cpp; path = ../../Source/Module/modules/common/commands/osc/OSCCommand.cpp; sourceTree = SOURCE_ROOT; };
 		B3B57699F8799056A09AC4D3 /* Syphon.framework */ /* Syphon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Syphon.framework; path = ../../External/syphon/Syphon.framework; sourceTree = "<group>"; };
 		B3C3ED01C6D0D020BC0E895C /* server.crt */ /* server.crt */ = {isa = PBXFileReference; lastKnownFileType = file.crt; name = server.crt; path = ../../Resources/server/server.crt; sourceTree = SOURCE_ROOT; };
-		B3EFDE6429790505C97EA301 /* SpatialScene.h */ /* SpatialScene.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialScene.h; path = ../../Source/Module/modules/spatial/SpatialScene.h; sourceTree = SOURCE_ROOT; };
 		B3F9109E23EBCBBC1AD7FD5F /* CropFilter.h */ /* CropFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CropFilter.h; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/CropFilter.h; sourceTree = SOURCE_ROOT; };
 		B52752D23217AA7EC926EAF6 /* WiimotePairUtil.cpp */ /* WiimotePairUtil.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = WiimotePairUtil.cpp; path = ../../Source/Module/modules/controller/wiimote/WiimotePairUtil.cpp; sourceTree = SOURCE_ROOT; };
 		B58F472712F98039790C5BD8 /* TCPClientModule.h */ /* TCPClientModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TCPClientModule.h; path = ../../Source/Module/modules/tcp/tcpclient/TCPClientModule.h; sourceTree = SOURCE_ROOT; };
@@ -2335,8 +2335,8 @@
 				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
-				55CC27911FA7444F9C0BEADE,
-				B3EFDE6429790505C97EA301,
+				13B879B984B7AA99BAA8A334,
+				811652AC92D7B062E0FCB262,
 				B959E81417EA0A99A703CB0A,
 				7ADF7EC08335C9EE28AFA3B6,
 				50119A43BFEC63CA3CF6B3DE,

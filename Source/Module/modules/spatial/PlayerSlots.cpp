@@ -18,7 +18,7 @@ PlayerSlot::PlayerSlot(int index) :
 	occupied->setControllableFeedbackOnly(true);
 	personId = addIntParameter("Person Id", "Id of the person in this slot (-1 = free)", -1, -1);
 	personId->setControllableFeedbackOnly(true);
-	position = addPoint2DParameter("Position", "Position of the person in this slot, in meters from the top left corner of the scene. Frozen while the slot is held");
+	position = addPoint2DParameter("Position", "Position of the person in this slot, in meters from the top left corner of the surface. Frozen while the slot is held");
 	position->setControllableFeedbackOnly(true);
 	held = addBoolParameter("Held", "Hold Spot To Reclaim mode : the person was lost, the slot waits at its last position for anyone without a slot to walk in", false);
 	held->setControllableFeedbackOnly(true);
@@ -42,7 +42,7 @@ PlayerSlots::PlayerSlots() :
 	EnablingControllableContainer("Player Slots"),
 	slotsValues("Slots")
 {
-	slotCount = addIntParameter("Slot Count", "Number of players. Each tracked person gets the lowest free slot and keeps it everywhere in the scene. When all slots are taken, newcomers wait", 4, 1, 64);
+	slotCount = addIntParameter("Slot Count", "Number of players. Each tracked person gets the lowest free slot and keeps it everywhere in the surface. When all slots are taken, newcomers wait", 4, 1, 64);
 
 	releaseMode = addEnumParameter("Slot Release", "When a person is lost by the tracking : Next Person Takes Slot frees the slot at once for the last person who arrived ; Hold Spot To Reclaim keeps the slot at the last position, the first person without a slot who walks in takes it");
 	releaseMode->addOption("Next Person Takes Slot", NEXT_PERSON)->addOption("Hold Spot To Reclaim", HOLD_SPOT);

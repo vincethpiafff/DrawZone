@@ -6,7 +6,7 @@
 	Author:  DrawZone
 
 	Player slots : each tracked person gets a stable player slot (Slot 1..N)
-	for the whole scene. When all slots are taken, newcomers wait ; a slot
+	for the whole surface. When all slots are taken, newcomers wait ; a slot
 	released goes to the last person who arrived. A lost person's slot can
 	also stay held at its last position, for anyone without a slot to walk in.
 
@@ -25,7 +25,7 @@ public:
 	ColorParameter* color;
 	BoolParameter* occupied;
 	IntParameter* personId;			// -1 when free
-	Point2DParameter* position;		// meters, origin top left of the scene ; frozen while held
+	Point2DParameter* position;		// meters, origin top left of the surface ; frozen while held
 	BoolParameter* held;
 	FloatParameter* holdRemaining;	// seconds, -1 = held without time limit
 	Trigger* joined;
@@ -61,7 +61,7 @@ public:
 	Array<PlayerSlot*> slots;	// owned by slotsValues
 
 	Array<int> waitingIds;	// tracked people without a slot, in order of arrival
-	Array<int> releasedIds;	// slot removed by hand : no slot again until they leave the scene or are assigned by hand
+	Array<int> releasedIds;	// slot removed by hand : no slot again until they leave the surface or are assigned by hand
 
 	void update(const Array<TrackedPerson>& persons);
 	int getSlotIndexForPerson(int id) const;	// 0-based, -1 = no slot

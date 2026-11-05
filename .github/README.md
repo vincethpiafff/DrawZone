@@ -9,7 +9,7 @@ dessiner des zones sur des surfaces, d'y définir une logique inspirée du
 game design (entrées/sorties de zone, conditions, timers, machines à états)
 et d'envoyer le résultat en OSC : booléens, pourcentages, durées, compteurs.
 
-> **Statut : en développement précoce (v0.0.0).** Pas encore utilisable en production.
+> **Statut : en développement (v0.5.0 publiée, v0.6 en cours : surfaces en 3D).** Pas encore prêt pour la production.
 
 ## Basé sur Chataigne
 
@@ -23,18 +23,7 @@ La présentation d'origine de Chataigne est dans le [README racine](../README.md
 
 ## Feuille de route
 
-| Version | Contenu |
-|---|---|
-| v0.1 | Module Spatial : entrée Augmenta, une zone, booléen de présence |
-| v0.2 | Zones multiples et métriques (nombre, durée, occupation…) |
-| v0.3 | Éditeur 2D vue de dessus |
-| v0.4 | Sortie vidéo de la vue 2D en NDI et Spout |
-| v0.5 | Entrée PosiStageNet, multi-sources |
-| v0.6 | Viewport 3D |
-| v0.7–0.8 | Éditeur nodal façon Blueprints |
-| v1.0 | Version stable |
-
-Détails : [docs/drawzone/ROADMAP.md](../docs/drawzone/ROADMAP.md)
+Versions, contenu et état : [docs/drawzone/ROADMAP.md](../docs/drawzone/ROADMAP.md)
 
 ## Compiler
 
@@ -45,7 +34,6 @@ Windows uniquement pour l'instant : [docs/drawzone/BUILDING.md](../docs/drawzone
 - [Décisions](../docs/drawzone/DECISIONS.md)
 - [Conventions de travail](../docs/drawzone/CONTRIBUTING.md)
 - [Changelog](../docs/drawzone/CHANGELOG.md)
-- [Journal de bord](../docs/drawzone/JOURNAL.md)
 
 ## Licence
 

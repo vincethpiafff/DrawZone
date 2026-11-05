@@ -9,7 +9,7 @@
 */
 
 #include "TrackingData.cpp"
-#include "SpatialScene.cpp"
+#include "SpatialSurface.cpp"
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
 #include "PlayerSlots.cpp"
@@ -21,34 +21,36 @@
 
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
-	sceneCC("Scene"),
+	legacySceneCC("Scene"),
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
-	videoOutput(this),
+	slotsValuesCC("Slots"),
 	psnOutput(this)
 {
-	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
+	personCount = valuesCC.addIntParameter("Person Count", "Number of people currently tracked, all surfaces together", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
 
-	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Sessions before v0.6 only : moved into the first scene");
-	sceneSizeMode->addOption("Auto (From Sources)", SCENE_AUTO)->addOption("Manual", SCENE_MANUAL);
-	sceneSizeManual = sceneCC.addPoint2DParameter("Size", "Sessions before v0.6 only : moved into the first scene");
-	sceneSizeManual->setBounds(.1f, .1f, 1000, 1000);
-	sceneSizeManual->setDefaultPoint(10, 6);
+	legacySceneSizeMode = legacySceneCC.addEnumParameter("Size Mode", "Sessions before v0.6 only : moved into the first surface");
+	legacySceneSizeMode->addOption("Auto (From Sources)", LEGACY_SCENE_AUTO)->addOption("Manual", LEGACY_SCENE_MANUAL);
+	legacySceneSizeManual = legacySceneCC.addPoint2DParameter("Size", "Sessions before v0.6 only : moved into the first surface");
+	legacySceneSizeManual->setBounds(.1f, .1f, 1000, 1000);
+	legacySceneSizeManual->setDefaultPoint(10, 6);
 
-	//a new module starts with one scene (sessions before v0.6 too : nothing to load)
-	moduleParams.addChildControllableContainer(&sceneManager);
-	sceneManager.addItem(new SpatialScene(), var(), false);
-	sourceManager.sceneManager = &sceneManager;
-	zoneManager.sceneManager = &sceneManager;
+	//a new module starts with one surface (sessions before v0.6 too : nothing to load)
+	surfaceManager.module = this;
+	surfaceManager.addBaseManagerListener(this);
+	moduleParams.addChildControllableContainer(&surfaceManager);
+	surfaceManager.addItem(new SpatialSurface(this), var(), false);
+	sourceManager.surfaceManager = &surfaceManager;
+	zoneManager.surfaceManager = &surfaceManager;
 
 	//and an Augmenta source on its OSC input (sessions without sources too : nothing to load)
 	moduleParams.addChildControllableContainer(&sourceManager);
 	sourceManager.addBaseManagerListener(this);
 	sourceManager.addItem(new AugmentaSource(), var(), false);
 
-	sceneCC.hideInEditor = true;
-	moduleParams.addChildControllableContainer(&sceneCC);
+	legacySceneCC.hideInEditor = true;
+	moduleParams.addChildControllableContainer(&legacySceneCC);
 
 	//zones are saved with the module parameters (recursive save)
 	moduleParams.addChildControllableContainer(&zoneManager);
@@ -58,11 +60,9 @@ SpatialModule::SpatialModule() :
 	valuesCC.addChildControllableContainer(&zonesValuesCC);
 	peopleValuesCC.saveAndLoadRecursiveData = false; //live data, nothing to save
 	valuesCC.addChildControllableContainer(&peopleValuesCC);
+	valuesCC.addChildControllableContainer(&slotsValuesCC);
 
-	moduleParams.addChildControllableContainer(&playerSlots);
-	moduleParams.addChildControllableContainer(&videoOutput);
 	moduleParams.addChildControllableContainer(&psnOutput);
-	valuesCC.addChildControllableContainer(&playerSlots.slotsValues);
 
 	setupInspectorSections();
 
@@ -72,8 +72,10 @@ SpatialModule::SpatialModule() :
 SpatialModule::~SpatialModule()
 {
 	stopTimer();
+	for (auto& s : surfaceManager.items) slotsValuesCC.removeChildControllableContainer(&s->playerSlots.slotsValues);
 	zoneManager.removeBaseManagerListener(this);
 	sourceManager.removeBaseManagerListener(this);
+	surfaceManager.removeBaseManagerListener(this);
 }
 
 void SpatialModule::processMessageInternal(const OSCMessage& msg)
@@ -87,64 +89,60 @@ void SpatialModule::afterLoadJSONDataInternal()
 {
 	OSCModule::afterLoadJSONDataInternal();
 
-	//session before v0.6 : its Scene block goes into the first scene, then is put back to default (not saved again)
-	if (!sceneSizeMode->isOverriden && !sceneSizeManual->isOverriden) return;
-	if (SpatialScene* s = sceneManager.items.isEmpty() ? nullptr : sceneManager.items[0])
+	//session before v0.6 : its Scene block goes into the first surface, then is put back to default (not saved again)
+	if (!legacySceneSizeMode->isOverriden && !legacySceneSizeManual->isOverriden) return;
+	if (SpatialSurface* s = surfaceManager.items.isEmpty() ? nullptr : surfaceManager.items[0])
 	{
 		if (!s->sizeMode->isOverriden && !s->manualSize->isOverriden)
 		{
-			s->sizeMode->setValueWithData(sceneSizeMode->getValueData());
-			s->manualSize->setPoint(sceneSizeManual->getPoint());
+			s->sizeMode->setValueWithData(legacySceneSizeMode->getValueData());
+			s->manualSize->setPoint(legacySceneSizeManual->getPoint());
 		}
 	}
-	sceneSizeMode->resetValue();
-	sceneSizeManual->resetValue();
+	legacySceneSizeMode->resetValue();
+	legacySceneSizeManual->resetValue();
 }
 
-void SpatialModule::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
-{
-	OSCModule::onControllableFeedbackUpdateInternal(cc, c);
-}
-
-void SpatialModule::updateScenes(bool updateStatus)
+void SpatialModule::updateSurfaces(bool updateStatus)
 {
 	//call under sourceManager.items.getLock()
-	for (auto& s : sourceManager.items) s->sceneId = sceneManager.getScene(s->sceneTarget);
-	for (auto& z : zoneManager.items) z->sceneId = sceneManager.getScene(z->sceneTarget);
+	for (auto& s : sourceManager.items) s->surfaceId = surfaceManager.getSurface(s->surfaceTarget);
+	for (auto& z : zoneManager.items) z->surfaceId = surfaceManager.getSurface(z->surfaceTarget);
 
-	for (auto& scene : sceneManager.items)
+	for (auto& surface : surfaceManager.items)
 	{
 		String from;
-		bool manual = scene->sizeMode->getValueDataAsEnum<SpatialScene::SizeMode>() == SpatialScene::SIZE_MANUAL;
-		scene->size = manual ? scene->manualSize->getPoint() : sourceManager.getSceneArea(scene, &from);
+		bool manual = surface->sizeMode->getValueDataAsEnum<SpatialSurface::SizeMode>() == SpatialSurface::SIZE_MANUAL;
+		surface->size = manual ? surface->manualSize->getPoint() : sourceManager.getSurfaceArea(surface, &from);
 		if (!updateStatus) continue;
 
-		if (scene->size.x <= 0 || scene->size.y <= 0) scene->status->setValue("No size yet");
-		else scene->status->setValue(String(scene->size.x, 1) + " x " + String(scene->size.y, 1) + " m, " + (manual ? String("manual") : "from " + from));
+		String s = surface->size.x <= 0 || surface->size.y <= 0 ? String("No size yet") : String(surface->size.x, 1) + " x " + String(surface->size.y, 1) + " m, " + (manual ? String("manual") : "from " + from);
+		//Spout / NDI streams and Values > Slots are named after the surface
+		for (auto& other : surfaceManager.items)
+			if (other != surface && other->niceName == surface->niceName) { s += ". Warning : another surface has the same name, give each one its own (video streams, Values > Slots)"; break; }
+		surface->status->setValue(s);
 	}
-
-	//single scene code (new zone at the center, Monitor header) : the first scene
-	trackingData.setSceneSize(sceneManager.items.isEmpty() ? Point<float>() : sceneManager.items[0]->size);
 }
 
 void SpatialModule::updateZones()
 {
 	TrackingData::Snapshot s = trackingData.getSnapshot();
 
-	if (s.sceneSize != zonesSceneSize)
-	{
-		zonesSceneSize = s.sceneSize;
-	}
-
-	//each zone only sees the people of its scene
+	//each zone only sees the people of its surface
 	for (auto& z : zoneManager.items)
 	{
-		Array<TrackedPerson> inScene;
-		for (auto& p : s.persons) if (p.scene == z->sceneId) inScene.add(p);
-		z->updateFromPersons(inScene);
+		Array<TrackedPerson> inSurface;
+		for (auto& p : s.persons) if (p.surface == z->surfaceId) inSurface.add(p);
+		z->updateFromPersons(inSurface);
 	}
 
-	playerSlots.update(s.persons); //before the people, which show their slot
+	//each surface gives its slots to its people, before the people, which show their slot
+	for (auto& surface : surfaceManager.items)
+	{
+		Array<TrackedPerson> onSurface;
+		for (auto& p : s.persons) if (p.surface == surface) onSurface.add(p);
+		surface->playerSlots.update(onSurface);
+	}
 	psnOutput.update(s.persons);
 	updatePeople(s);
 }
@@ -188,8 +186,10 @@ void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
 		}
 		sp->update(p.position, zones);
 
-		int slotIndex = playerSlots.getSlotIndexForPerson(p.id);
-		sp->updateTracking(p, slotIndex >= 0 ? playerSlots.slots[slotIndex]->niceName : String());
+		PlayerSlot* slot = getSlotForPerson(p.id);
+		String surfaceName;
+		for (auto& surface : surfaceManager.items) if (surface == p.surface) surfaceName = surface->niceName;
+		sp->updateTracking(p, slot != nullptr ? slot->niceName : String(), surfaceName);
 	}
 }
 
@@ -202,7 +202,9 @@ SpatialPerson::SpatialPerson(int id) :
 	sourceName->setControllableFeedbackOnly(true);
 	sourceId = addIntParameter("Source Id", "Id given to the person by its source", id);
 	sourceId->setControllableFeedbackOnly(true);
-	position = addPoint2DParameter("Position", "Position in meters, from the top left corner of the scene");
+	surfaceName = addStringParameter("Surface", "Surface the person is on (the surface of its source)", "");
+	surfaceName->setControllableFeedbackOnly(true);
+	position = addPoint2DParameter("Position", "Position in meters, from the top left corner of the surface");
 	position->setControllableFeedbackOnly(true);
 	zoneName = addStringParameter("Zone", "Zone the person is in, \"A + B\" where zones overlap, empty outside any zone", "");
 	zoneName->setControllableFeedbackOnly(true);
@@ -210,21 +212,22 @@ SpatialPerson::SpatialPerson(int id) :
 	relativePosition->setBounds(-1, -1, 1, 1);
 	relativePosition->setPoint(-1, -1);
 	relativePosition->setControllableFeedbackOnly(true);
-	slotName = addStringParameter("Slot", "Player slot of the person, empty without a slot", "");
+	slotName = addStringParameter("Slot", "Player slot of the person on its surface, empty without a slot", "");
 	slotName->setControllableFeedbackOnly(true);
 
-	velocity = addPoint2DParameter("Velocity", "Velocity in the scene axes (as sent by the tracking system, turned with its source)");
+	velocity = addPoint2DParameter("Velocity", "Velocity in the surface axes (as sent by the tracking system, turned with its source)");
 	velocity->setControllableFeedbackOnly(true);
 	orientation = addFloatParameter("Orientation", "Orientation in degrees, as sent by the tracking system plus the rotation of its source", 0);
 	orientation->setControllableFeedbackOnly(true);
 	height = addFloatParameter("Height", "Height of the person as sent by the tracking system, in meters", 0);
 	height->setControllableFeedbackOnly(true);
-	age = addFloatParameter("Age", "Seconds since the person entered the scene, as sent by the tracking system", 0);
+	age = addFloatParameter("Age", "Seconds since the person entered the surface, as sent by the tracking system", 0);
 	age->setControllableFeedbackOnly(true);
 }
 
-void SpatialPerson::updateTracking(const TrackedPerson& p, const String& slot)
+void SpatialPerson::updateTracking(const TrackedPerson& p, const String& slot, const String& surface)
 {
+	surfaceName->setValue(surface);
 	sourceName->setValue(p.sourceName);
 	sourceId->setValue(p.sourceId);
 	slotName->setValue(slot);
@@ -277,7 +280,7 @@ void SpatialModule::timerCallback()
 			if (updateStatus) s->update(this);
 		}
 		if (updateStatus) psnOutput.updateStatus();
-		updateScenes(updateStatus);
+		updateSurfaces(updateStatus);
 	}
 	personCount->setValue(trackingData.getNumPersons());
 
@@ -293,10 +296,12 @@ void SpatialModule::itemAdded(SpatialZone* zone)
 {
 	setupAddedZone(zone);
 
-	//a brand new zone starts at the center of the scene (not a duplicated or loaded one)
+	//a brand new zone starts at the center of its surface (not a duplicated or loaded one)
 	bool isLoading = isCurrentlyLoadingData || zoneManager.isCurrentlyLoadingData;
 	bool isNew = !zone->center->isOverriden;
-	if (!isLoading && isNew && zonesSceneSize.x > 0 && zonesSceneSize.y > 0) zone->center->setPoint(zonesSceneSize / 2);
+	SpatialSurface* surface = surfaceManager.getSurface(zone->surfaceTarget);
+	Point<float> size = surface != nullptr ? surface->size : Point<float>();
+	if (!isLoading && isNew && size.x > 0 && size.y > 0) zone->center->setPoint(size / 2);
 }
 
 void SpatialModule::itemsAdded(Array<SpatialZone*> zones)
@@ -324,6 +329,124 @@ void SpatialModule::itemsRemoved(Array<SpatialSource*> sources)
 	for (auto& s : sources) trackingData.removeSource(s);
 }
 
+void SpatialModule::itemAdded(SpatialSurface* surface)
+{
+	slotsValuesCC.addChildControllableContainer(&surface->playerSlots.slotsValues);
+}
+
+void SpatialModule::itemsAdded(Array<SpatialSurface*> surfaces)
+{
+	for (auto& s : surfaces) itemAdded(s);
+}
+
+void SpatialModule::itemRemoved(SpatialSurface* surface)
+{
+	slotsValuesCC.removeChildControllableContainer(&surface->playerSlots.slotsValues);
+}
+
+void SpatialModule::itemsRemoved(Array<SpatialSurface*> surfaces)
+{
+	for (auto& s : surfaces) itemRemoved(s);
+}
+
+PlayerSlot* SpatialModule::getSlotForPerson(int personId, SpatialSurface** surface) const
+{
+	for (auto& s : surfaceManager.items)
+	{
+		int i = s->playerSlots.getSlotIndexForPerson(personId);
+		if (i < 0) continue;
+		if (surface != nullptr) *surface = s;
+		return s->playerSlots.slots[i];
+	}
+	return nullptr;
+}
+
+SpatialSurface* SpatialModule::getSurface(int index) const
+{
+	if (surfaceManager.items.isEmpty()) return nullptr;
+	return surfaceManager.items[jlimit(0, surfaceManager.items.size() - 1, index)];
+}
+
+void SpatialModule::loadJSONDataItemInternal(var data)
+{
+	if (data.getDynamicObject() != nullptr && data.hasProperty("params"))
+	{
+		data = JSON::parse(JSON::toString(data)); //a copy : the session data is not changed
+		data.getDynamicObject()->setProperty("params", migrateParams(data.getProperty("params", var())));
+	}
+	OSCModule::loadJSONDataItemInternal(data);
+}
+
+var SpatialModule::migrateParams(var params)
+{
+	DynamicObject* containers = params.getProperty("containers", var()).getDynamicObject();
+	if (containers == nullptr) return params;
+
+	//first v0.6 builds : Scenes block, Scene and Use As Scene parameters
+	if (containers->hasProperty("scenes") && !containers->hasProperty("surfaces"))
+	{
+		containers->setProperty("surfaces", containers->getProperty("scenes"));
+		containers->removeProperty("scenes");
+	}
+	auto renameParameters = [](var manager)
+		{
+			var items = manager.getProperty("items", var());
+			for (int i = 0; i < items.size(); i++)
+			{
+				var item = items[i];
+				if (item.getProperty("type", "").toString() == "Scene") item.getDynamicObject()->setProperty("type", "Surface");
+				var parameters = item.getProperty("parameters", var());
+				for (int j = 0; j < parameters.size(); j++)
+				{
+					DynamicObject* p = parameters[j].getDynamicObject();
+					if (p == nullptr) continue;
+					String address = p->getProperty("controlAddress").toString();
+					if (address == "/scene") p->setProperty("controlAddress", "/surface");
+					else if (address == "/useAsScene") p->setProperty("controlAddress", "/useAsSurface");
+				}
+			}
+		};
+	renameParameters(containers->getProperty("surfaces"));
+	renameParameters(containers->getProperty("sources"));
+	renameParameters(containers->getProperty("zones"));
+
+	//before surfaces : Player Slots and Video Output of the module go into the first surface
+	var slots = containers->getProperty("playerSlots");
+	var video = containers->getProperty("videoOutput");
+	if (slots.isVoid() && video.isVoid()) return params;
+
+	if (!containers->hasProperty("surfaces"))
+	{
+		var surfaces = new DynamicObject();
+		surfaces.getDynamicObject()->setProperty("items", Array<var>());
+		containers->setProperty("surfaces", surfaces);
+	}
+	var items = containers->getProperty("surfaces").getProperty("items", var());
+	if (!items.isArray()) return params;
+	if (items.size() == 0)
+	{
+		var first = new DynamicObject();
+		first.getDynamicObject()->setProperty("niceName", "Surface");
+		first.getDynamicObject()->setProperty("type", "Surface");
+		items.append(first);
+	}
+
+	var first = items[0];
+	if (!first.getProperty("containers", var()).isObject()) first.getDynamicObject()->setProperty("containers", new DynamicObject());
+	DynamicObject* own = first.getProperty("containers", var()).getDynamicObject();
+	if (!slots.isVoid() && !own->hasProperty("playerSlots")) own->setProperty("playerSlots", slots);
+	if (!video.isVoid() && !own->hasProperty("videoOutput"))
+	{
+		//its stream now takes the name of the surface
+		var parameters = video.getProperty("parameters", var());
+		if (parameters.isArray()) for (int j = parameters.size() - 1; j >= 0; j--) if (parameters[j].getProperty("controlAddress", "").toString() == "/streamName") parameters.remove(j);
+		own->setProperty("videoOutput", video);
+	}
+	containers->removeProperty("playerSlots");
+	containers->removeProperty("videoOutput");
+	return params;
+}
+
 void SpatialModule::setupInspectorSections()
 {
 	using namespace SpatialSection;
@@ -345,21 +468,10 @@ void SpatialModule::setupInspectorSections()
 			return Array<Chip>({ chip(String(n) + (n == 1 ? " zone" : " zones"), false), chip(String(occupied) + " occupied", occupied > 0) });
 		};
 
-	sceneManager.sectionSummary = [this, chip]()
+	surfaceManager.sectionSummary = [this, chip]()
 		{
-			int n = sceneManager.items.size();
-			return Array<Chip>({ chip(String(n) + (n == 1 ? " scene" : " scenes"), false) });
-		};
-
-	playerSlots.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
-		{
-			return new SpatialSectionEditor<EnablingControllableContainerEditor>(SLOTS, [this, chip]()
-				{
-					if (!playerSlots.enabled->boolValue()) return Array<Chip>({ chip("Disabled", false) });
-					int n = playerSlots.slotCount->intValue();
-					int taken = n - playerSlots.freeSlots->intValue();
-					return Array<Chip>({ chip(String(n) + (n == 1 ? " slot" : " slots"), false), chip(String(taken) + " taken", taken > 0) });
-				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+			int n = surfaceManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " surface" : " surfaces"), false) });
 		};
 
 	psnOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
@@ -372,15 +484,6 @@ void SpatialModule::setupInspectorSections()
 				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
 		};
 
-	videoOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
-		{
-			return new SpatialSectionEditor<GenericControllableContainerEditor>(OUTPUT, [this, chip]()
-				{
-					bool s = videoOutput.spout->boolValue(), n = videoOutput.ndi->boolValue();
-					return Array<Chip>({ chip(s ? "Spout on" : "Spout off", s), chip(n ? "NDI on" : "NDI off", n) });
-				}, cc, isRoot);
-		};
-
 	//the OSC input keeps its network editor (local IPs in the header), with the badge only
 	if (receiveCC != nullptr)
 	{
@@ -391,9 +494,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//network inputs, network outputs (OSC, then PSN), Sources, Video Output, Scenes, Zones, Player Slots
+	//network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &videoOutput, &sceneManager, &zoneManager, &playerSlots };
+	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)

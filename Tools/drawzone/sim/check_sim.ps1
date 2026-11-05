@@ -14,70 +14,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $sim = Join-Path $PSScriptRoot "augmenta_sim.ps1"
-$token = [Environment]::GetEnvironmentVariable("CHATAIGNE_MCP_TOKEN", "User")
-if (-not $token) { throw "CHATAIGNE_MCP_TOKEN is not set" }
-
-$script:session = $null
-$script:nextId = 1
-
-function ParseBody([string]$body)
-{
-	# JSON, or server-sent events : keep the last data line
-	if ($body.TrimStart().StartsWith("{")) { return $body | ConvertFrom-Json }
-	$data = ($body -split "`n" | Where-Object { $_ -like "data:*" } | Select-Object -Last 1)
-	return $data.Substring(5) | ConvertFrom-Json
-}
-
-function Rpc([string]$method, $params)
-{
-	$headers = @{ "Authorization" = "Bearer $token"; "Accept" = "application/json, text/event-stream" }
-	if ($script:session) { $headers["Mcp-Session-Id"] = $script:session; $headers["MCP-Protocol-Version"] = $script:protocol }
-	$body = @{ jsonrpc = "2.0"; id = $script:nextId; method = $method; params = $params } | ConvertTo-Json -Depth 10 -Compress
-	$script:nextId++
-	try { $r = Invoke-WebRequest -Uri $Endpoint -Method Post -Headers $headers -ContentType "application/json" -Body $body -UseBasicParsing }
-	catch
-	{
-		#JSON-RPC errors come with an HTTP error status (e.g. "child does not exist")
-		if ($_.ErrorDetails -and $_.ErrorDetails.Message) { return ParseBody $_.ErrorDetails.Message }
-		throw
-	}
-	if (-not $script:session -and $r.Headers["Mcp-Session-Id"]) { $script:session = $r.Headers["Mcp-Session-Id"] }
-	return ParseBody ([System.Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()))
-}
-
-function Tool([string]$name, $arguments)
-{
-	$r = Rpc "tools/call" @{ name = $name; arguments = $arguments }
-	if ($r.error) { return $null }
-	$text = $r.result.content[0].text
-	if ($r.result.isError) { return $null }
-	return $text | ConvertFrom-Json
-}
-
-$init = Rpc "initialize" @{ protocolVersion = "2025-06-18"; capabilities = @{}; clientInfo = @{ name = "drawzone-check"; version = "1" } }
-$script:protocol = $init.result.protocolVersion
-#required by the protocol before any other request (a notification : no id, no answer)
-$headers = @{ "Authorization" = "Bearer $token"; "Accept" = "application/json, text/event-stream"; "Mcp-Session-Id" = $script:session; "MCP-Protocol-Version" = $script:protocol }
-[void](Invoke-WebRequest -Uri $Endpoint -Method Post -Headers $headers -ContentType "application/json" -Body '{"jsonrpc":"2.0","method":"notifications/initialized"}' -UseBasicParsing)
-
-$project = Tool "chataigne_project" @{}
-$modules = $project.modules
+. (Join-Path $PSScriptRoot "common.ps1")
+$project = ConnectMcp $Endpoint "drawzone-check"
 if ($ProjectOnly) { if ($project.modified) { "modified" } else { "saved" }; exit 0 }
-
-function Value([string]$path)
-{
-	$o = Tool "organic_inspect" @{ handle = $modules; path = $path }
-	if ($null -eq $o) { return $null }
-	return $o.value
-}
-
-$results = New-Object System.Collections.Generic.List[object]
-function Check([string]$name, [bool]$ok, [string]$got)
-{
-	$results.Add([pscustomobject]@{ Result = $(if ($ok) { "PASS" } else { "FAIL" }); Check = $name; Got = $got })
-}
-
-function Near($a, $b, [float]$tol = 0.02) { return [math]::Abs([float]$a - [float]$b) -le $tol }
 
 $person = "spatial/values/people/person77"
 
@@ -139,11 +78,11 @@ Check "velocity (0.8, -0.4)" ($null -ne $v -and (Near $v[0] 0.8) -and (Near $v[1
 $status = Value "spatial/parameters/sources/augmenta/status"
 Check "source status receiving" ($status -match "^Receiving, \d+ msg/s, \d+ people, Augmenta scene") "'$status'"
 #video output (Spout / NDI) : when one is on, frames are rendered and their size shown
-$spoutOn = Value "spatial/parameters/videoOutput/spout"
-$ndiOn = Value "spatial/parameters/videoOutput/ndi"
+$spoutOn = Value "spatial/parameters/surfaces/sol/videoOutput/spout"
+$ndiOn = Value "spatial/parameters/surfaces/sol/videoOutput/ndi"
 if ($spoutOn -or $ndiOn)
 {
-	$res = Value "spatial/parameters/videoOutput/resolution"
+	$res = Value "spatial/parameters/surfaces/sol/videoOutput/resolution"
 	Check "video output renders" ($res -match "^\d+ x \d+ px, 1 px = ") "'$res'"
 }
 $count = Value "spatial/values/personCount"
@@ -184,6 +123,16 @@ if ($null -ne (Value "spatial/parameters/sources/augmenta2/port"))
 	Start-Sleep -Milliseconds 1500
 	$pos = Value "spatial/values/people/person1005/position"
 	Check "2nd scene : person 1005 at (10, 1)" ($null -ne $pos -and (Near $pos[0] 10) -and (Near $pos[1] 1)) ($pos -join ", ")
+	#Augmenta 2 feeds the surface MUR, which has its own slots (Slot 1...) and its own video output
+	$surf = Value "spatial/values/people/person1005/surface"
+	Check "2nd scene : person 1005 on surface MUR" ($surf -eq "MUR") "'$surf'"
+	$slot = Value "spatial/values/people/person1005/slot"
+	Check "2nd scene : slot of MUR (Slot 1)" ($slot -eq "Slot 1") "'$slot'"
+	$slotId = Value "spatial/values/slots/mur/slot1/personId"
+	Check "2nd scene : Values > Slots > MUR > Slot 1 = 1005" ($slotId -eq 1005) "$slotId"
+	$solFree = Value "spatial/values/slots/sol/freeSlots"
+	Check "2nd scene : SOL slots untouched (2 free)" ($solFree -eq 2) "$solFree"
+	Check "2nd scene : MUR has its video output" ($null -ne (Value "spatial/parameters/surfaces/mur/videoOutput/spout")) ""
 	$other = Tool "organic_inspect" @{ handle = $modules; path = "spatial/values/people/person5" }
 	Check "2nd scene : not heard by the 1st source" ($null -eq $other) $(if ($other) { "person5 there" } else { "no person5" })
 	$s2 = Value "spatial/parameters/sources/augmenta2/status"
@@ -204,7 +153,5 @@ $bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.ti
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
 $bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 
-$results | Format-Table -AutoSize | Out-String -Width 220
-$failed = @($results | Where-Object { $_.Result -eq "FAIL" }).Count
-"$($results.Count - $failed) / $($results.Count) passed"
-exit $failed
+ShowResults
+exit $script:failedChecks

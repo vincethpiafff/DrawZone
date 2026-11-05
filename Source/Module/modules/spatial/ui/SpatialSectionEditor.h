@@ -18,7 +18,7 @@
 
 namespace SpatialSection
 {
-	enum Type { SOURCES, SCENE, ZONES, SLOTS, OUTPUT, NETWORK };
+	enum Type { SOURCES, SURFACE, ZONES, SLOTS, OUTPUT, NETWORK };
 
 	struct Chip
 	{
@@ -35,7 +35,7 @@ namespace SpatialSection
 		switch (t)
 		{
 		case SOURCES: return Colour(0xffc98bdb);
-		case SCENE: return Colour(0xffb48fd6);
+		case SURFACE: return Colour(0xffb48fd6);
 		case ZONES: return Colour(0xffe0b44e);
 		case SLOTS: return TrackingMonitorStyle::activeColor;
 		case OUTPUT: return Colour(0xff4f9de8);
@@ -56,7 +56,7 @@ namespace SpatialSection
 			p.addCentredArc(8, 8, 7.5f, 7.5f, 0, -2.4f, -0.75f, true);
 			p.addCentredArc(8, 8, 7.5f, 7.5f, 0, 0.75f, 2.4f, true);
 			break;
-		case SCENE:
+		case SURFACE:
 			p.addRoundedRectangle(2, 3, 12, 10, 1);
 			p.startNewSubPath(2, 8); p.lineTo(14, 8);
 			p.startNewSubPath(8, 3); p.lineTo(8, 13);

@@ -6,9 +6,9 @@
 	Author:  DrawZone
 
 	A tracking system feeding the Spatial module (Augmenta OSC, PSN). Each
-	source places its people in the scene with its own
+	source places its people in the surface with its own
 	transform :
-	  scene = rotate(scale x flip(source meters)) + offset
+	  surface = rotate(scale x flip(source meters)) + offset
 	Flip mirrors within the source area when it has one (Augmenta scene),
 	around its origin otherwise.
 
@@ -33,8 +33,8 @@ public:
 	SpatialSource(const String& name = "Source", var params = var(), int defaultIdOffset = 0);
 	virtual ~SpatialSource();
 
-	TargetParameter* sceneTarget;	// scene fed by this source, empty = the first one
-	std::atomic<const void*> sceneId { nullptr };	// that scene, set by the module (message thread), read by the network threads
+	TargetParameter* surfaceTarget;	// surface fed by this source, empty = the first one
+	std::atomic<const void*> surfaceId { nullptr };	// that surface, set by the module (message thread), read by the network threads
 
 	Point2DParameter* offset;	// meters
 	FloatParameter* rotation;	// degrees, clockwise
@@ -43,22 +43,22 @@ public:
 	BoolParameter* flipY;
 	StringParameter* status;	// read only
 	Trigger* resetParameters;	// transform back to identity
-	BoolParameter* useAsScene;	// the scene size comes from this source, only one at a time
+	BoolParameter* useAsSurface;	// the surface size comes from this source, only one at a time
 	IntParameter* idOffset;		// added to the ids of this source
 
 	void onContainerTriggerTriggered(Trigger* t) override;
 	void onContainerParameterChangedInternal(Parameter* p) override;
 
-	//source meters -> scene meters ; area = size of the source area, 0 when it has none
-	Point<float> toScene(Point<float> sourceMeters, Point<float> area) const;
-	Point<float> vectorToScene(Point<float> v) const;	// velocity, flipped by sign
-	float angleToScene(float degrees) const;			// orientation
+	//source meters -> surface meters ; area = size of the source area, 0 when it has none
+	Point<float> toSurface(Point<float> sourceMeters, Point<float> area) const;
+	Point<float> vectorToSurface(Point<float> v) const;	// velocity, flipped by sign
+	float angleToSurface(float degrees) const;			// orientation
 
 	//message thread, at the status rate (SpatialModule::statusUpdateRateHz) : Status text
 	virtual void update(SpatialModule* module);
 
-	//size of the scene this source knows, in meters, 0 when none (call under the manager lock)
-	virtual Point<float> getSceneArea() { return Point<float>(); }
+	//size of the surface this source knows, in meters, 0 when none (call under the manager lock)
+	virtual Point<float> getSurfaceArea() { return Point<float>(); }
 
 	//"No data yet", "Silent" or "Receiving, 50 msg/s"
 	String getReceptionText(SpatialModule* module) const;
@@ -66,12 +66,18 @@ public:
 	//warning for the Status text, empty when every person has its id
 	String getIdConflictText(SpatialModule* module) const;
 
+	//name for the network threads : niceName itself may change while they copy it
+	String getNameForThreads() const;
+	void onContainerNiceNameChanged() override;
+
 protected:
-	//Inspector order for every source : scene, placement in the scene, reception, status
+	//Inspector order for every source : surface, placement in the surface, reception, status
 	void moveParametersToEnd(const Array<Controllable*>& parameters);
 
 private:
 	Point<float> scaleAndRotate(Point<float> v) const;	// no flip, no offset
+	mutable CriticalSection nameLock;
+	String nameForThreads;
 };
 
 //Augmenta OSC protocol v2, one Fusion scene per port. Use Module Input : the first enabled such source gets the
@@ -94,14 +100,14 @@ public:
 	void clearItem() override;
 	void update(SpatialModule* module) override;	// also opens and closes the own receiver
 	void onContainerParameterChangedInternal(Parameter* p) override;
-	Point<float> getSceneArea() override;
+	Point<float> getSurfaceArea() override;
 	String getPortText(int modulePort) const { return " :" + String(useModuleInput->boolValue() ? modulePort : port->intValue()); }
 
 	String getTypeString() const override { return getTypeStringStatic(); }
 	static String getTypeStringStatic() { return "Augmenta"; }
 
 private:
-	CriticalSection sceneLock;
+	CriticalSection surfaceLock;
 	Point<float> augmentaSceneSize;	// meters, from /scene
 
 	//own receiver, when Use Module Input is off
@@ -134,7 +140,7 @@ public:
 	EnumParameter* upAxis;
 	BoolParameter* ignoreOrigin;
 
-	//PSN sends no scene size : entered by hand, from the tracking system (Kratos : Area > Position and Scale)
+	//PSN sends no surface size : entered by hand, from the tracking system (Kratos : Area > Position and Scale)
 	Point2DParameter* areaPosition;
 	Point2DParameter* areaSize;
 
@@ -142,7 +148,7 @@ public:
 	void onContainerParameterChangedInternal(Parameter* p) override;
 	void update(SpatialModule* module) override;	// also starts and stops the thread
 	void run() override;
-	Point<float> getSceneArea() override;
+	Point<float> getSurfaceArea() override;
 
 	String getTypeString() const override { return getTypeStringStatic(); }
 	static String getTypeStringStatic() { return "PSN"; }
@@ -172,13 +178,13 @@ public:
 
 	Factory<SpatialSource> factory;
 
-	SpatialSceneManager* sceneManager = nullptr;	// set by the module before anything is loaded
-	SpatialSource* createItemFromData(var data) override;	// its Scene parameter picks among the scenes before it loads
+	SpatialSurfaceManager* surfaceManager = nullptr;	// set by the module before anything is loaded
+	SpatialSource* createItemFromData(var data) override;	// its Surface parameter picks among the surfaces before it loads
 	void addItemInternal(SpatialSource* item, var data) override;
 
 	//first enabled Augmenta source with Use Module Input, call under items.getLock()
 	AugmentaSource* getAugmentaSource();
-	//size of a scene from its sources : the enabled one marked Use As Scene, else the only one knowing its scene
+	//size of a surface from its sources : the enabled one marked Use As Surface, else the only one knowing its surface
 	//(with several, it's up to the user). from : name of that source. Call under items.getLock()
-	Point<float> getSceneArea(const void* scene, String* from = nullptr);
+	Point<float> getSurfaceArea(const void* surface, String* from = nullptr);
 };

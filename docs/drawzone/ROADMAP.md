@@ -10,82 +10,22 @@ Nom : le module « Spatial » s'affiche **Cockpit** depuis le 28/10/2026 (D14).
 |---|---|---|---|
 | **v0.0** | Outils installés, fork, compilation de Chataigne, réception d'Augmenta Fusion | Chataigne compilé en local qui reçoit Augmenta | ✅ 23/10/2026 |
 | **v0.1** | Squelette du module Spatial : entrée OSC Augmenta, une zone rectangulaire | Un booléen « présence » qui bascule quand une personne simulée entre | ✅ v0.1.0 (27/10/2026) |
-| **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | |
+| **v0.2** | Zones multiples (rectangle, cercle, polygone), métriques, slots de joueurs | Valeurs utilisables dans la State Machine et le Router ; « Joueur 1 / Joueur 2 » stables | ✅ v0.2.0 (28/10/2026) |
 | **v0.3** | Éditeur 2D vue de dessus | Dessiner et déplacer les zones à la souris, voir les personnes en direct | 🟡 en grande partie fait en avance (Tracking Monitor) |
 | **v0.4** | Sortie vidéo de la vue 2D en NDI et Spout | La vue de dessus (zones, personnes, slots) reçue dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) | ✅ v0.4.0 (28/10/2026) |
 | **v0.5** | Entrée PSN, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | ✅ v0.5.0 (31/10/2026) |
-| **v0.6** | Viewport 3D | Surfaces, volumes, zones posées sur les surfaces | ⬜ test avec plusieurs scènes Fusion (2 systèmes de tracking : bonus, D16) |
+| **v0.6** | Viewport 3D | Surfaces (sol, mur) placées en 3D, zones, slots et sortie vidéo par surface, PSN nommé par surface (D17) ; volumes : bonus | ⬜ test avec plusieurs scènes Fusion (2 systèmes de tracking : bonus, D16) |
 | **v0.7** | Graphe nodal de base | Événements, Branch, variables, sorties OSC | |
 | **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
 | **v0.9** | Module TrackSimu (D16) | Blobs simulés dans Chataigne : une ou plusieurs scènes 2D sur des plans X / Y / Z, déplacés à la main ou par des mouvements (marche humaine, toucher d'une surface) | |
 | **v1.0** | Stabilisation | Mode show, sauvegarde robuste, documentation | |
 | **v2.x** | Capteurs bruts et calibration | LiDAR 2D/3D, caméras de profondeur (Orbbec…) | |
 
-## Détail des prochaines versions
-
-### v0.1 — premier « ça marche ! »
-
-- Nouveau type de module « Spatial » dans la catégorie de modules de Chataigne.
-- Réception des messages Augmenta (`/object/update`, `/object/leave`, `/scene`).
-- Liste des personnes suivies (id, position) dans le module.
-- Une zone rectangulaire définie par des paramètres (centre, taille).
-- Un paramètre booléen « présence », visible dans l'Inspector et utilisable
-  dans la State Machine.
-
-Décidé au démarrage (D12, 24/10/2026) : le module Spatial hérite du module
-OSC de Chataigne.
-
-### v0.2 — métriques de zone
-
-- Formes : rectangle, cercle, polygone.
-- Par zone : présence, nombre de personnes, événements entrée/sortie,
-  temps de présence, taux d'occupation (%), position normalisée dans la zone,
-  distance au centre.
-- Anti-clignotement en bord de zone (hystérésis, délai).
-
-**Slots de joueurs** (idée de Vincent, 24/10/2026), après les métriques :
-
-- L'utilisateur fixe un nombre de slots (ex. 2 : « Joueur 1 », « Joueur 2 »),
-  quel que soit le nombre de personnes détectées, pour tout le module ou
-  pour une zone.
-- Une règle d'attribution choisie dans une liste. Première règle : la
-  première personne détectée prend et conserve le slot 1, la deuxième le
-  slot 2. Autres règles possibles plus tard : la plus proche d'un point,
-  la première entrée dans une zone.
-- Une règle de libération : à la sortie, ou après un délai de grâce (une
-  personne perdue puis retrouvée sous un nouvel id, près du même endroit,
-  récupère son slot). Lié au point dur « instabilité des identifiants ».
-- Chaque slot expose ses paramètres (occupé, position, id Augmenta),
-  utilisables dans la State Machine comme les métriques de zone.
-
-Fait en v0.2.0 : slots pour toute la scène, deux modes « SwapSlots » (Next
-Person Takes Slot, Hold Spot To Reclaim), assignation à la main depuis le
-Tracking Monitor. Reportés : slots par zone et autres règles d'attribution
-(la plus proche d'un point, la première entrée dans une zone).
-
-### v0.3 — éditeur 2D
-
-- Panneau vue de dessus dans l'interface Chataigne (organicUI).
-- Dessin et édition des zones à la souris.
-- Affichage en direct des personnes trackées.
-
-### v0.4 — sortie vidéo NDI / Spout (décidé le 28/10/2026)
-
-- La vue de dessus du Tracking Monitor (zones, personnes, slots, emplacements
-  réservés) envoyée en flux vidéo : **Spout** (Windows, même machine) et
-  **NDI** (réseau).
-- Utilisable dans un logiciel vidéo (Resolume, TouchDesigner, OBS…) comme
-  retour visuel ou comme source d'un mapping.
-- ✅ Fait en v0.4.0 : bloc Video Output (Spout, NDI, Output Area, FPS,
-  options d'affichage, fond transparent) et puces dans l'en-tête du
-  Tracking Monitor. Détail dans le CHANGELOG.
-
-Les versions suivantes sont décalées d'un cran : PSN / TUIO en v0.5,
-viewport 3D en v0.6, graphe nodal en v0.7 et v0.8.
-
 ## Bonus (le jour où le cas réel se présente)
 
 - Test de l'interface avec deux systèmes de tracking en même temps (ex. Fusion en OSC + Naostage en PSN), D16.
+- Zones en volume, le jour d'un tracking 3D (ZacTrack, lidar 3D), D17.
+- Slots par zone et autres règles d'attribution (la plus proche d'un point, la première entrée dans une zone), reportés en v0.2.
 
 ## Points durs connus
 

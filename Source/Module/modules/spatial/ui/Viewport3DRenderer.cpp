@@ -19,6 +19,16 @@ void Viewport3DRenderer::Camera::zoom(float factor)
 	distance = jlimit(.5f, 1000.0f, distance / factor);
 }
 
+void Viewport3DRenderer::Camera::pan(float dx, float dy, float viewHeight)
+{
+	//the floor point under the target follows the mouse : right / forward on the floor, at the target depth
+	float metersPerPixel = distance * 2 * std::tan(fov / 2) / jmax(1.0f, viewHeight);
+	Vec3 right(std::cos(yaw), -std::sin(yaw), 0);
+	Vec3 forward(-std::sin(yaw), -std::cos(yaw), 0);	// away from the camera, on the floor
+	float forwardScale = 1.0f / jmax(.2f, std::sin(pitch));
+	target = target - right * (dx * metersPerPixel) + forward * (dy * metersPerPixel * forwardScale);
+}
+
 namespace Viewport3DDetail
 {
 	using Vec3 = Viewport3DRenderer::Vec3;
@@ -101,29 +111,15 @@ namespace Viewport3DDetail
 		}
 	};
 
-}
-
-void Viewport3DRenderer::Camera::pan(float dx, float dy, float viewHeight)
-{
-	//the floor point under the target follows the mouse : right / forward on the floor, at the target depth
-	float metersPerPixel = distance * 2 * std::tan(fov / 2) / jmax(1.0f, viewHeight);
-	Vec3 right(std::cos(yaw), -std::sin(yaw), 0);
-	Vec3 forward(-std::sin(yaw), -std::cos(yaw), 0);	// away from the camera, on the floor
-	float forwardScale = 1.0f / jmax(.2f, std::sin(pitch));
-	target = target - right * (dx * metersPerPixel) + forward * (dy * metersPerPixel * forwardScale);
-}
-
-namespace Viewport3DDetail
-{
-	//scene 2D meters (x, y) and height above it -> world : Position + Rotation (X, then Y, then Z)
-	struct SceneTransform
+	//surface 2D meters (x, y) and height above it -> world : Position + Rotation (X, then Y, then Z)
+	struct SurfaceTransform
 	{
 		Vec3 origin;
-		Vec3 ax, ay, az;	// world directions of the scene x, y and height
+		Vec3 ax, ay, az;	// world directions of the surface x, y and height
 
-		SceneTransform() : ax(1, 0, 0), ay(0, 1, 0), az(0, 0, 1) {}
+		SurfaceTransform() : ax(1, 0, 0), ay(0, 1, 0), az(0, 0, 1) {}
 
-		explicit SceneTransform(const TopViewModel::SceneView& s)
+		explicit SurfaceTransform(const TopViewModel::SurfaceView& s)
 		{
 			origin = Vec3(s.position[0], s.position[1], s.position[2]);
 			const float d = MathConstants<float>::pi / 180;
@@ -194,10 +190,10 @@ namespace Viewport3DDetail
 		return points;
 	}
 
-	SceneTransform getTransform(const TopViewModel& m, const void* sceneId)
+	SurfaceTransform getTransform(const TopViewModel& m, const void* surfaceId)
 	{
-		for (auto& s : m.scenes) if (s.id == sceneId) return SceneTransform(s);
-		return SceneTransform();
+		for (auto& s : m.surfaces) if (s.id == surfaceId) return SurfaceTransform(s);
+		return SurfaceTransform();
 	}
 }
 
@@ -211,24 +207,24 @@ void Viewport3DRenderer::Camera::fit(Vec3 min, Vec3 max)
 	fitted = true;
 }
 
-void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera, int highlightedScene)
+void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera, int highlightedSurface)
 {
 	using namespace Viewport3DDetail;
 	using namespace TrackingMonitorStyle;
 
 	Graphics::ScopedSaveState state(g);
 	g.reduceClipRegion(area.toNearestInt());
-	g.setColour(sceneBg);
+	g.setColour(surfaceBg);
 	g.fillRect(area);
 
-	//scenes with a size : framed together at the first paint (or after a double click)
+	//surfaces with a size : framed together at the first paint (or after a double click)
 	Vec3 min(1e9f, 1e9f, 1e9f), max(-1e9f, -1e9f, -1e9f);
 	int numSized = 0;
-	for (auto& s : m.scenes)
+	for (auto& s : m.surfaces)
 	{
 		if (s.size.x <= 0 || s.size.y <= 0) continue;
 		numSized++;
-		SceneTransform t(s);
+		SurfaceTransform t(s);
 		for (Vec3 c : { t.apply(0, 0), t.apply(s.size.x, 0), t.apply(s.size.x, s.size.y), t.apply(0, s.size.y) })
 		{
 			min = Vec3(jmin(min.x, c.x), jmin(min.y, c.y), jmin(min.z, c.z));
@@ -239,7 +235,7 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	if (numSized == 0)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.5f));
-		g.drawFittedText(SpatialModule::getNoSceneSizeText(), area.toNearestInt(), Justification::centred, 1);
+		g.drawFittedText(SpatialModule::getNoSurfaceSizeText(), area.toNearestInt(), Justification::centred, 1);
 		return;
 	}
 
@@ -255,13 +251,13 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	g.setColour(Colour(0xff5a8ee0));
 	g.strokePath(v.projectLine(origin, Vec3(0, 0, 1)), PathStrokeType(2));
 
-	//each scene : its plane, its 1 m grid (thinned out on a big scene), its name, its zones
-	for (int si = 0; si < m.scenes.size(); si++)
+	//each surface : its plane, its 1 m grid (thinned out on a big surface), its name, its zones
+	for (int si = 0; si < m.surfaces.size(); si++)
 	{
-		auto& s = m.scenes.getReference(si);
+		auto& s = m.surfaces.getReference(si);
 		if (s.size.x <= 0 || s.size.y <= 0) continue;
-		SceneTransform t(s);
-		bool highlighted = si == highlightedScene;
+		SurfaceTransform t(s);
+		bool highlighted = si == highlightedSurface;
 
 		Array<Point<float>> corners;
 		corners.add({ 0, 0 });
@@ -293,7 +289,7 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 		g.setFont(Font(12.0f));
 		for (auto& z : m.zones)
 		{
-			if (z.hidden || z.sceneId != s.id) continue;
+			if (z.hidden || z.surfaceId != s.id) continue;
 			Colour c = z.enabled ? z.color : NORMAL_COLOR;
 			Path p = v.projectPolygon(t.apply(getZoneOutline(z)));
 			if (p.isEmpty()) continue;
@@ -311,26 +307,26 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 		}
 	}
 
-	//people, the farthest first : flat on their scene, circle and cross on the centroid
+	//people, the farthest first : flat on their surface, circle and cross on the centroid
 	struct Drawn { int index; float depth; };
 	Array<Drawn> order;
 	for (int i = 0; i < m.snapshot.persons.size(); i++)
 	{
 		auto& p = m.snapshot.persons.getReference(i);
-		order.add({ i, v.toCamera(getTransform(m, p.scene).apply(p.position)).z });
+		order.add({ i, v.toCamera(getTransform(m, p.surface).apply(p.position)).z });
 	}
 	std::sort(order.begin(), order.end(), [](const Drawn& a, const Drawn& b) { return a.depth > b.depth; });
 
 	for (auto& d : order)
 	{
 		auto& p = m.snapshot.persons.getReference(d.index);
-		SceneTransform t = getTransform(m, p.scene);
+		SurfaceTransform t = getTransform(m, p.surface);
 
 		int slotIndex = m.getSlotIndexForPerson(p.id);
 		Colour c = slotIndex >= 0 ? m.slots[slotIndex].color : TopViewModel::getPersonColor(p.id);
 		bool selected = p.id == m.selectedPersonId;
 
-		//circle on the scene plane, cross on the centroid of the detection
+		//circle on the surface plane, cross on the centroid of the detection
 		const float radius = .3f, cross = .15f;
 		Path circle = v.projectPolygon(t.apply(getCircle(p.position, radius)));
 		g.setColour(c.withAlpha(.25f));
@@ -342,7 +338,7 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 		g.strokePath(v.projectLine(t.apply(p.position.translated(-cross, 0)), t.apply(p.position.translated(cross, 0))), PathStrokeType(2));
 		g.strokePath(v.projectLine(t.apply(p.position.translated(0, -cross)), t.apply(p.position.translated(0, cross))), PathStrokeType(2));
 
-		//label just past the circle, along the scene height
+		//label just past the circle, along the surface height
 		Point<float> labelScreen;
 		float labelDepth;
 		if (!v.project(t.apply(p.position, radius), labelScreen, labelDepth)) continue;

@@ -36,3 +36,7 @@ Ajouter en bas, en 2 ou 3 lignes. Numéros de version : ceux de l'époque (voir 
   fait le jour où le cas se présente en vrai. Tests de développement : Augmenta Fusion.
   Nouveau module **TrackSimu** (simulateur de blobs dans Chataigne, scènes 2D sur des
   plans X / Y / Z, à la main ou par mouvements humains / toucher), après le graphe nodal.
+- **D17 (05/11)** **Surface** = un plan du monde réel (sol, mur), plus « scène » (mot d'Augmenta,
+  gardé pour `/scene` et les scènes Fusion). Chaque surface a ses slots et sa sortie vidéo
+  (flux Spout / NDI au nom de la surface). PSN : « JOUEUR 1 (SOL) », n° = 60000 + 100 x rang + slot (B4, 06/11).
+  Zones en volume (brique 4) : bonus, le jour d'un tracking 3D (ZacTrack, lidar 3D).

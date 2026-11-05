@@ -25,15 +25,15 @@ struct TrackedPerson
 	int sourceId = -1;		// id given by its source
 	int idOffset = 0;		// Id Offset of its source
 	String sourceName;		// name of its source
-	Point<float> position;	// scene meters, origin top left (may be outside the scene)
-	Point<float> velocity;	// scene meters, as sent by the source
+	Point<float> position;	// surface meters, origin top left (may be outside the surface)
+	Point<float> velocity;	// surface meters, as sent by the source
 	float orientation = 0;
 	float height = 0;		// meters
 	float age = 0;			// seconds since entering
 	String trackerName;		// "system tracker" name from its source, empty when it has none
 	uint32 lastUpdateMs = 0;
 	const void* source = nullptr;	// identifies the source, never dereferenced
-	const void* scene = nullptr;	// identifies the scene of its source (SpatialScene), never dereferenced
+	const void* surface = nullptr;	// identifies the surface of its source (SpatialSurface), never dereferenced
 };
 
 class TrackingData
@@ -45,7 +45,7 @@ public:
 	struct Snapshot
 	{
 		Array<TrackedPerson> persons;
-		Point<float> sceneSize;	// meters
+		Point<float> surfaceSize;	// meters : size of the surface shown, set by TopViewModel (0 here)
 		float messagesPerSecond = 0;
 		uint32 lastMessageMs = 0;	// 0 = nothing received yet
 	};
@@ -61,8 +61,6 @@ public:
 
 	void countMessage(const void* source);
 	SourceStats getSourceStats(const void* source);
-	void setSceneSize(Point<float> sceneSize);
-	Point<float> getSceneSize();
 
 	//person.source and person.sourceId identify the person, its id is given here
 	void updatePerson(const TrackedPerson& person);
