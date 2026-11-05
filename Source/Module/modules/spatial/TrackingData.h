@@ -33,6 +33,7 @@ struct TrackedPerson
 	String trackerName;		// "system tracker" name from its source, empty when it has none
 	uint32 lastUpdateMs = 0;
 	const void* source = nullptr;	// identifies the source, never dereferenced
+	const void* scene = nullptr;	// identifies the scene of its source (SpatialScene), never dereferenced
 };
 
 class TrackingData

@@ -153,7 +153,7 @@ if ($null -eq $second)
 }
 else { Check "same id : other gets an id from 10000" ($second -eq "PSN Y") "$second" }
 $res = Value "spatial/parameters/videoOutput/resolution"
-if ($NoChoice) { Check "2 scenes, none chosen : no scene" ($res -match "^Waiting for scene size") "'$res'" }
+if ($NoChoice) { Check "2 scenes, none chosen : no scene" ($res -match "^Waiting for (the )?scene size") "'$res'" }
 else { Check "2 scenes : the chosen source keeps the scene" ($res -match "^1600 x 1200 px") "'$res'" }
 Check "same id : conflict shown in the status" ((Value "$sources/psnY/status") -match "1 id conflict") "$(Value "$sources/psnY/status")"
 Check "same id : 2 people" ((Value "spatial/values/personCount") -eq 2) "$(Value "spatial/values/personCount")"
@@ -174,8 +174,8 @@ Check "output : 3 people, 2 slots, trackers 1 and 2" ($people3 -eq 3 -and ($o.id
 $a.WaitForExit(); $p.WaitForExit(); $q.WaitForExit()
 
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
-#the community module list comes from the internet, not from DrawZone
-$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.message -notmatch "^Community Module definition file is not valid" })
+#the community module list and the online help come from the internet, not from DrawZone
+$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.source -notin @("CommunityModuleManager", "HelpBox") })
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
 $bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 

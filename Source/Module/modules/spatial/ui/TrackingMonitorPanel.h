@@ -128,6 +128,27 @@ private:
 	String psnLabel;
 	void showPSNOutputMenu();
 
+	//scene shown in 2D (its zones, its people, its size) : chip in the header, opens the list of the scenes
+	int shownScene = 0;
+	Rectangle<int> sceneChipRect;
+	void showSceneMenu();
+
+	//3D : all the scenes (model is filtered on the scene shown), and the list of the scenes with their Position and Rotation
+	TopViewModel model3D;
+	struct SceneEditor
+	{
+		WeakReference<ControllableContainer> scene;
+		String name;
+		Colour color;
+		std::unique_ptr<ControllableUI> position, rotation;
+		Rectangle<int> nameRect, positionLabelRect, rotationLabelRect;
+	};
+	OwnedArray<SceneEditor> sceneEditors;
+	Rectangle<int> scenesPanelRect;
+	void updateSceneEditors();	// rebuilt when the scenes change, shown in 3D only
+	void layoutSceneEditors();
+	void paintScenesPanel(Graphics& g);
+
 	//"2D | 3D" switch in the header : the 3D view is read only, zone editing stays in 2D
 	bool view3D = false;
 	Rectangle<int> viewSwitchRect;

@@ -18,6 +18,7 @@
 #include "TrackingData.h"
 #include "ui/SpatialStyle.h"
 #include "ui/SpatialSectionEditor.h"
+#include "SpatialScene.h"
 #include "SpatialSource.h"
 #include "SpatialZone.h"
 #include "PlayerSlots.h"
@@ -70,7 +71,7 @@ public:
 	//no message at all for this long : the source is shown as silent
 	static const uint32 sourceTimeoutMs = 1000;
 	//shown by the Monitor and the video output while the scene size is unknown
-	static String getNoSceneSizeText() { return "Waiting for scene size (a source knowing its scene, Use As Scene on one if there are several, or Scene > Size Mode : Manual)"; }
+	static String getNoSceneSizeText() { return "Waiting for the scene size (a source of this scene knowing its area, Use As Scene on one if there are several, or Scenes > Size Mode : Manual)"; }
 	//zones are evaluated on the message thread at this rate
 	static const int zoneUpdateRateHz = 50;
 	//status texts (sources) are rebuilt at this rate only
@@ -82,19 +83,23 @@ public:
 	//tracking systems (Augmenta, PSN...), each with its transform to the scene
 	SpatialSourceManager sourceManager;
 
-	//scene size : from a source (Auto, see SpatialSourceManager::getSceneArea) or set by hand (Manual)
+	//flat tracked areas (floor, wall...), each placed in 3D ; sources feed a scene, zones belong to one
+	SpatialSceneManager sceneManager;
+	void updateScenes(bool updateStatus);	// sizes (Auto : from the sources of each scene), links of sources and zones
+
+	//Scene block of the sessions before v0.6 (one scene) : still loaded, hidden, moved into the first scene
 	enum SceneSizeMode { SCENE_AUTO, SCENE_MANUAL };
 	ControllableContainer sceneCC;
 	EnumParameter* sceneSizeMode;
 	Point2DParameter* sceneSizeManual;
-	void updateSceneSize();
+	void afterLoadJSONDataInternal() override;
 
 	//Inspector : section look (icon badge, state chips), blocks of the session first, network last, all folded
 	void setupInspectorSections();
 
 	IntParameter* personCount;
 
-	SpatialSectionManager<SpatialZone> zoneManager;
+	SpatialZoneManager zoneManager;
 	ControllableContainer zonesValuesCC;
 	Point<float> zonesSceneSize;	//where a new zone starts : the center of this scene
 

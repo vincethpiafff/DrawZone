@@ -8,10 +8,12 @@
   ==============================================================================
 */
 
-void TopViewModel::update(SpatialModule* sm)
+void TopViewModel::update(SpatialModule* sm, int sceneToShow)
 {
 	hasModule = sm != nullptr;
 
+	scenes.clearQuick();
+	sceneIndex = -1;
 	sources.clearQuick();
 	zones.clearQuick();
 	slots.clearQuick();
@@ -23,6 +25,31 @@ void TopViewModel::update(SpatialModule* sm)
 		moduleName = sm->niceName;
 		localPort = sm->localPort != nullptr ? sm->localPort->intValue() : 0;
 		snapshot = sm->trackingData.getSnapshot();
+
+		for (auto& sc : sm->sceneManager.items)
+		{
+			SceneView v;
+			v.scene = sc;
+			v.id = sc;
+			v.name = sc->niceName;
+			v.color = sc->itemColor->getColor();
+			v.size = sc->size;
+			Vector3D<float> pos = sc->position->getVector(), rot = sc->rotation->getVector();
+			v.position[0] = pos.x; v.position[1] = pos.y; v.position[2] = pos.z;
+			v.rotation[0] = rot.x; v.rotation[1] = rot.y; v.rotation[2] = rot.z;
+			for (auto& p : snapshot.persons) if (p.scene == v.id) v.personCount++;
+			scenes.add(v);
+		}
+
+		//one scene shown : only its people, its size
+		if (sceneToShow >= 0 && !scenes.isEmpty())
+		{
+			sceneIndex = jlimit(0, scenes.size() - 1, sceneToShow);
+			const void* id = scenes[sceneIndex].id;
+			snapshot.persons.removeIf([id](const TrackedPerson& p) { return p.scene != id; });
+			snapshot.sceneSize = scenes[sceneIndex].size;
+		}
+		const void* shownScene = sceneIndex >= 0 ? scenes[sceneIndex].id : nullptr;
 
 		{
 			const ScopedLock sl(sm->sourceManager.items.getLock());
@@ -41,10 +68,16 @@ void TopViewModel::update(SpatialModule* sm)
 			}
 		}
 
+		std::vector<int> zoneViewIndex;	// index in zones of each zone of the module, -1 = not shown
 		for (auto& z : sm->zoneManager.items)
 		{
+			zoneViewIndex.push_back(-1);
+			if (sceneIndex >= 0 && z->sceneId != shownScene) continue;
+			zoneViewIndex.back() = zones.size();
+
 			ZoneView zv;
 			zv.zone = z;
+			zv.sceneId = z->sceneId;
 			zv.name = z->niceName;
 			zv.bounds = z->getBounds();
 			zv.ellipse = z->isEllipse();
@@ -103,7 +136,8 @@ void TopViewModel::update(SpatialModule* sm)
 		{
 			auto it = sm->people.find(p.id);
 			bool known = it != sm->people.end();
-			personZones.add(known ? it->second->firstZoneIndex : -1);
+			int first = known ? it->second->firstZoneIndex : -1;
+			personZones.add(first >= 0 && first < (int)zoneViewIndex.size() ? zoneViewIndex[first] : -1);
 			personRelativePositions.add(known ? it->second->relativePosition->getPoint() : Point<float>(-1, -1));
 		}
 	}

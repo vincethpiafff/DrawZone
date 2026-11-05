@@ -47,6 +47,9 @@ public:
 	//zones are in meters and don't depend on the scene : a smaller scene must not move or shrink them
 	static constexpr float maxMeters = 1000;
 
+	TargetParameter* sceneTarget;	// scene of the zone, empty = the first one
+	const void* sceneId = nullptr;	// that scene, set by the module (message thread)
+
 	enum Shape { RECTANGLE, ELLIPSE, FREE_SHAPE };
 	EnumParameter* shape;
 	Point2DParameter* center;	// meters
@@ -111,6 +114,28 @@ private:
 	mutable bool outlineDirty = true;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialZone)
+};
+
+class SpatialZoneManager :
+	public SpatialSectionManager<SpatialZone>
+{
+public:
+	SpatialZoneManager() : SpatialSectionManager("Zones", SpatialSection::ZONES) {}
+
+	SpatialSceneManager* sceneManager = nullptr;	// set by the module before anything is loaded
+
+	//the Scene parameter picks among the scenes before the zone loads
+	SpatialZone* createItemFromData(var data) override
+	{
+		SpatialZone* z = SpatialSectionManager<SpatialZone>::createItemFromData(data);
+		if (z != nullptr && sceneManager != nullptr) sceneManager->setupTarget(z->sceneTarget);
+		return z;
+	}
+
+	void addItemInternal(SpatialZone* item, var) override
+	{
+		if (sceneManager != nullptr) sceneManager->setupTarget(item->sceneTarget);
+	}
 };
 
 //Inspector of a zone : its parameters, then its live values (which live in the module Values), then its points (folded)

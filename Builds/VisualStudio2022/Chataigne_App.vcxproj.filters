@@ -2134,6 +2134,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialModule.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialScene.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialSource.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
@@ -5302,6 +5305,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialScene.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSource.h">

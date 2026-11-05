@@ -49,6 +49,7 @@ SpatialZone::SpatialZone(var params) :
 	pointsCC("Points"),
 	zoneValues("Zone 1")
 {
+	sceneTarget = addTargetParameter("Scene", "Scene this zone belongs to (Scenes block) : only the people of that scene count. Empty : the first scene");
 	shape = addEnumParameter("Shape", "Rectangle, ellipse filling the rectangle given by Center and Size (a circle when width = height), or free shape drawn point by point (see Points)");
 	shape->addOption("Rectangle", RECTANGLE)->addOption("Ellipse", ELLIPSE)->addOption("Free Shape", FREE_SHAPE);
 

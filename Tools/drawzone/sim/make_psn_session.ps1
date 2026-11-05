@@ -31,6 +31,9 @@ $text = [regex]::Replace($text, $pattern, { param($m) $m.Groups[1].Value + $item
 # the PSN output of the session is replaced too : with -NoPsn it stays off, its default
 $text = [regex]::Replace($text, '"psnOutput": \{[^{}]*(\{[^{}]*\}[^{}]*)*\}, ', '')
 if (-not $NoPsn) { $text = $text.Replace('"sources": {', '"psnOutput": {"parameters": [{"value": true, "controlAddress": "/enabled"}, {"value": "' + $OutputMode + '", "controlAddress": "/send"}, {"value": "Loopback Pseudo-Interface 1 (127.0.0.1)", "controlAddress": "/networkInterface"}]}, "sources": {') }
+# the checks read the Resolution of the video output, computed only while Spout or NDI is on : Spout on in every copy
+if (-not $text.Contains('{"value": false, "controlAddress": "/spout"}') -and -not $text.Contains('{"value": true, "controlAddress": "/spout"}')) { throw "Spout setting not found in $From" }
+$text = $text.Replace('{"value": false, "controlAddress": "/spout"}', '{"value": true, "controlAddress": "/spout"}')
 # check_psn.ps1 tests a held slot
 if (-not $NoPsn) { $text = $text.Replace('{"value": "Next Person Takes Slot", "controlAddress": "/slotRelease"}', '{"value": "Hold Spot To Reclaim", "controlAddress": "/slotRelease"}') }
 

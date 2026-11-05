@@ -9,6 +9,7 @@
 */
 
 #include "TrackingData.cpp"
+#include "SpatialScene.cpp"
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
 #include "PlayerSlots.cpp"
@@ -21,7 +22,6 @@
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
 	sceneCC("Scene"),
-	zoneManager("Zones", SpatialSection::ZONES),
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
 	videoOutput(this),
@@ -30,19 +30,25 @@ SpatialModule::SpatialModule() :
 	personCount = valuesCC.addIntParameter("Person Count", "Number of tracked people currently in the scene", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
 
-	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Auto : the scene comes from a source (Augmenta /scene message, Area Size of a PSN source) : the one marked Use As Scene, or the only one knowing its scene. Manual : the scene size is set below");
+	sceneSizeMode = sceneCC.addEnumParameter("Size Mode", "Sessions before v0.6 only : moved into the first scene");
 	sceneSizeMode->addOption("Auto (From Sources)", SCENE_AUTO)->addOption("Manual", SCENE_MANUAL);
-	sceneSizeManual = sceneCC.addPoint2DParameter("Size", "Manual : width and height of the scene, in meters");
+	sceneSizeManual = sceneCC.addPoint2DParameter("Size", "Sessions before v0.6 only : moved into the first scene");
 	sceneSizeManual->setBounds(.1f, .1f, 1000, 1000);
 	sceneSizeManual->setDefaultPoint(10, 6);
 
-	//a new module starts with an Augmenta source on its OSC input (sessions without sources too : nothing to load)
+	//a new module starts with one scene (sessions before v0.6 too : nothing to load)
+	moduleParams.addChildControllableContainer(&sceneManager);
+	sceneManager.addItem(new SpatialScene(), var(), false);
+	sourceManager.sceneManager = &sceneManager;
+	zoneManager.sceneManager = &sceneManager;
+
+	//and an Augmenta source on its OSC input (sessions without sources too : nothing to load)
 	moduleParams.addChildControllableContainer(&sourceManager);
 	sourceManager.addBaseManagerListener(this);
 	sourceManager.addItem(new AugmentaSource(), var(), false);
 
+	sceneCC.hideInEditor = true;
 	moduleParams.addChildControllableContainer(&sceneCC);
-	updateSceneSize();
 
 	//zones are saved with the module parameters (recursive save)
 	moduleParams.addChildControllableContainer(&zoneManager);
@@ -77,22 +83,48 @@ void SpatialModule::processMessageInternal(const OSCMessage& msg)
 	if (AugmentaSource* a = sourceManager.getAugmentaSource()) a->processMessage(msg, this);
 }
 
-void SpatialModule::updateSceneSize()
+void SpatialModule::afterLoadJSONDataInternal()
 {
-	bool isAuto = sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO;
-	sceneSizeManual->setEnabled(!isAuto);
-	if (!isAuto) trackingData.setSceneSize(sceneSizeManual->getPoint());
-	else
+	OSCModule::afterLoadJSONDataInternal();
+
+	//session before v0.6 : its Scene block goes into the first scene, then is put back to default (not saved again)
+	if (!sceneSizeMode->isOverriden && !sceneSizeManual->isOverriden) return;
+	if (SpatialScene* s = sceneManager.items.isEmpty() ? nullptr : sceneManager.items[0])
 	{
-		const ScopedLock sl(sourceManager.items.getLock());
-		trackingData.setSceneSize(sourceManager.getSceneArea());
+		if (!s->sizeMode->isOverriden && !s->manualSize->isOverriden)
+		{
+			s->sizeMode->setValueWithData(sceneSizeMode->getValueData());
+			s->manualSize->setPoint(sceneSizeManual->getPoint());
+		}
 	}
+	sceneSizeMode->resetValue();
+	sceneSizeManual->resetValue();
 }
 
 void SpatialModule::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
 {
 	OSCModule::onControllableFeedbackUpdateInternal(cc, c);
-	if (c == sceneSizeMode || c == sceneSizeManual) updateSceneSize();
+}
+
+void SpatialModule::updateScenes(bool updateStatus)
+{
+	//call under sourceManager.items.getLock()
+	for (auto& s : sourceManager.items) s->sceneId = sceneManager.getScene(s->sceneTarget);
+	for (auto& z : zoneManager.items) z->sceneId = sceneManager.getScene(z->sceneTarget);
+
+	for (auto& scene : sceneManager.items)
+	{
+		String from;
+		bool manual = scene->sizeMode->getValueDataAsEnum<SpatialScene::SizeMode>() == SpatialScene::SIZE_MANUAL;
+		scene->size = manual ? scene->manualSize->getPoint() : sourceManager.getSceneArea(scene, &from);
+		if (!updateStatus) continue;
+
+		if (scene->size.x <= 0 || scene->size.y <= 0) scene->status->setValue("No size yet");
+		else scene->status->setValue(String(scene->size.x, 1) + " x " + String(scene->size.y, 1) + " m, " + (manual ? String("manual") : "from " + from));
+	}
+
+	//single scene code (new zone at the center, Monitor header) : the first scene
+	trackingData.setSceneSize(sceneManager.items.isEmpty() ? Point<float>() : sceneManager.items[0]->size);
 }
 
 void SpatialModule::updateZones()
@@ -104,7 +136,13 @@ void SpatialModule::updateZones()
 		zonesSceneSize = s.sceneSize;
 	}
 
-	for (auto& z : zoneManager.items) z->updateFromPersons(s.persons);
+	//each zone only sees the people of its scene
+	for (auto& z : zoneManager.items)
+	{
+		Array<TrackedPerson> inScene;
+		for (auto& p : s.persons) if (p.scene == z->sceneId) inScene.add(p);
+		z->updateFromPersons(inScene);
+	}
 
 	playerSlots.update(s.persons); //before the people, which show their slot
 	psnOutput.update(s.persons);
@@ -239,7 +277,7 @@ void SpatialModule::timerCallback()
 			if (updateStatus) s->update(this);
 		}
 		if (updateStatus) psnOutput.updateStatus();
-		if (sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO) trackingData.setSceneSize(sourceManager.getSceneArea());
+		updateScenes(updateStatus);
 	}
 	personCount->setValue(trackingData.getNumPersons());
 
@@ -307,14 +345,10 @@ void SpatialModule::setupInspectorSections()
 			return Array<Chip>({ chip(String(n) + (n == 1 ? " zone" : " zones"), false), chip(String(occupied) + " occupied", occupied > 0) });
 		};
 
-	sceneCC.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+	sceneManager.sectionSummary = [this, chip]()
 		{
-			return new SpatialSectionEditor<GenericControllableContainerEditor>(SCENE, [this, chip]()
-				{
-					Point<float> s = trackingData.getSceneSize();
-					String size = s.x > 0 && s.y > 0 ? String(s.x, 1) + " x " + String(s.y, 1) + " m" : String("no size yet");
-					return Array<Chip>({ chip(sceneSizeMode->getValueDataAsEnum<SceneSizeMode>() == SCENE_AUTO ? "Auto" : "Manual", false), chip(size, false) });
-				}, cc, isRoot);
+			int n = sceneManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " scene" : " scenes"), false) });
 		};
 
 	playerSlots.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
@@ -357,9 +391,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//network inputs, network outputs (OSC, then PSN), Sources, Video Output, Scene, Zones, Player Slots
+	//network inputs, network outputs (OSC, then PSN), Sources, Video Output, Scenes, Zones, Player Slots
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &videoOutput, &sceneCC, &zoneManager, &playerSlots };
+	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &videoOutput, &sceneManager, &zoneManager, &playerSlots };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)

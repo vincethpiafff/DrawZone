@@ -39,9 +39,25 @@ public:
 	Array<SourceView> sources;
 	Colour getSourceColor(const void* id) const;	// transparent when unknown
 
+	//scenes : each flat tracked area and where it stands in 3D
+	struct SceneView
+	{
+		WeakReference<ControllableContainer> scene;
+		const void* id = nullptr;	// TrackedPerson::scene, never dereferenced
+		String name;
+		Colour color;
+		Point<float> size;			// meters, 0 when unknown
+		float position[3] = { 0, 0, 0 };	// meters
+		float rotation[3] = { 0, 0, 0 };	// degrees
+		int personCount = 0;
+	};
+	Array<SceneView> scenes;
+	int sceneIndex = -1;	// scene shown (people, zones and size filtered), -1 = all scenes
+
 	struct ZoneView
 	{
 		WeakReference<ControllableContainer> zone;
+		const void* sceneId = nullptr;	// SceneView::id of its scene
 		String name;
 		Rectangle<float> bounds;	// meters
 		bool ellipse = false;
@@ -105,7 +121,8 @@ public:
 	static const int trailStepMs = 100;			// one trail point every 100 ms...
 	static const int trailLength = 20;			// ...kept for 2 s
 
-	void update(SpatialModule* sm);	// nullptr : no module, everything empty
+	//nullptr : no module, everything empty ; sceneToShow : index of the scene kept (clamped), -1 = all scenes
+	void update(SpatialModule* sm, int sceneToShow = 0);
 	static Colour getPersonColor(int id);
 
 private:

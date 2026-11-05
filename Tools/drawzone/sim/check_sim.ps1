@@ -199,8 +199,8 @@ else { Check "2nd scene : source Augmenta 2 in the session" $false "not found" }
 
 #no warning or error in the logs during the test
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
-#the community module list comes from the internet (and may fail to download), not from DrawZone
-$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.source -ne "CommunityModuleManager" })
+#the community module list and the online help come from the internet (and may fail to download), not from DrawZone
+$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.source -notin @("CommunityModuleManager", "HelpBox") })
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
 $bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 

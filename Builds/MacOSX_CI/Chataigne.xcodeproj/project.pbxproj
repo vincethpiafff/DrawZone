@@ -400,6 +400,7 @@
 		55137897DDA67599E742298A /* CustomValuesCommandArgumentManager.h */ /* CustomValuesCommandArgumentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CustomValuesCommandArgumentManager.h; path = ../../Source/Common/Command/CustomValues/CustomValuesCommandArgumentManager.h; sourceTree = SOURCE_ROOT; };
 		551FD83435B424DA6DDE4ACA /* CustomValuesCommandArgumentEditor.h */ /* CustomValuesCommandArgumentEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CustomValuesCommandArgumentEditor.h; path = ../../Source/Common/Command/CustomValues/ui/CustomValuesCommandArgumentEditor.h; sourceTree = SOURCE_ROOT; };
 		559E44E0FE4589B5870942EE /* ConditionManagerEditor.cpp */ /* ConditionManagerEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConditionManagerEditor.cpp; path = ../../Source/Common/Processor/Action/Condition/ui/ConditionManagerEditor.cpp; sourceTree = SOURCE_ROOT; };
+		55CC27911FA7444F9C0BEADE /* SpatialScene.cpp */ /* SpatialScene.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialScene.cpp; path = ../../Source/Module/modules/spatial/SpatialScene.cpp; sourceTree = SOURCE_ROOT; };
 		55E5E4547FF6CFC7E6F7C586 /* ChataigneSequence.cpp */ /* ChataigneSequence.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChataigneSequence.cpp; path = ../../Source/TimeMachine/Sequence/ChataigneSequence.cpp; sourceTree = SOURCE_ROOT; };
 		565E20FE17BBEB8D15B5519E /* ConditionFilter.cpp */ /* ConditionFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConditionFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/condition/ConditionFilter.cpp; sourceTree = SOURCE_ROOT; };
 		5781A95A86CBB04AF916EC28 /* MappingFilter.h */ /* MappingFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MappingFilter.h; path = ../../Source/Common/Processor/Mapping/Filter/MappingFilter.h; sourceTree = SOURCE_ROOT; };
@@ -737,6 +738,7 @@
 		B34DD1312FE1422CAC5C4781 /* OSCCommand.cpp */ /* OSCCommand.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = OSCCommand.cpp; path = ../../Source/Module/modules/common/commands/osc/OSCCommand.cpp; sourceTree = SOURCE_ROOT; };
 		B3B57699F8799056A09AC4D3 /* Syphon.framework */ /* Syphon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Syphon.framework; path = ../../External/syphon/Syphon.framework; sourceTree = "<group>"; };
 		B3C3ED01C6D0D020BC0E895C /* server.crt */ /* server.crt */ = {isa = PBXFileReference; lastKnownFileType = file.crt; name = server.crt; path = ../../Resources/server/server.crt; sourceTree = SOURCE_ROOT; };
+		B3EFDE6429790505C97EA301 /* SpatialScene.h */ /* SpatialScene.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialScene.h; path = ../../Source/Module/modules/spatial/SpatialScene.h; sourceTree = SOURCE_ROOT; };
 		B3F9109E23EBCBBC1AD7FD5F /* CropFilter.h */ /* CropFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CropFilter.h; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/CropFilter.h; sourceTree = SOURCE_ROOT; };
 		B52752D23217AA7EC926EAF6 /* WiimotePairUtil.cpp */ /* WiimotePairUtil.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = WiimotePairUtil.cpp; path = ../../Source/Module/modules/controller/wiimote/WiimotePairUtil.cpp; sourceTree = SOURCE_ROOT; };
 		B58F472712F98039790C5BD8 /* TCPClientModule.h */ /* TCPClientModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TCPClientModule.h; path = ../../Source/Module/modules/tcp/tcpclient/TCPClientModule.h; sourceTree = SOURCE_ROOT; };
@@ -2333,6 +2335,8 @@
 				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,
 				7FA34467963EE3DDDC5BBC84,
+				55CC27911FA7444F9C0BEADE,
+				B3EFDE6429790505C97EA301,
 				B959E81417EA0A99A703CB0A,
 				7ADF7EC08335C9EE28AFA3B6,
 				50119A43BFEC63CA3CF6B3DE,

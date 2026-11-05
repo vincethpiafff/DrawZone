@@ -22,7 +22,8 @@ SpatialSource::SpatialSource(const String& name, var params, int defaultIdOffset
 	//color of its people in the Tracking Monitor, the default comes from the manager
 	setHasCustomColor(true);
 
-	useAsScene = addBoolParameter("Use As Scene", "The scene size comes from this source (Scene > Size Mode : Auto). Needed when several sources know their scene. Only one source at a time", false);
+	sceneTarget = addTargetParameter("Scene", "Scene fed by this source (Scenes block). Empty : the first scene");
+	useAsScene = addBoolParameter("Use As Scene", "The size of its scene comes from this source (Scenes > Size Mode : Auto). Needed when several sources of a scene know their area. Only one source per scene", false);
 	idOffset = addIntParameter("Id Offset", "Added to the ids of this source, so that ids stay the same whichever source starts first. Give each source its own range", defaultIdOffset, 0, 1000000);
 	offset = addPoint2DParameter("Offset", "Where the origin of this source lands in the scene, in meters from the top left corner of the scene (applied last)");
 	rotation = addFloatParameter("Rotation", "Rotation of this source around its origin, in degrees, clockwise", 0, -360, 360);
@@ -60,7 +61,12 @@ void SpatialSource::onContainerParameterChangedInternal(Parameter* p)
 	BaseItem::onContainerParameterChangedInternal(p);
 	if (p != useAsScene || !useAsScene->boolValue()) return;
 	if (SpatialSourceManager* m = dynamic_cast<SpatialSourceManager*>(parentContainer.get()))
-		for (auto& s : m->items) if (s != this) s->useAsScene->setValue(false);
+	{
+		//one per scene ; not while loading : the scenes of the sources are not known yet
+		if (m->isCurrentlyLoadingData || m->sceneManager == nullptr || (Engine::mainEngine != nullptr && Engine::mainEngine->isLoadingFile)) return;
+		SpatialScene* scene = m->sceneManager->getScene(sceneTarget);
+		for (auto& s : m->items) if (s != this && m->sceneManager->getScene(s->sceneTarget) == scene) s->useAsScene->setValue(false);
+	}
 }
 
 Point<float> SpatialSource::toScene(Point<float> p, Point<float> area) const
@@ -212,6 +218,7 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 	p.idOffset = idOffset->intValue();
 	p.sourceName = niceName;
 	p.source = this;
+	p.scene = sceneId.load();
 	p.age = OSCHelpers::getFloatArg(msg[3]);
 
 	//normalized in the Augmenta scene -> Augmenta meters -> scene meters
@@ -445,6 +452,7 @@ void PSNSource::processFrame(const psn::tracker_map& trackers, const String& sys
 		p.idOffset = idOffset->intValue();
 		p.sourceName = niceName;
 		p.source = this;
+		p.scene = sceneId.load();
 
 		auto first = firstSeenMs.find(p.sourceId);
 		uint32 firstMs = first != firstSeenMs.end() ? first->second : now;
@@ -490,6 +498,8 @@ SpatialSourceManager::~SpatialSourceManager()
 
 void SpatialSourceManager::addItemInternal(SpatialSource* item, var data)
 {
+	if (sceneManager != nullptr) sceneManager->setupTarget(item->sceneTarget);
+
 	//a new Augmenta source, not loaded from a file (data is no clue : the menu may pass the item's own JSON) :
 	//the next port and the next range of ids, for one more Fusion scene
 	if (AugmentaSource* added = dynamic_cast<AugmentaSource*>(item); added != nullptr && !isCurrentlyLoadingData && (Engine::mainEngine == nullptr || !Engine::mainEngine->isLoadingFile))
@@ -524,20 +534,35 @@ AugmentaSource* SpatialSourceManager::getAugmentaSource()
 	return nullptr;
 }
 
-Point<float> SpatialSourceManager::getSceneArea()
+Point<float> SpatialSourceManager::getSceneArea(const void* scene, String* from)
 {
 	Point<float> known;
+	String knownFrom;
 	int numKnown = 0;
 	for (auto& s : items)
 	{
-		if (!s->enabled->boolValue()) continue;
+		if (!s->enabled->boolValue() || s->sceneId.load() != scene) continue;
 		Point<float> a = s->getSceneArea();
-		if (s->useAsScene->boolValue()) return a;
+		if (s->useAsScene->boolValue())
+		{
+			if (from != nullptr) *from = s->niceName;
+			return a;
+		}
 		if (a.x > 0 && a.y > 0)
 		{
 			known = a;
+			knownFrom = s->niceName;
 			numKnown++;
 		}
 	}
-	return numKnown == 1 ? known : Point<float>();
+	if (numKnown != 1) return Point<float>();
+	if (from != nullptr) *from = knownFrom;
+	return known;
+}
+
+SpatialSource* SpatialSourceManager::createItemFromData(var data)
+{
+	SpatialSource* s = SpatialSectionManager<SpatialSource>::createItemFromData(data);
+	if (s != nullptr && sceneManager != nullptr) sceneManager->setupTarget(s->sceneTarget);
+	return s;
 }

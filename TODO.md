@@ -45,6 +45,22 @@ d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes s
   ✅ Vincent : « OK », brique 2 validée.
 - 💬 05/11 Vincent, pour la brique 3 : en 2D, un sélecteur de la scène affichée (SOL ou MUR) ; en 3D, une liste
   des scènes avec Position et Rotation X / Y / Z modifiables.
+- 💬 05/11 Vincent : option A, bloc **Scenes** (une source et une zone appartiennent à une scène).
+- ⏭️ 05/11 brique 3, code : `SpatialScene.h/.cpp` (Size Mode Auto / Manual, Size, Position et Rotation X / Y / Z,
+  Status) ; paramètre Scene (`TargetParameter`) dans chaque source et chaque zone, vide = 1re scène ; Use As Scene
+  par scène ; zones calculées avec les personnes de leur scène ; ancien bloc Scene caché, repris dans la 1re scène ;
+  Monitor : pastille de scène dans l'en-tête (menu), 2D filtrée sur la scène, nouvelle zone dans la scène affichée ;
+  3D : chaque scène à sa place, liste des scènes avec Position / Rotation modifiables ; sortie vidéo = 1re scène.
+- ❌ 05/11 Chataigne plante au démarrage (`SpatialSceneManager::addItemInternal`, journal du CrashHandler dans
+  `%APPDATA%Chataigneog_*.txt`) : `itemColor` nul, `setHasCustomColor(true)` oublié → corrigé.
+- ✅ 05/11 recompilation 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41. Tests : libellé
+  « Waiting for the scene size » accepté, logs `CommunityModuleManager` et `HelpBox` ignorés (internet, pas DrawZone).
+  ⬜ test de Vincent. Limites : slots tenus et sortie PSN sans notion de scène.
+- ✅ 05/11 reprise : 1er passage PSN 28 / 30 ×2, Augmenta 40 : session enregistrée avec Spout et NDI décochés, donc
+  Resolution vide (calculée seulement si sortie active). `make_psn_session.ps1` coche Spout dans chaque copie →
+  PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41.
+- ⏸️ 05/11/2026 fin de séance. Reprise : test de Vincent sur la brique 3 (5 points donnés le 05/11), puis commit sur son
+  accord (brique 3 non commitée sur `feature/viewport-3d`) ; ensuite brique 4, formes simples.
 
 ## ⬜ Questions ouvertes
 

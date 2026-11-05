@@ -33,6 +33,9 @@ public:
 	SpatialSource(const String& name = "Source", var params = var(), int defaultIdOffset = 0);
 	virtual ~SpatialSource();
 
+	TargetParameter* sceneTarget;	// scene fed by this source, empty = the first one
+	std::atomic<const void*> sceneId { nullptr };	// that scene, set by the module (message thread), read by the network threads
+
 	Point2DParameter* offset;	// meters
 	FloatParameter* rotation;	// degrees, clockwise
 	FloatParameter* scale;
@@ -169,10 +172,13 @@ public:
 
 	Factory<SpatialSource> factory;
 
+	SpatialSceneManager* sceneManager = nullptr;	// set by the module before anything is loaded
+	SpatialSource* createItemFromData(var data) override;	// its Scene parameter picks among the scenes before it loads
 	void addItemInternal(SpatialSource* item, var data) override;
 
 	//first enabled Augmenta source with Use Module Input, call under items.getLock()
 	AugmentaSource* getAugmentaSource();
-	//the enabled source marked Use As Scene, else the only one knowing its scene : with several, it's up to the user. Call under items.getLock()
-	Point<float> getSceneArea();
+	//size of a scene from its sources : the enabled one marked Use As Scene, else the only one knowing its scene
+	//(with several, it's up to the user). from : name of that source. Call under items.getLock()
+	Point<float> getSceneArea(const void* scene, String* from = nullptr);
 };

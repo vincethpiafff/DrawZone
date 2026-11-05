@@ -75,6 +75,7 @@ void TrackingMonitorPanel::resized()
 	//not enough room : no top view, the column still shows zones and people
 	topViewRect = r.getWidth() > 80 && r.getHeight() > 80 ? r : Rectangle<int>();
 
+	layoutSceneEditors();
 	layoutColumn();
 	layoutSlotBar();
 }
@@ -215,7 +216,10 @@ Rectangle<int> TrackingMonitorPanel::getCardArrowRect(Rectangle<int> card)
 void TrackingMonitorPanel::timerCallback()
 {
 	SpatialModule* sm = getSpatialModule();
-	model.update(sm);
+	model.update(sm, shownScene);
+	if (model.sceneIndex >= 0) shownScene = model.sceneIndex;
+	if (view3D) model3D.update(sm, -1);
+	updateSceneEditors();
 	spoutOn = sm != nullptr && sm->videoOutput.spout->boolValue();
 	ndiOn = sm != nullptr && sm->videoOutput.ndi->boolValue();
 	psnOn = sm != nullptr && sm->psnOutput.enabled->boolValue();
@@ -255,7 +259,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	paintSourceBar(g);
 	if (!topViewRect.isEmpty())
 	{
-		if (view3D) Viewport3DRenderer::paint(g, model, topViewRect.toFloat(), camera3D);
+		if (view3D) Viewport3DRenderer::paint(g, model3D, topViewRect.toFloat(), camera3D, model.sceneIndex);
 		else paintTopView(g, topViewRect);
 	}
 	paintSlotBar(g);
@@ -273,6 +277,7 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
 	paintViewSwitch(g);
+	if (view3D) paintScenesPanel(g);
 	paintShortcuts(g); //last : the unfolded list goes over everything
 }
 
@@ -413,9 +418,24 @@ void TrackingMonitorPanel::paintHeader(Graphics& g)
 	g.drawText(String(snapshot.persons.size()), r.removeFromRight(40), Justification::centredRight);
 	r.removeFromRight(6);
 
-	g.setColour(dimText);
-	g.setFont(Font(13.0f));
-	g.drawText(String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m", r, Justification::centredLeft, true);
+	//scene shown : name and size, a click lists the scenes
+	String sceneText = model.sceneIndex >= 0 ? model.scenes[model.sceneIndex].name : String("No scene");
+	sceneText += sep + (snapshot.sceneSize.x > 0 ? String(snapshot.sceneSize.x, 1) + times + String(snapshot.sceneSize.y, 1) + " m" : String("no size"));
+	Font sceneFont(13.0f);
+	int chipWidth = jmin(r.getWidth(), sceneFont.getStringWidth(sceneText) + 40);
+	sceneChipRect = r.removeFromLeft(chipWidth).reduced(0, 1);
+	if (chipWidth < 60) { sceneChipRect = Rectangle<int>(); return; }
+	Rectangle<float> cf = sceneChipRect.toFloat();
+	drawChip(g, cf, false);
+	if (model.sceneIndex >= 0)
+	{
+		g.setColour(model.scenes[model.sceneIndex].color);
+		g.fillRoundedRectangle(Rectangle<float>(8, 8).withCentre(Point<float>(cf.getX() + 11, cf.getCentreY())), 2);
+	}
+	g.setFont(sceneFont);
+	g.setColour(TEXT_COLOR);
+	g.drawText(sceneText, cf.withTrimmedLeft(20).withTrimmedRight(16), Justification::centredLeft, true);
+	drawChevron(g, Point<float>(cf.getRight() - 10, cf.getCentreY()), false, dimText);
 }
 
 void TrackingMonitorPanel::paintSourceBar(Graphics& g)
@@ -1393,12 +1413,19 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
 
+	if (sceneChipRect.contains(e.getPosition()))
+	{
+		showSceneMenu();
+		return;
+	}
+
 	//2D / 3D switch ; in 3D the view only moves the camera : left drag orbit, right or middle drag pan
 	if (viewSwitchRect.contains(e.getPosition()))
 	{
 		setView3D(e.position.x >= viewSwitchRect.getCentreX());
 		return;
 	}
+	if (view3D && scenesPanelRect.contains(e.getPosition())) return;	// the list of the scenes, not the camera
 	if (view3D && topViewRect.contains(e.getPosition()))
 	{
 		cameraDrag = e.mods.isLeftButtonDown() ? 1 : 2;
@@ -1690,6 +1717,11 @@ void TrackingMonitorPanel::addZone(SpatialZone* z, bool select)
 		delete z;
 		return;
 	}
+
+	//in the scene shown
+	sm->sceneManager.setupTarget(z->sceneTarget);
+	if (model.sceneIndex >= 0)
+		if (ControllableContainer* scene = model.scenes[model.sceneIndex].scene.get()) z->sceneTarget->setValueFromTarget(scene);
 
 	sm->zoneManager.addItem(z);
 	if (select) z->selectThis();
@@ -2108,6 +2140,8 @@ void TrackingMonitorPanel::setView3D(bool on)
 {
 	if (view3D == on) return;
 	view3D = on;
+	if (on) model3D.update(getSpatialModule(), -1);
+	updateSceneEditors();
 	cameraDrag = 0;
 	hoveredZone = -1;
 	repaint();
@@ -2141,4 +2175,128 @@ void TrackingMonitorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelD
 	}
 	camera3D.zoom(std::pow(1.15f, wheel.deltaY * 4));
 	repaint(topViewRect);
+}
+
+void TrackingMonitorPanel::showSceneMenu()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+
+	PopupMenu menu;
+	menu.addSectionHeader("Scene shown in 2D");
+	for (int i = 0; i < model.scenes.size(); i++)
+	{
+		auto& s = model.scenes.getReference(i);
+		String size = s.size.x > 0 ? String(s.size.x, 1) + " x " + String(s.size.y, 1) + " m" : String("no size");
+		menu.addItem(i + 1, s.name + "   (" + size + ", " + String(s.personCount) + " people)", true, i == model.sceneIndex);
+	}
+	menu.addSeparator();
+	menu.addItem(-1, "Show the Scenes settings");
+
+	menu.showMenuAsync(PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(sceneChipRect)), [this](int result)
+		{
+			SpatialModule* sm = getSpatialModule();
+			if (sm == nullptr || result == 0) return;
+			if (result == -1)
+			{
+				sm->sceneManager.selectThis();
+				return;
+			}
+			shownScene = result - 1;
+			hoveredZone = -1;
+			timerCallback();
+		});
+}
+
+void TrackingMonitorPanel::updateSceneEditors()
+{
+	bool show = view3D && hasModule && !topViewRect.isEmpty();
+	SpatialModule* sm = show ? getSpatialModule() : nullptr;
+
+	//same scenes as the editors : only the names and colors change
+	bool same = sm != nullptr && sm->sceneManager.items.size() == sceneEditors.size();
+	if (same)
+		for (int i = 0; i < sceneEditors.size(); i++)
+			if (sceneEditors[i]->scene.get() != sm->sceneManager.items[i]) same = false;
+
+	if (same)
+	{
+		for (int i = 0; i < sceneEditors.size(); i++)
+		{
+			sceneEditors[i]->name = sm->sceneManager.items[i]->niceName;
+			sceneEditors[i]->color = sm->sceneManager.items[i]->itemColor->getColor();
+		}
+		return;
+	}
+
+	sceneEditors.clear();	// the parameter UIs go with them
+	if (sm != nullptr)
+	{
+		for (auto& s : sm->sceneManager.items)
+		{
+			SceneEditor* e = new SceneEditor();
+			e->scene = s;
+			e->name = s->niceName;
+			e->color = s->itemColor->getColor();
+			e->position.reset(s->position->createDefaultUI());
+			e->rotation.reset(s->rotation->createDefaultUI());
+			addAndMakeVisible(e->position.get());
+			addAndMakeVisible(e->rotation.get());
+			sceneEditors.add(e);
+		}
+	}
+	layoutSceneEditors();
+	repaint();
+}
+
+void TrackingMonitorPanel::layoutSceneEditors()
+{
+	scenesPanelRect = Rectangle<int>();
+	if (sceneEditors.isEmpty() || topViewRect.isEmpty()) return;
+
+	const int rowHeight = 20, nameHeight = 20, gap = 6, labelWidth = 62;
+	int height = sceneEditors.size() * (nameHeight + rowHeight * 2 + gap) + gap;
+	scenesPanelRect = Rectangle<int>(topViewRect.getX() + 8, topViewRect.getY() + 8, jmin(380, topViewRect.getWidth() - 16), jmin(height, topViewRect.getHeight() - 40));
+
+	Rectangle<int> r = scenesPanelRect.reduced(8, gap);
+	for (auto& e : sceneEditors)
+	{
+		bool fits = r.getHeight() >= nameHeight + rowHeight * 2;
+		e->nameRect = r.removeFromTop(nameHeight);
+		Rectangle<int> pos = r.removeFromTop(rowHeight);
+		Rectangle<int> rot = r.removeFromTop(rowHeight);
+		r.removeFromTop(gap);
+		e->positionLabelRect = pos.removeFromLeft(labelWidth);
+		e->rotationLabelRect = rot.removeFromLeft(labelWidth);
+		e->position->setBounds(pos.reduced(0, 1));
+		e->rotation->setBounds(rot.reduced(0, 1));
+		e->position->setVisible(fits);
+		e->rotation->setVisible(fits);
+	}
+}
+
+void TrackingMonitorPanel::paintScenesPanel(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+	if (scenesPanelRect.isEmpty()) return;
+
+	g.setColour(columnBg.withAlpha(.9f));
+	g.fillRoundedRectangle(scenesPanelRect.toFloat(), 4);
+	g.setColour(borderColor);
+	g.drawRoundedRectangle(scenesPanelRect.toFloat().reduced(.5f), 4, 1);
+
+	for (auto& e : sceneEditors)
+	{
+		if (!e->position->isVisible()) continue;
+		Rectangle<float> n = e->nameRect.toFloat();
+		g.setColour(e->color);
+		g.fillRoundedRectangle(Rectangle<float>(8, 8).withCentre(Point<float>(n.getX() + 4, n.getCentreY())), 2);
+		g.setFont(Font(13.0f, Font::bold));
+		g.setColour(TEXT_COLOR);
+		g.drawText(e->name, n.withTrimmedLeft(14), Justification::centredLeft, true);
+		g.setFont(Font(12.0f));
+		g.setColour(dimText);
+		g.drawText("Position", e->positionLabelRect, Justification::centredLeft);
+		g.drawText("Rotation", e->rotationLabelRect, Justification::centredLeft);
+	}
 }

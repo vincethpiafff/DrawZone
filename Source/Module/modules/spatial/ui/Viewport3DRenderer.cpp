@@ -8,16 +8,6 @@
   ==============================================================================
 */
 
-void Viewport3DRenderer::Camera::fit(Point<float> sceneSize)
-{
-	target = Vec3(sceneSize.x / 2, sceneSize.y / 2, 0);
-	yaw = 0;
-	pitch = .9f;
-	float diagonal = jmax(1.0f, sceneSize.getDistanceFromOrigin());
-	distance = diagonal * .5f / std::tan(fov / 2) * 1.25f;
-	fitted = true;
-}
-
 void Viewport3DRenderer::Camera::orbit(float dx, float dy)
 {
 	yaw -= dx * .008f;
@@ -111,47 +101,6 @@ namespace Viewport3DDetail
 		}
 	};
 
-	Array<Vec3> getFloorOutline(const TopViewModel::ZoneView& z)
-	{
-		Array<Vec3> points;
-		Rectangle<float> b = z.bounds;
-
-		if (z.freeShape)
-		{
-			PathFlatteningIterator it(z.outline, AffineTransform(), .02f);
-			while (it.next()) points.add(Vec3(it.x1, it.y1, 0));
-			return points;
-		}
-
-		if (z.ellipse)
-		{
-			const int steps = 64;
-			for (int i = 0; i < steps; i++)
-			{
-				float a = MathConstants<float>::twoPi * i / steps;
-				points.add(Vec3(b.getCentreX() + std::cos(a) * b.getWidth() / 2, b.getCentreY() + std::sin(a) * b.getHeight() / 2, 0));
-			}
-			return points;
-		}
-
-		points.add(Vec3(b.getX(), b.getY(), 0));
-		points.add(Vec3(b.getRight(), b.getY(), 0));
-		points.add(Vec3(b.getRight(), b.getBottom(), 0));
-		points.add(Vec3(b.getX(), b.getBottom(), 0));
-		return points;
-	}
-
-	Array<Vec3> getFloorCircle(Point<float> centre, float radius)
-	{
-		Array<Vec3> points;
-		const int steps = 24;
-		for (int i = 0; i < steps; i++)
-		{
-			float a = MathConstants<float>::twoPi * i / steps;
-			points.add(Vec3(centre.x + std::cos(a) * radius, centre.y + std::sin(a) * radius, 0));
-		}
-		return points;
-	}
 }
 
 void Viewport3DRenderer::Camera::pan(float dx, float dy, float viewHeight)
@@ -164,7 +113,105 @@ void Viewport3DRenderer::Camera::pan(float dx, float dy, float viewHeight)
 	target = target - right * (dx * metersPerPixel) + forward * (dy * metersPerPixel * forwardScale);
 }
 
-void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera)
+namespace Viewport3DDetail
+{
+	//scene 2D meters (x, y) and height above it -> world : Position + Rotation (X, then Y, then Z)
+	struct SceneTransform
+	{
+		Vec3 origin;
+		Vec3 ax, ay, az;	// world directions of the scene x, y and height
+
+		SceneTransform() : ax(1, 0, 0), ay(0, 1, 0), az(0, 0, 1) {}
+
+		explicit SceneTransform(const TopViewModel::SceneView& s)
+		{
+			origin = Vec3(s.position[0], s.position[1], s.position[2]);
+			const float d = MathConstants<float>::pi / 180;
+			float cx = std::cos(s.rotation[0] * d), sx = std::sin(s.rotation[0] * d);
+			float cy = std::cos(s.rotation[1] * d), sy = std::sin(s.rotation[1] * d);
+			float cz = std::cos(s.rotation[2] * d), sz = std::sin(s.rotation[2] * d);
+			auto rotate = [&](Vec3 v)
+			{
+				v = Vec3(v.x, v.y * cx - v.z * sx, v.y * sx + v.z * cx);	// X
+				v = Vec3(v.x * cy + v.z * sy, v.y, -v.x * sy + v.z * cy);	// Y
+				return Vec3(v.x * cz - v.y * sz, v.x * sz + v.y * cz, v.z);	// Z
+			};
+			ax = rotate(Vec3(1, 0, 0));
+			ay = rotate(Vec3(0, 1, 0));
+			az = rotate(Vec3(0, 0, 1));
+		}
+
+		Vec3 apply(float x, float y, float h = 0) const { return origin + ax * x + ay * y + az * h; }
+		Vec3 apply(Point<float> p, float h = 0) const { return apply(p.x, p.y, h); }
+
+		Array<Vec3> apply(const Array<Point<float>>& points) const
+		{
+			Array<Vec3> out;
+			for (auto& p : points) out.add(apply(p));
+			return out;
+		}
+	};
+
+	Array<Point<float>> getZoneOutline(const TopViewModel::ZoneView& z)
+	{
+		Array<Point<float>> points;
+		Rectangle<float> b = z.bounds;
+
+		if (z.freeShape)
+		{
+			PathFlatteningIterator it(z.outline, AffineTransform(), .02f);
+			while (it.next()) points.add(Point<float>(it.x1, it.y1));
+			return points;
+		}
+
+		if (z.ellipse)
+		{
+			const int steps = 64;
+			for (int i = 0; i < steps; i++)
+			{
+				float a = MathConstants<float>::twoPi * i / steps;
+				points.add(Point<float>(b.getCentreX() + std::cos(a) * b.getWidth() / 2, b.getCentreY() + std::sin(a) * b.getHeight() / 2));
+			}
+			return points;
+		}
+
+		points.add(b.getTopLeft());
+		points.add(b.getTopRight());
+		points.add(b.getBottomRight());
+		points.add(b.getBottomLeft());
+		return points;
+	}
+
+	Array<Point<float>> getCircle(Point<float> centre, float radius)
+	{
+		Array<Point<float>> points;
+		const int steps = 24;
+		for (int i = 0; i < steps; i++)
+		{
+			float a = MathConstants<float>::twoPi * i / steps;
+			points.add(Point<float>(centre.x + std::cos(a) * radius, centre.y + std::sin(a) * radius));
+		}
+		return points;
+	}
+
+	SceneTransform getTransform(const TopViewModel& m, const void* sceneId)
+	{
+		for (auto& s : m.scenes) if (s.id == sceneId) return SceneTransform(s);
+		return SceneTransform();
+	}
+}
+
+void Viewport3DRenderer::Camera::fit(Vec3 min, Vec3 max)
+{
+	target = (min + max) * .5f;
+	yaw = 0;
+	pitch = .9f;
+	float diagonal = jmax(1.0f, (max - min).length());
+	distance = diagonal * .5f / std::tan(fov / 2) * 1.25f;
+	fitted = true;
+}
+
+void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera, int highlightedScene)
 {
 	using namespace Viewport3DDetail;
 	using namespace TrackingMonitorStyle;
@@ -174,33 +221,32 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	g.setColour(sceneBg);
 	g.fillRect(area);
 
-	Point<float> size = m.snapshot.sceneSize;
-	if (size.x <= 0 || size.y <= 0)
+	//scenes with a size : framed together at the first paint (or after a double click)
+	Vec3 min(1e9f, 1e9f, 1e9f), max(-1e9f, -1e9f, -1e9f);
+	int numSized = 0;
+	for (auto& s : m.scenes)
+	{
+		if (s.size.x <= 0 || s.size.y <= 0) continue;
+		numSized++;
+		SceneTransform t(s);
+		for (Vec3 c : { t.apply(0, 0), t.apply(s.size.x, 0), t.apply(s.size.x, s.size.y), t.apply(0, s.size.y) })
+		{
+			min = Vec3(jmin(min.x, c.x), jmin(min.y, c.y), jmin(min.z, c.z));
+			max = Vec3(jmax(max.x, c.x), jmax(max.y, c.y), jmax(max.z, c.z));
+		}
+	}
+
+	if (numSized == 0)
 	{
 		g.setColour(TEXT_COLOR.withAlpha(.5f));
 		g.drawFittedText(SpatialModule::getNoSceneSizeText(), area.toNearestInt(), Justification::centred, 1);
 		return;
 	}
 
-	if (!camera.fitted) camera.fit(size);
+	if (!camera.fitted) camera.fit(min, max);
 	View v(camera, area);
 
-	//floor of the scene and its 1 m grid (thinned out on a big scene)
-	Array<Vec3> floor = { Vec3(0, 0, 0), Vec3(size.x, 0, 0), Vec3(size.x, size.y, 0), Vec3(0, size.y, 0) };
-	Path floorPath = v.projectPolygon(floor);
-	g.setColour(Colour(0xff181818));
-	g.fillPath(floorPath);
-
-	float step = 1;
-	while (jmax(size.x, size.y) / step > 40) step *= 2;
-	g.setColour(Colours::white.withAlpha(.07f));
-	for (float x = step; x < size.x; x += step) g.strokePath(v.projectLine(Vec3(x, 0, 0), Vec3(x, size.y, 0)), PathStrokeType(1));
-	for (float y = step; y < size.y; y += step) g.strokePath(v.projectLine(Vec3(0, y, 0), Vec3(size.x, y, 0)), PathStrokeType(1));
-
-	g.setColour(Colours::white.withAlpha(.35f));
-	g.strokePath(floorPath, PathStrokeType(1.5f));
-
-	//axes at the origin (top left corner of the top view) : x red, y green, z blue, 1 m
+	//axes at the world origin : x red, y green, z blue, 1 m
 	const Vec3 origin;
 	g.setColour(Colour(0xffe05a5a));
 	g.strokePath(v.projectLine(origin, Vec3(1, 0, 0)), PathStrokeType(2));
@@ -209,52 +255,87 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	g.setColour(Colour(0xff5a8ee0));
 	g.strokePath(v.projectLine(origin, Vec3(0, 0, 1)), PathStrokeType(2));
 
-	//zones on the floor
-	g.setFont(Font(12.0f));
-	for (auto& z : m.zones)
+	//each scene : its plane, its 1 m grid (thinned out on a big scene), its name, its zones
+	for (int si = 0; si < m.scenes.size(); si++)
 	{
-		if (z.hidden) continue;
-		Colour c = z.enabled ? z.color : NORMAL_COLOR;
-		Path p = v.projectPolygon(getFloorOutline(z));
-		if (p.isEmpty()) continue;
+		auto& s = m.scenes.getReference(si);
+		if (s.size.x <= 0 || s.size.y <= 0) continue;
+		SceneTransform t(s);
+		bool highlighted = si == highlightedScene;
 
-		g.setColour(c.withAlpha(z.presence ? .4f : .18f));
-		g.fillPath(p);
-		g.setColour(z.selected ? HIGHLIGHT_COLOR : c.withAlpha(z.enabled ? .9f : .5f));
-		g.strokePath(p, PathStrokeType(z.selected || z.presence ? 2.0f : 1.2f));
+		Array<Point<float>> corners;
+		corners.add({ 0, 0 });
+		corners.add({ s.size.x, 0 });
+		corners.add(s.size);
+		corners.add({ 0, s.size.y });
+		Path plane = v.projectPolygon(t.apply(corners));
+		g.setColour(Colour(0xff181818).interpolatedWith(s.color, highlighted ? .12f : .05f));
+		g.fillPath(plane);
+
+		float step = 1;
+		while (jmax(s.size.x, s.size.y) / step > 40) step *= 2;
+		g.setColour(Colours::white.withAlpha(.07f));
+		for (float x = step; x < s.size.x; x += step) g.strokePath(v.projectLine(t.apply(x, 0), t.apply(x, s.size.y)), PathStrokeType(1));
+		for (float y = step; y < s.size.y; y += step) g.strokePath(v.projectLine(t.apply(0, y), t.apply(s.size.x, y)), PathStrokeType(1));
+
+		g.setColour(s.color.withAlpha(highlighted ? .9f : .5f));
+		g.strokePath(plane, PathStrokeType(highlighted ? 2.0f : 1.5f));
 
 		Point<float> label;
 		float depth;
-		if (v.project(Vec3(z.bounds.getCentreX(), z.bounds.getCentreY(), 0), label, depth))
+		if (v.project(t.apply(0, 0), label, depth))
 		{
-			g.setColour(c.interpolatedWith(Colours::white, .5f));
-			g.drawText(z.name, Rectangle<float>(160, 16).withCentre(label), Justification::centred, true);
+			g.setFont(Font(13.0f, Font::bold));
+			g.setColour(s.color);
+			g.drawText(s.name, Rectangle<float>(label.x + 4, label.y - 18, 200, 16), Justification::centredLeft, true);
+		}
+
+		g.setFont(Font(12.0f));
+		for (auto& z : m.zones)
+		{
+			if (z.hidden || z.sceneId != s.id) continue;
+			Colour c = z.enabled ? z.color : NORMAL_COLOR;
+			Path p = v.projectPolygon(t.apply(getZoneOutline(z)));
+			if (p.isEmpty()) continue;
+
+			g.setColour(c.withAlpha(z.presence ? .4f : .18f));
+			g.fillPath(p);
+			g.setColour(z.selected ? HIGHLIGHT_COLOR : c.withAlpha(z.enabled ? .9f : .5f));
+			g.strokePath(p, PathStrokeType(z.selected || z.presence ? 2.0f : 1.2f));
+
+			if (v.project(t.apply(z.bounds.getCentre()), label, depth))
+			{
+				g.setColour(c.interpolatedWith(Colours::white, .5f));
+				g.drawText(z.name, Rectangle<float>(160, 16).withCentre(label), Justification::centred, true);
+			}
 		}
 	}
 
-	//people, the farthest first : shadow on the floor, body line, head
+	//people, the farthest first : shadow on their scene, body along its normal, head
 	struct Drawn { int index; float depth; };
 	Array<Drawn> order;
 	for (int i = 0; i < m.snapshot.persons.size(); i++)
 	{
 		auto& p = m.snapshot.persons.getReference(i);
-		order.add({ i, v.toCamera(Vec3(p.position.x, p.position.y, 0)).z });
+		order.add({ i, v.toCamera(getTransform(m, p.scene).apply(p.position)).z });
 	}
 	std::sort(order.begin(), order.end(), [](const Drawn& a, const Drawn& b) { return a.depth > b.depth; });
 
 	for (auto& d : order)
 	{
 		auto& p = m.snapshot.persons.getReference(d.index);
+		SceneTransform t = getTransform(m, p.scene);
 		float height = p.height > .1f ? p.height : defaultPersonHeight;
-		Vec3 foot(p.position.x, p.position.y, 0), head(p.position.x, p.position.y, height);
+		Vec3 foot = t.apply(p.position), head = t.apply(p.position, height);
 
 		int slotIndex = m.getSlotIndexForPerson(p.id);
 		Colour c = slotIndex >= 0 ? m.slots[slotIndex].color : TopViewModel::getPersonColor(p.id);
 
+		Path shadow = v.projectPolygon(t.apply(getCircle(p.position, .3f)));
 		g.setColour(Colours::black.withAlpha(.45f));
-		g.fillPath(v.projectPolygon(getFloorCircle(p.position, .3f)));
+		g.fillPath(shadow);
 		g.setColour(c.withAlpha(.6f));
-		g.strokePath(v.projectPolygon(getFloorCircle(p.position, .3f)), PathStrokeType(1.5f));
+		g.strokePath(shadow, PathStrokeType(1.5f));
 
 		Point<float> headScreen;
 		float headDepth;
@@ -262,7 +343,7 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 
 		float ppm = v.pixelsPerMeter(headDepth);
 		g.setColour(c.withAlpha(.85f));
-		g.strokePath(v.projectLine(foot, Vec3(p.position.x, p.position.y, height - .12f)), PathStrokeType(jlimit(1.5f, 12.0f, .12f * ppm), PathStrokeType::curved, PathStrokeType::rounded));
+		g.strokePath(v.projectLine(foot, t.apply(p.position, height - .12f)), PathStrokeType(jlimit(1.5f, 12.0f, .12f * ppm), PathStrokeType::curved, PathStrokeType::rounded));
 
 		float headRadius = jlimit(3.0f, 30.0f, .14f * ppm);
 		g.setColour(c);
@@ -282,5 +363,5 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	g.setColour(dimText);
 	g.setFont(Font(11.0f));
 	g.drawText("Drag : orbit" + sep + "Right drag : pan" + sep + "Wheel : zoom" + sep + "Double click : reset",
-		area.reduced(8, 4).removeFromBottom(16), Justification::bottomLeft, true);
+		area.reduced(8, 4).removeFromBottom(16), Justification::bottomRight, true);
 }

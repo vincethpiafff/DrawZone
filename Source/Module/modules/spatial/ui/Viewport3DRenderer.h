@@ -45,7 +45,7 @@ public:
 		static constexpr float minPitch = .05f;
 		static constexpr float maxPitch = 1.55f;
 
-		void fit(Point<float> sceneSize);	// default view of the whole scene
+		void fit(Vec3 min, Vec3 max);	// default view of this box (all the scenes)
 		void orbit(float dx, float dy);		// mouse pixels
 		void pan(float dx, float dy, float viewHeight);
 		void zoom(float factor);			// > 1 : closer
@@ -53,5 +53,6 @@ public:
 
 	static constexpr float defaultPersonHeight = 1.7f;	// meters, when the source sends none
 
-	static void paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera);
+	//m : all the scenes (TopViewModel::update with -1) ; highlightedScene : index in m.scenes, -1 = none
+	static void paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera, int highlightedScene = -1);
 };
