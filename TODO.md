@@ -27,10 +27,27 @@ d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes s
 - ✅ 05/11 recompilation complète 0 erreur ; `run_checks.ps1` : PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4,
   Augmenta 36 / 36 ; bascule visible (capture) ; logs propres. ❌ clic auto sur « 3D » : Windows refuse
   le premier plan, clic parti ailleurs → pas d'automatisation de souris. ✅ Vincent : « ok », brique 1 validée.
+- ✅ 05/11 capture Fusion : 1 port par scène confirmé (12001 : `/scene` 8 x 3, `/fusion`, `/object/update` + `/extra`,
+  1 message par paquet, sans bundle) ; 213 msg/s expliqué (2 personnes x 2 messages x ≈ 48 Hz + `/scene` et `/fusion` à 10 Hz).
+- ⏭️ 05/11 brique 2, code : `Port` par source Augmenta (port du module → entrée du module, autre port → `OSCReceiver`
+  à elle) ; nouvelle source : port + 1, Id Offset + 100 ; recompilation complète 0 erreur.
+  ❌ tests 17/30, 3/6, 3/4, 14/36 : Port vaut 12000 par défaut, les copies de test mettent le module sur 12999,
+  donc la source ouvre 12000 (Fusion) et n'entend plus le simulateur. Même risque pour une ancienne session
+  dont l'entrée OSC n'est pas sur 12000. **Arrêt, décision avec Vincent.**
+- ✅ 05/11 💬 Vincent : option A. Case **Use Module Input** (cochée par défaut et pour les anciennes sessions ; Port grisé) ;
+  nouvelle source : décochée, port 12001+, Id Offset +100. Test ajouté (`check_sim.ps1`, 2e scène sur 12998, Offset 8 m).
+  Recompilation complète 0 erreur ; PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta **41 / 41**.
+  Test : les logs ignorent `CommunityModuleManager` (liste en ligne, « Failed to connect » le 05/11). 
+- ❌ 05/11 💬 Vincent : une source ajoutée arrive avec Use Module Input coché. Cause probable : le menu passe le JSON
+  de la source à `addItemInternal` quand plusieurs conteneurs sont sélectionnés (`addItemForSelected`), le test
+  `data.isVoid()` l'écartait. Correction : « nouvelle » = pas en chargement de fichier. Compilé 0 erreur ;
+  PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41 (le menu n'est pas testable en simulation).
+  ✅ Vincent : « OK », brique 2 validée.
+- 💬 05/11 Vincent, pour la brique 3 : en 2D, un sélecteur de la scène affichée (SOL ou MUR) ; en 3D, une liste
+  des scènes avec Position et Rotation X / Y / Z modifiables.
 
 ## ⬜ Questions ouvertes
 
-- Débit Augmenta de 213 msg/s avec 2 personnes (20 à vide), non expliqué.
 - Choix de la carte réseau pour l'entrée PSN (la sortie l'a déjà).
 - Kratos réel : signe de l'orientation non vérifié ; 2 émetteurs sur un même groupe
   PSN se mélangent (limite connue).

@@ -177,10 +177,30 @@ $outStatus = Value "spatial/parameters/psnOutput/status"
 Check "PSN output status Disabled" ($outStatus -eq "Disabled") "'$outStatus'"
 Check "PSN output off by default : nothing sent" ($o.packets -eq 0) "$($o.packets) packets"
 
+#2nd Fusion scene on its own port (make_psn_session.ps1 -NoPsn : Augmenta 2, port 12998, Id Offset 1000, Offset 8, 0)
+if ($null -ne (Value "spatial/parameters/sources/augmenta2/port"))
+{
+	$p = Start-Process powershell -ArgumentList "-ExecutionPolicy", "Bypass", "-File", $sim, "-Port", 12998, "-Id", 5, "-X", 2, "-Y", 1, "-SceneW", 8, "-SceneH", 3, "-Seconds", 3 -WindowStyle Hidden -PassThru
+	Start-Sleep -Milliseconds 1500
+	$pos = Value "spatial/values/people/person1005/position"
+	Check "2nd scene : person 1005 at (10, 1)" ($null -ne $pos -and (Near $pos[0] 10) -and (Near $pos[1] 1)) ($pos -join ", ")
+	$other = Tool "organic_inspect" @{ handle = $modules; path = "spatial/values/people/person5" }
+	Check "2nd scene : not heard by the 1st source" ($null -eq $other) $(if ($other) { "person5 there" } else { "no person5" })
+	$s2 = Value "spatial/parameters/sources/augmenta2/status"
+	Check "2nd scene : status on port 12998" ($s2 -match "^Receiving, .*Augmenta scene 8.0 x 3.0 m, port 12998") "'$s2'"
+	$s1 = Value "spatial/parameters/sources/augmenta/status"
+	Check "1st scene : status module input" ($s1 -match "module input") "'$s1'"
+	$p.WaitForExit()
+	Start-Sleep -Milliseconds 700
+	$gone = Tool "organic_inspect" @{ handle = $modules; path = "spatial/values/people/person1005" }
+	Check "2nd scene : removed after leave" ($null -eq $gone) $(if ($gone) { "still there" } else { "gone" })
+}
+else { Check "2nd scene : source Augmenta 2 in the session" $false "not found" }
+
 #no warning or error in the logs during the test
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
-#the community module list comes from the internet, not from DrawZone
-$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.message -notmatch "^Community Module definition file is not valid" })
+#the community module list comes from the internet (and may fail to download), not from DrawZone
+$bad = @($diag.logs | Where-Object { $_.severity -ne "info" -and [datetime]$_.time -ge $startTime -and $_.source -ne "CommunityModuleManager" })
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
 $bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }
 

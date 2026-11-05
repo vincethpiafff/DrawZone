@@ -115,10 +115,64 @@ String SpatialSource::getIdConflictText(SpatialModule* module) const
 AugmentaSource::AugmentaSource(var params) :
 	SpatialSource(getTypeStringStatic(), params, 101)	// Fusion counts from 0, PSN systems from 1 : first person = 101, away from PSN ids
 {
+	useModuleInput = addBoolParameter("Use Module Input", "This source gets what arrives on the module's OSC Input (one source only). Off : it listens to its own Port, one Fusion scene per port", true);
+	port = addIntParameter("Port", "OSC port of this Augmenta scene, opened by this source (Use Module Input off). Give each Fusion scene its own port", 12001, 1, 65535);
+	port->setEnabled(false);
+	moveParametersToEnd({ offset, rotation, scale, flipX, flipY, resetParameters, useModuleInput, port, status });
+	receiver.addListener(this);
 }
 
 AugmentaSource::~AugmentaSource()
 {
+	closeReceiver();
+	receiver.removeListener(this);
+}
+
+void AugmentaSource::onContainerParameterChangedInternal(Parameter* p)
+{
+	SpatialSource::onContainerParameterChangedInternal(p);
+	if (p == useModuleInput) port->setEnabled(!useModuleInput->boolValue());
+}
+
+void AugmentaSource::clearItem()
+{
+	//before the manager forgets this source : the receiver could add a person back
+	closeReceiver();
+	SpatialSource::clearItem();
+}
+
+void AugmentaSource::openReceiver(SpatialModule* module, int p)
+{
+	closeReceiver();
+	receiverModule = module;
+	bindFailed = !receiver.connect(p);
+	if (!bindFailed) ownPort = p;
+}
+
+void AugmentaSource::closeReceiver()
+{
+	if (ownPort > 0) receiver.disconnect();
+	ownPort = 0;
+}
+
+void AugmentaSource::oscMessageReceived(const OSCMessage& msg)
+{
+	if (receiverModule != nullptr) processMessage(msg, receiverModule);
+}
+
+void AugmentaSource::oscBundleReceived(const OSCBundle& bundle)
+{
+	for (auto& e : bundle)
+	{
+		if (e.isMessage()) oscMessageReceived(e.getMessage());
+		else if (e.isBundle()) oscBundleReceived(e.getBundle());
+	}
+}
+
+Point<float> AugmentaSource::getSceneArea()
+{
+	const ScopedLock sl(sceneLock);
+	return augmentaSceneSize;
 }
 
 void AugmentaSource::processMessage(const OSCMessage& msg, SpatialModule* module)
@@ -132,6 +186,7 @@ void AugmentaSource::processMessage(const OSCMessage& msg, SpatialModule* module
 	if (address == "/scene")
 	{
 		if (msg.size() < 4) return;
+		const ScopedLock sl(sceneLock);
 		augmentaSceneSize = Point<float>(OSCHelpers::getFloatArg(msg[2]), OSCHelpers::getFloatArg(msg[3]));
 	}
 	else if (address == "/object/enter" || address == "/object/update")
@@ -149,7 +204,7 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 {
 	if (msg.size() < 15) return;
 
-	Point<float> area = augmentaSceneSize;
+	Point<float> area = getSceneArea();
 	if (area.x <= 0 || area.y <= 0) return; //no /scene yet : Augmenta positions (0-1 in its scene) can't be placed
 
 	TrackedPerson p;
@@ -174,13 +229,35 @@ void AugmentaSource::processPerson(const OSCMessage& msg, SpatialModule* module)
 
 void AugmentaSource::update(SpatialModule* module)
 {
-	if (!enabled->boolValue()) status->setValue("Disabled");
-	else if (!isUsed) status->setValue("Not used : only the first Augmenta source receives the OSC input");
+	int p = port->intValue();
+	bool active = enabled->boolValue() && module->enabled->boolValue();
+
+	//own receiver when Use Module Input is off ; a port that failed is tried again when it changes
+	if (active && !useModuleInput->boolValue())
+	{
+		if (ownPort != p && (!bindFailed || triedPort != p))
+		{
+			triedPort = p;
+			openReceiver(module, p);
+		}
+	}
 	else
 	{
+		closeReceiver();
+		bindFailed = false;
+		triedPort = 0;
+	}
+
+	if (!active) status->setValue("Disabled");
+	else if (useModuleInput->boolValue() && !isUsed) status->setValue("Not used : another Augmenta source already uses the module's OSC Input. Turn Use Module Input off and give this Fusion scene its own Port");
+	else if (!useModuleInput->boolValue() && bindFailed) status->setValue("Could not open port " + String(p) + " (used by another program or module)");
+	else
+	{
+		Point<float> area = getSceneArea();
 		String s = getReceptionText(module) + ", " + String(module->trackingData.getNumPersons(this)) + " people";
-		if (augmentaSceneSize.x > 0) s += ", Augmenta scene " + String(augmentaSceneSize.x, 1) + " x " + String(augmentaSceneSize.y, 1) + " m";
+		if (area.x > 0) s += ", Augmenta scene " + String(area.x, 1) + " x " + String(area.y, 1) + " m";
 		else s += ", waiting for /scene";
+		s += useModuleInput->boolValue() ? ", module input" : ", port " + String(p);
 		status->setValue(s + getIdConflictText(module));
 	}
 }
@@ -411,8 +488,27 @@ SpatialSourceManager::~SpatialSourceManager()
 {
 }
 
-void SpatialSourceManager::addItemInternal(SpatialSource* item, var)
+void SpatialSourceManager::addItemInternal(SpatialSource* item, var data)
 {
+	//a new Augmenta source, not loaded from a file (data is no clue : the menu may pass the item's own JSON) :
+	//the next port and the next range of ids, for one more Fusion scene
+	if (AugmentaSource* added = dynamic_cast<AugmentaSource*>(item); added != nullptr && !isCurrentlyLoadingData && (Engine::mainEngine == nullptr || !Engine::mainEngine->isLoadingFile))
+	{
+		int maxPort = 12000, maxOffset = -1;	// 12000 : Augmenta Fusion's default output
+		for (auto& s : items)
+			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s); a != nullptr && a != added)
+			{
+				if (!a->useModuleInput->boolValue()) maxPort = jmax(maxPort, a->port->intValue());
+				maxOffset = jmax(maxOffset, a->idOffset->intValue());
+			}
+		if (maxOffset >= 0)
+		{
+			added->useModuleInput->setValue(false);
+			added->port->setValue(maxPort + 1);
+		}
+		if (maxOffset >= 0) added->idOffset->setValue(maxOffset + 100);
+	}
+
 	//distinct hues, spread by the golden ratio after the first 4 ; a color chosen by the user is kept
 	const float hues[] = { .08f, .55f, .33f, .8f };
 	int index = items.indexOf(item);
@@ -424,7 +520,7 @@ AugmentaSource* SpatialSourceManager::getAugmentaSource()
 {
 	for (auto& s : items)
 		if (s->enabled->boolValue())
-			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) return a;
+			if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) if (a->useModuleInput->boolValue()) return a;
 	return nullptr;
 }
 

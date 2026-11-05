@@ -71,26 +71,47 @@ private:
 	Point<float> scaleAndRotate(Point<float> v) const;	// no flip, no offset
 };
 
-//Augmenta OSC protocol v2, received on the module's OSC input
+//Augmenta OSC protocol v2, one Fusion scene per port. Use Module Input : the first enabled such source gets the
+//module's OSC input (sessions before v0.6) ; otherwise the source listens to its own Port
 class AugmentaSource :
-	public SpatialSource
+	public SpatialSource,
+	private OSCReceiver::Listener<OSCReceiver::RealtimeCallback>
 {
 public:
 	AugmentaSource(var params = var());
 	~AugmentaSource();
 
-	Point<float> augmentaSceneSize;	// meters, from /scene ; written and read under the manager lock
-	std::atomic<bool> isUsed { false };	// the first enabled Augmenta source gets the messages
+	BoolParameter* useModuleInput;	// fed by the module's OSC Input, Port unused
+	IntParameter* port;				// own port, one Fusion scene per port
 
-	//network thread, under the manager lock
+	std::atomic<bool> isUsed { false };	// gets the module's OSC input
+
+	//network thread : module input (under the manager lock) or own receiver
 	void processMessage(const OSCMessage& msg, SpatialModule* module);
-	void update(SpatialModule* module) override;
-	Point<float> getSceneArea() override { return augmentaSceneSize; }
+	void clearItem() override;
+	void update(SpatialModule* module) override;	// also opens and closes the own receiver
+	void onContainerParameterChangedInternal(Parameter* p) override;
+	Point<float> getSceneArea() override;
+	String getPortText(int modulePort) const { return " :" + String(useModuleInput->boolValue() ? modulePort : port->intValue()); }
 
 	String getTypeString() const override { return getTypeStringStatic(); }
 	static String getTypeStringStatic() { return "Augmenta"; }
 
 private:
+	CriticalSection sceneLock;
+	Point<float> augmentaSceneSize;	// meters, from /scene
+
+	//own receiver, when Use Module Input is off
+	OSCReceiver receiver;
+	int ownPort = 0;	// 0 = closed
+	bool bindFailed = false;
+	int triedPort = 0;	// last port tried by the own receiver
+	SpatialModule* receiverModule = nullptr;	// set before the receiver opens, never changes after
+	void openReceiver(SpatialModule* module, int p);
+	void closeReceiver();
+	void oscMessageReceived(const OSCMessage& msg) override;
+	void oscBundleReceived(const OSCBundle& bundle) override;
+
 	void processPerson(const OSCMessage& msg, SpatialModule* module);
 };
 
@@ -150,7 +171,8 @@ public:
 
 	void addItemInternal(SpatialSource* item, var data) override;
 
-	AugmentaSource* getAugmentaSource();	// first enabled one, call under items.getLock()
+	//first enabled Augmenta source with Use Module Input, call under items.getLock()
+	AugmentaSource* getAugmentaSource();
 	//the enabled source marked Use As Scene, else the only one knowing its scene : with several, it's up to the user. Call under items.getLock()
 	Point<float> getSceneArea();
 };

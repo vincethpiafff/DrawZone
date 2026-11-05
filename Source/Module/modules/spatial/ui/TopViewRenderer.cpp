@@ -32,7 +32,7 @@ void TopViewModel::update(SpatialModule* sm)
 				sv.source = s;
 				sv.id = s;
 				sv.name = s->niceName;
-				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) { if (a->isUsed) sv.name += " :" + String(localPort); }
+				if (AugmentaSource* a = dynamic_cast<AugmentaSource*>(s)) sv.name += a->getPortText(localPort);
 				sv.enabled = s->enabled->boolValue();
 				sv.reception = sv.enabled ? s->getReceptionText(sm) : String("Disabled");
 				sv.color = s->itemColor->getColor();

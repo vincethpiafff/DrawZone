@@ -22,7 +22,9 @@ $psnY = '{"parameters": [{"value": [1.0, 0.5], "controlAddress": "/offset"}, {"v
 $psnZ = '{"parameters": [{"value": [-8.0, -2.0], "controlAddress": "/areaPosition"}, {"value": [16.0, 12.0], "controlAddress": "/areaSize"}, {"value": 56576, "hexMode": false, "controlAddress": "/multicastPort"}, {"value": "Z", "controlAddress": "/upAxis"}], "niceName": "PSN Z", "type": "PSN"}'
 if (-not $NoChoice) { $psnZ = $psnZ.Replace('{"parameters": [', '{"parameters": [{"value": true, "controlAddress": "/useAsScene"}, ') }
 # the sources of the session are replaced : its PSN source would hear the real Kratos
-$items = if ($NoPsn) { $augmenta } else { "$augmenta, $psnY, $psnZ" }
+# -NoPsn : a 2nd Fusion scene on its own port (12998, no real system), Id Offset 1000, placed 8 m to the right
+$augmenta2 = '{"parameters": [{"value": false, "controlAddress": "/useModuleInput"}, {"value": 12998, "hexMode": false, "controlAddress": "/port"}, {"value": 1000, "hexMode": false, "controlAddress": "/idOffset"}, {"value": [8.0, 0.0], "controlAddress": "/offset"}], "niceName": "Augmenta 2", "type": "Augmenta"}'
+$items = if ($NoPsn) { "$augmenta, $augmenta2" } else { "$augmenta, $psnY, $psnZ" }
 $pattern = '(?s)("sources": \{[^\[]*?"items": \[).*?(\], "viewOffset")'
 if (-not [regex]::IsMatch($text, $pattern)) { throw "Sources not found in $From" }
 $text = [regex]::Replace($text, $pattern, { param($m) $m.Groups[1].Value + $items + $m.Groups[2].Value })
