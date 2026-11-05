@@ -18,7 +18,8 @@ Cœur : module **Spatial** dans le code, **Cockpit** à l'écran (D14), code dan
   est visible dans Chataigne** : en **anglais**.
 - Vincent n'est pas développeur C++ (il fait du Python) : expliquer simplement.
 - Il valide chaque étape ; une liste de tâches qu'il a validée s'enchaîne jusqu'au
-  bout, chaque étape testée en simulation, arrêt et discussion à la moindre erreur.
+  bout, arrêt et discussion à la moindre erreur. Tests en simulation **pas systématiques** :
+  seulement si la logique ou les données changent ; affichage seul → compiler, relancer, Vincent regarde.
 - Vérifier avant d'affirmer (lire le code, compiler, tester). Petites briques testables.
 - `TODO.md` : le lire en début de séance, le tenir à jour **en une ligne par étape**
   (✅ ❌ avec cause, ⏭️ ⬜ 💡). Réponses et docs courtes : moins de tokens.

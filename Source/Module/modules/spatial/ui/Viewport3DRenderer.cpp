@@ -311,7 +311,7 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 		}
 	}
 
-	//people, the farthest first : shadow on their scene, body along its normal, head
+	//people, the farthest first : flat on their scene, circle and cross on the centroid
 	struct Drawn { int index; float depth; };
 	Array<Drawn> order;
 	for (int i = 0; i < m.snapshot.persons.size(); i++)
@@ -325,39 +325,32 @@ void Viewport3DRenderer::paint(Graphics& g, const TopViewModel& m, Rectangle<flo
 	{
 		auto& p = m.snapshot.persons.getReference(d.index);
 		SceneTransform t = getTransform(m, p.scene);
-		float height = p.height > .1f ? p.height : defaultPersonHeight;
-		Vec3 foot = t.apply(p.position), head = t.apply(p.position, height);
 
 		int slotIndex = m.getSlotIndexForPerson(p.id);
 		Colour c = slotIndex >= 0 ? m.slots[slotIndex].color : TopViewModel::getPersonColor(p.id);
+		bool selected = p.id == m.selectedPersonId;
 
-		Path shadow = v.projectPolygon(t.apply(getCircle(p.position, .3f)));
-		g.setColour(Colours::black.withAlpha(.45f));
-		g.fillPath(shadow);
-		g.setColour(c.withAlpha(.6f));
-		g.strokePath(shadow, PathStrokeType(1.5f));
+		//circle on the scene plane, cross on the centroid of the detection
+		const float radius = .3f, cross = .15f;
+		Path circle = v.projectPolygon(t.apply(getCircle(p.position, radius)));
+		g.setColour(c.withAlpha(.25f));
+		g.fillPath(circle);
+		g.setColour(selected ? HIGHLIGHT_COLOR : c);
+		g.strokePath(circle, PathStrokeType(selected ? 3.0f : 2.0f));
 
-		Point<float> headScreen;
-		float headDepth;
-		if (!v.project(head, headScreen, headDepth)) continue;
-
-		float ppm = v.pixelsPerMeter(headDepth);
-		g.setColour(c.withAlpha(.85f));
-		g.strokePath(v.projectLine(foot, t.apply(p.position, height - .12f)), PathStrokeType(jlimit(1.5f, 12.0f, .12f * ppm), PathStrokeType::curved, PathStrokeType::rounded));
-
-		float headRadius = jlimit(3.0f, 30.0f, .14f * ppm);
 		g.setColour(c);
-		g.fillEllipse(Rectangle<float>(headRadius * 2, headRadius * 2).withCentre(headScreen));
-		if (p.id == m.selectedPersonId)
-		{
-			g.setColour(HIGHLIGHT_COLOR);
-			g.drawEllipse(Rectangle<float>(headRadius * 2 + 6, headRadius * 2 + 6).withCentre(headScreen), 2);
-		}
+		g.strokePath(v.projectLine(t.apply(p.position.translated(-cross, 0)), t.apply(p.position.translated(cross, 0))), PathStrokeType(2));
+		g.strokePath(v.projectLine(t.apply(p.position.translated(0, -cross)), t.apply(p.position.translated(0, cross))), PathStrokeType(2));
+
+		//label just past the circle, along the scene height
+		Point<float> labelScreen;
+		float labelDepth;
+		if (!v.project(t.apply(p.position, radius), labelScreen, labelDepth)) continue;
 
 		String label = slotIndex >= 0 ? m.slots[slotIndex].name + " #" + String(p.id) : "#" + String(p.id);
 		g.setColour(TEXT_COLOR);
 		g.setFont(Font(12.0f));
-		g.drawText(label, Rectangle<float>(140, 16).withCentre(headScreen.translated(0, -headRadius - 10)), Justification::centred, false);
+		g.drawText(label, Rectangle<float>(140, 16).withCentre(labelScreen.translated(0, -10)), Justification::centred, false);
 	}
 
 	g.setColour(dimText);

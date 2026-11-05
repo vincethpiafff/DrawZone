@@ -59,6 +59,9 @@ d'abord voir la scène en 3D, bascule 2D / 3D dans le Tracking Monitor, formes s
 - ✅ 05/11 reprise : 1er passage PSN 28 / 30 ×2, Augmenta 40 : session enregistrée avec Spout et NDI décochés, donc
   Resolution vide (calculée seulement si sortie active). `make_psn_session.ps1` coche Spout dans chaque copie →
   PSN 30 / 30 ×2, Source IDs 6 / 6, Id Offset 4 / 4, Augmenta 41 / 41.
+- ✅ 05/11 💬 Vincent : brique 3 validée → `50c515de`.
+- ✅ 05/11 💬 Vincent : en 3D, personne = cercle + croix sur le centroïde (plus de corps ni de tête) ; compilé 0 erreur ;
+  ✅ Vincent : « ok ». Tests en simulation désormais seulement si logique ou données changent (`CLAUDE.md`).
 - ⏸️ 05/11/2026 fin de séance. Reprise : test de Vincent sur la brique 3 (5 points donnés le 05/11), puis commit sur son
   accord (brique 3 non commitée sur `feature/viewport-3d`) ; ensuite brique 4, formes simples.
 

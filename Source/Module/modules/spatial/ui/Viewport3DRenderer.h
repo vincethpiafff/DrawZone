@@ -51,8 +51,6 @@ public:
 		void zoom(float factor);			// > 1 : closer
 	};
 
-	static constexpr float defaultPersonHeight = 1.7f;	// meters, when the source sends none
-
 	//m : all the scenes (TopViewModel::update with -1) ; highlightedScene : index in m.scenes, -1 = none
 	static void paint(Graphics& g, const TopViewModel& m, Rectangle<float> area, Camera& camera, int highlightedScene = -1);
 };
