@@ -6,7 +6,7 @@ Légende : ✅ fait · ❌ échec / écarté (+ cause) · ⏭️ en cours · ⬜
 **Écrire court** : une ligne par étape (date, quoi, résultat, chiffres du test).
 Pas de récit, pas de répétition. Version terminée → archive, au mot près.
 
-## ⏭️ En cours : v0.7.1 Live Mode, puis v0.7.2 Logic Graph
+## ⏭️ En cours : v0.7.2 Logic Graph (v0.7.1 Live Mode publiée)
 
 v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGELOG). Contenu prévu (ROADMAP) :
 événements, Branch, variables, sorties OSC.
@@ -24,11 +24,12 @@ v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGE
   Règle pour la brique 1 : le moteur du graphe tourne dans l'horloge du Cockpit, jamais dans le panneau. 
 - 💬 06/11 Vincent : Live Mode = **v0.7.1**, Logic Graph = **v0.7.2**. Coupures retenues : viewport gelé, Logic Graph figé (avec la
   v0.7.2), Inspector gelé, statuts à 1 Hz, Logger réduit, édition verrouillée ; MCP en pause en option (désactivée par défaut).
-- ⏭️ 06/11 v0.7.1 code (branche `feature/live-mode`) : bloc **Live Mode** du Cockpit (Enabled, Slow Preview, Pause MCP) ;
+- ✅ 06/11 v0.7.1 code (branche `feature/live-mode`) : bloc **Live Mode** du Cockpit (Enabled, Slow Preview, Pause MCP) ;
   Inspector : sélection coupée ; statuts 1 Hz ; Monitor : bouton LIVE, Ctrl + Shift + L, vue gelée ou 1 image / s, édition
   verrouillée. ❌ Logger réduit : pas de filtre dans le Logger d'organicUI (code de Ben) → écarté, à revoir avec Vincent.
   ❌ puis ✅ compilation : `setDescription` n'existe pas → `description`. Recompilation complète 0 erreur ; MCP : bloc présent,
-  désactivé par défaut. Pas de simulation (pas de changement des données). ⬜ test de Vincent.
+  désactivé par défaut. Pas de simulation (pas de changement des données). ✅ Vincent : « ok commit et push », commit `e3f78409`.
+- ✅ 06/11 v0.7.1 publiée : CHANGELOG, ROADMAP, README, CLAUDE.md ; fusion `--no-ff` dans `develop`, tag `v0.7.1`, push `origin`.
 
 ## ⬜ Questions ouvertes
 

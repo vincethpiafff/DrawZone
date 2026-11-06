@@ -5,6 +5,21 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+## [0.7.1] - 2026-11-06
+
+Live Mode : un mode spectacle qui coupe l'affichage et l'édition pendant que tout le calcul continue.
+
+### Ajouté
+- Bloc **Live Mode** du Cockpit : Enabled (pilotable par la State Machine, l'OSC ou le
+  Dashboard), **Slow Preview** (vue à 1 image / s), **Pause MCP** (option).
+- Tracking Monitor : bouton **LIVE** et Ctrl + Shift + L ; en live, vue figée avec bandeau,
+  édition verrouillée (zones, slots, surfaces, caméra 3D).
+- En live : Inspector sans sélection, statuts à 1 Hz. Tracking, zones, slots, variables et
+  sorties (OSC, PSN, Spout, NDI) ne s'arrêtent jamais.
+
+### Limites connues
+- Le Logger de Chataigne ne peut pas être réduit (pas de filtre dans organicUI).
+
 ## [0.6.0] - 2026-11-06
 
 Plusieurs surfaces (sol, mur…) placées dans une vue 3D, chacune avec ses
