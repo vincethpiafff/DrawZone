@@ -42,7 +42,7 @@ public:
 	void mouseUp(const MouseEvent& e) override;
 	void mouseDoubleClick(const MouseEvent& e) override;
 	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
-	bool keyPressed(const KeyPress& key) override;	// Delete : node, F : frame all, Ctrl + Shift + L : Live Mode
+	bool keyPressed(const KeyPress& key) override;	// Delete : selected nodes, H : hide / show them, F : frame all, Ctrl + Shift + L : Live Mode
 
 private:
 	SpatialModule* getSpatialModule();
@@ -79,6 +79,8 @@ private:
 	static const int padding = 6;
 	Rectangle<float> getNodeRect(LogicNode* n) const;
 	Point<float> getPinPosition(LogicNode* n, const String& pin, bool output) const;
+	Point<float> paintPin(Graphics& g, LogicGraph* graph, LogicNode* n, const LogicPinDef& p, float alpha);	// returns its screen position
+	void paintPillNode(Graphics& g, LogicGraph* graph, LogicNode* n, Rectangle<float> r, const String& symbol, float alpha, bool showText);
 
 	struct PinRef
 	{
@@ -92,10 +94,19 @@ private:
 	LogicNode* getNodeAt(Point<float> canvas) const;
 
 	//interactions
-	enum DragMode { NONE, PAN, MOVE_NODE, WIRE, MINIMAP };
+	enum DragMode { NONE, PAN, MOVE_NODE, WIRE, MINIMAP, SELECT_RECT };
 	DragMode dragMode = NONE;
 	WeakReference<Inspectable> dragNode;
 	Point<float> dragStartNode, dragStartMouse;	// canvas
+	Array<WeakReference<Inspectable>> dragOthers;	// the other selected nodes, moved with dragNode
+	Array<Point<float>> dragOthersStart;
+	Point<float> selectStart, selectEnd;		// canvas, right drag
+	bool selectAdd = false;						// Ctrl or Shift : adds to the selection
+
+	Array<LogicNode*> getSelectedNodes();
+	void removeSelectedNodes();
+	void toggleHideSelected();	// H : hidden nodes do nothing until shown again
+	void paintSelectRect(Graphics& g);
 	Point<float> panLastMouse;					// screen
 	PinRef wireFrom;
 	Point<float> wireMouse;						// canvas
@@ -107,8 +118,6 @@ private:
 	Point<float> snapPosition(LogicNode* n, Point<float> wanted, bool free);
 
 	void showCanvasMenu(Point<float> canvas);
-	void showNodeMenu(LogicNode* n);
-	void showPinMenu(const PinRef& p);
 	void showTabMenu(int index);
 	void removeNode(LogicNode* n);
 	void renameGraph(LogicGraph* g);

@@ -51,7 +51,11 @@ v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGE
   Compilé 0 erreur, lien OK. `check_logic.ps1` réécrit (15 nodes, 77 puis 78 dans ZONE RECT) : simulation **40 / 40**. ✅ Vincent : liens conservés, commit `d1f28dff`.
 - ⏭️ 06/11 💬 Vincent : menu du clic droit par type (Trigger, On-Off, Count, Time, Percentage, Meters, Outputs ; « / » = sous-menu → « On-Off ») ;
   8 nodes de données valeur + Changed (Zone Presence Time, Slot Hold Remaining, Person Age, Zone Occupancy, Person Position,
-  Person Height, Slot Position, Zone Average Distance To Center), broche Meters. Compilé 0 erreur. ✅ Vincent : « ok tout bon ».
+  Person Height, Slot Position, Zone Average Distance To Center), broche Meters. Compilé 0 erreur. ✅ Vincent : « ok tout bon ». Commit `a00994c9`.
+- ⏭️ 06/11 brique 4 : node **Branch** (menu Flow) : In + Condition (On-Off ; réglage Condition si non reliée) → True / False. Compilé 0 erreur.
+- 💬 06/11 Vincent : catégorie de nodes **Compare**, forme différente du rectangle. ⬜ 4 formes proposées (artifact « Logic Graph Compare Nodes » : A pastille, B hexagone, C losange, D rond) + liste (Compare, In Range, And, Or, Xor, Not), choix de Vincent. ✅ 💬 Vincent : **A pastille** ; sortie Result seule (On / Off plus tard si besoin). Code : catégorie Compare (Compare = ≠ > ≥ < ≤, In Range, And, Or, Xor, Not), dessinés en pastille (symbole + seuil) ; seuil dans l'unité de la valeur reliée (HH:MM:SS:FF, %, m). Compilé 0 erreur. ✅ Vincent : tests OK, commit `d8f313a8`.
+- 💬 06/11 Vincent : brique 5, nodes de **sortie vers des variables** typées : On-Off, pourcentage, temps HH:MM:SS:FF.
+- 💬 06/11 Vincent (avant les tests) : clic droit glissé = **sélection au rectangle**, touche **H** = masquer / réafficher des nodes. ❌ 💬 Vincent : inverser les clics → clic **gauche** glissé dans le vide = rectangle (Ctrl / Maj = ajoute, clic simple = désélectionne), clic **droit** glissé = déplacer la vue, clic droit simple = menus, puis 💬 Vincent : clic droit simple = **seulement créer un node** (menus de node et de broche retirés : Suppr, H, et glisser un lien depuis son entrée pour le défaire), Ctrl / Maj + clic = ajoute / retire, déplacer / supprimer / H sur toute la sélection (une étape d'annulation), node masqué = Enabled décoché, estompé + « HIDDEN ». Compilé 0 erreur. ✅ Vincent : tests OK, commit `d8f313a8`.
 - ❌ 06/11 bug brique 1 : l'uid des nodes n'est pas enregistré (valeur par défaut) → liens perdus au rechargement. ✅ uid enregistré, copie = nouvel uid. Compilé 0 erreur.
 
 ## ⬜ Questions ouvertes

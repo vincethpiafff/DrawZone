@@ -206,14 +206,26 @@ Rectangle<float> LogicGraphPanel::getNodeRect(LogicNode* n) const
 {
 	int in = 0, out = 0;
 	for (auto& p : n->pins) (p.output ? out : in)++;
-	int rows = jmax(in, out) + (n->getSummaryText().isNotEmpty() ? 1 : 0);
 	Point<float> pos = n->viewUIPosition->getPoint();
+	if (n->getSymbol().isNotEmpty())	// pill : no header, the summary is inside
+		return Rectangle<float>(pos.x, pos.y, (float)n->getWidth(), (float)jmax(44, jmax(in, out, 1) * rowHeight + 18));
+	int rows = jmax(in, out) + (n->getSummaryText().isNotEmpty() ? 1 : 0);
 	return Rectangle<float>(pos.x, pos.y, (float)n->getWidth(), (float)(headerHeight + padding * 2 + rows * rowHeight));
 }
 
 Point<float> LogicGraphPanel::getPinPosition(LogicNode* n, const String& pin, bool output) const
 {
 	Rectangle<float> r = getNodeRect(n);
+	if (n->getSymbol().isNotEmpty())
+	{
+		//pill : pins of a side centred around the middle, on the round end
+		int count = 0;
+		for (auto& p : n->pins) if (p.output == output) count++;
+		float dy = (n->getPinRow(pin, output) - (count - 1) / 2.0f) * rowHeight;
+		float rad = r.getHeight() / 2;
+		float inset = rad - std::sqrt(jmax(0.0f, rad * rad - dy * dy));
+		return Point<float>(output ? r.getRight() - inset : r.getX() + inset, r.getCentreY() + dy);
+	}
 	int row = n->getPinRow(pin, output) + (n->getSummaryText().isNotEmpty() ? 1 : 0);
 	return Point<float>(output ? r.getRight() : r.getX(), r.getY() + headerHeight + padding + row * rowHeight + rowHeight / 2.0f);
 }
@@ -332,6 +344,7 @@ void LogicGraphPanel::paint(Graphics& g)
 			paintLinks(g, graph);
 			for (auto& n : graph->nodes.items) paintNode(g, graph, n);
 			paintGuides(g);
+			paintSelectRect(g);
 			paintMiniMap(g, graph);
 			if (graph->nodes.items.isEmpty())
 			{
@@ -476,9 +489,12 @@ void LogicGraphPanel::paintNode(Graphics& g, LogicGraph* graph, LogicNode* n)
 	Rectangle<float> r(toScreen(rc.getTopLeft()), toScreen(rc.getBottomRight()));
 	if (!r.intersects(canvasRect.toFloat())) return;
 
-	float alpha = n->enabled->boolValue() ? 1.0f : .5f;
-	float radius = 10 * zoom;
+	float alpha = n->enabled->boolValue() ? 1.0f : .4f;	// hidden (H) : dimmed
+	String symbol = n->getSymbol();
+	bool pill = symbol.isNotEmpty();
+	float radius = pill ? r.getHeight() / 2 : 10 * zoom;
 	bool selected = n->isSelected;
+	bool showText = zoom >= .45f;
 
 	if (selected)
 	{
@@ -487,10 +503,15 @@ void LogicGraphPanel::paintNode(Graphics& g, LogicGraph* graph, LogicNode* n)
 	}
 	g.setColour(nodeBg.withMultipliedAlpha(alpha));
 	g.fillRoundedRectangle(r, radius);
-	g.setColour(selected ? accent : nodeBorder);
-	g.drawRoundedRectangle(r.reduced(.5f), radius, selected ? 1.5f : 1);
+	g.setColour(selected ? accent : pill ? LogicNode::getCategoryColour(n->getCategory()).withMultipliedAlpha(alpha) : nodeBorder);
+	g.drawRoundedRectangle(r.reduced(.5f), radius, pill || selected ? 1.5f : 1);
 
-	bool showText = zoom >= .45f;
+	if (pill)
+	{
+		paintPillNode(g, graph, n, r, symbol, alpha, showText);
+		return;
+	}
+
 	float hh = headerHeight * zoom;
 	Rectangle<float> header = r.withHeight(hh);
 	g.setColour(nodeLine);
@@ -501,7 +522,7 @@ void LogicGraphPanel::paintNode(Graphics& g, LogicGraph* graph, LogicNode* n)
 	{
 		Colour cat = LogicNode::getCategoryColour(n->getCategory());
 		g.setFont(Font(10 * zoom, Font::bold));
-		String catName = LogicNode::getCategoryName(n->getCategory()).toUpperCase();
+		String catName = n->enabled->boolValue() ? LogicNode::getCategoryName(n->getCategory()).toUpperCase() : String("HIDDEN");
 		float catW = Font(10 * zoom, Font::bold).getStringWidthFloat(catName) + 12 * zoom;
 		g.setColour(cat.withMultipliedAlpha(alpha));
 		g.drawText(catName, header.withTrimmedRight(12 * zoom).withLeft(header.getRight() - catW - 12 * zoom), Justification::centredRight);
@@ -532,32 +553,7 @@ void LogicGraphPanel::paintNode(Graphics& g, LogicGraph* graph, LogicNode* n)
 	//pins : label inside, glyph on the edge (exec = diamond, data = ring, filled when linked)
 	for (auto& p : n->pins)
 	{
-		Point<float> s = toScreen(getPinPosition(n, p.name, p.output));
-		String uid = n->uid->stringValue();
-		bool linked = false;
-		for (auto& l : graph->links)
-			if ((p.output && l.fromNode == uid && l.fromPin == p.name) || (!p.output && l.toNode == uid && l.toPin == p.name)) { linked = true; break; }
-
-		Colour c = LogicPin::getColour(p.kind);
-		bool hovered = hoveredPin.isValid() && hoveredPin.node == n && hoveredPin.pin == p.name && hoveredPin.output == p.output;
-		float size = (hovered ? 14.0f : 12.0f) * zoom;
-		if (p.kind == LogicPin::EXEC)
-		{
-			Path d;
-			d.addRectangle(-size / 2.8f, -size / 2.8f, size / 1.4f, size / 1.4f);
-			d.applyTransform(AffineTransform::rotation(MathConstants<float>::pi / 4).translated(s));
-			g.setColour(c.withMultipliedAlpha(linked ? alpha : alpha * .7f));
-			g.fillPath(d);
-		}
-		else
-		{
-			Rectangle<float> e = Rectangle<float>(size, size).withCentre(s);
-			g.setColour(linked ? c : canvasBg);
-			g.fillEllipse(e);
-			g.setColour(c.withMultipliedAlpha(alpha));
-			g.drawEllipse(e.reduced(1 * zoom), 2 * zoom);
-		}
-
+		Point<float> s = paintPin(g, graph, n, p, alpha);
 		if (showText)
 		{
 			g.setColour(dim.withMultipliedAlpha(alpha));
@@ -566,6 +562,82 @@ void LogicGraphPanel::paintNode(Graphics& g, LogicGraph* graph, LogicNode* n)
 			g.drawText(p.name, row, p.output ? Justification::centredRight : Justification::centredLeft, true);
 		}
 	}
+}
+
+Point<float> LogicGraphPanel::paintPin(Graphics& g, LogicGraph* graph, LogicNode* n, const LogicPinDef& p, float alpha)
+{
+	using namespace LogicGraphStyle;
+	Point<float> s = toScreen(getPinPosition(n, p.name, p.output));
+	String uid = n->uid->stringValue();
+	bool linked = false;
+	for (auto& l : graph->links)
+		if ((p.output && l.fromNode == uid && l.fromPin == p.name) || (!p.output && l.toNode == uid && l.toPin == p.name)) { linked = true; break; }
+
+	Colour c = LogicPin::getColour(p.kind);
+	bool hovered = hoveredPin.isValid() && hoveredPin.node == n && hoveredPin.pin == p.name && hoveredPin.output == p.output;
+	float size = (hovered ? 14.0f : 12.0f) * zoom;
+	if (p.kind == LogicPin::EXEC)
+	{
+		Path d;
+		d.addRectangle(-size / 2.8f, -size / 2.8f, size / 1.4f, size / 1.4f);
+		d.applyTransform(AffineTransform::rotation(MathConstants<float>::pi / 4).translated(s));
+		g.setColour(c.withMultipliedAlpha(linked ? alpha : alpha * .7f));
+		g.fillPath(d);
+	}
+	else
+	{
+		Rectangle<float> e = Rectangle<float>(size, size).withCentre(s);
+		g.setColour(linked ? c : canvasBg);
+		g.fillEllipse(e);
+		g.setColour(c.withMultipliedAlpha(alpha));
+		g.drawEllipse(e.reduced(1 * zoom), 2 * zoom);
+	}
+	return s;
+}
+
+//compare nodes : pill without header, symbol + setting chip ; small input names only when there are several inputs
+void LogicGraphPanel::paintPillNode(Graphics& g, LogicGraph* graph, LogicNode* n, Rectangle<float> r, const String& symbol, float alpha, bool showText)
+{
+	using namespace LogicGraphStyle;
+	int numIn = 0;
+	for (auto& p : n->pins) if (!p.output) numIn++;
+
+	float x = r.getX() + r.getHeight() * .35f;
+	for (auto& p : n->pins)
+	{
+		Point<float> s = paintPin(g, graph, n, p, alpha);
+		if (showText && !p.output && numIn > 1)
+		{
+			g.setColour(dim.withMultipliedAlpha(alpha));
+			g.setFont(Font(10 * zoom));
+			g.drawText(p.name, Rectangle<float>(s.x + 9 * zoom, s.y - 7 * zoom, 40 * zoom, 14 * zoom), Justification::centredLeft, false);
+			x = jmax(x, s.x + 9 * zoom + Font(10 * zoom).getStringWidthFloat(p.name) + 6 * zoom);
+		}
+	}
+	if (!showText) return;
+
+	Font symFont((symbol.length() == 1 ? 26.0f : 14.0f) * zoom, Font::bold);
+	float symW = symFont.getStringWidthFloat(symbol) + 8 * zoom;
+	String summary = n->getSummaryText();
+	float right = r.getRight() - r.getHeight() * .35f;
+	if (summary.isEmpty()) x = jmax(x, r.getCentreX() - symW / 2);	// symbol alone : centred
+	g.setColour(LogicNode::getCategoryColour(n->getCategory()).withMultipliedAlpha(alpha));
+	g.setFont(symFont);
+	g.drawText(symbol, Rectangle<float>(x, r.getY(), symW, r.getHeight()), Justification::centred, false);
+
+	if (summary.isEmpty()) return;
+	Font f(Font::getDefaultMonospacedFontName(), 11.5f * zoom, Font::plain);
+	float left = x + symW + 4 * zoom;
+	float w = jmin(right - left, f.getStringWidthFloat(summary) + 16 * zoom);
+	if (w <= 10 * zoom) return;
+	Rectangle<float> chip(left + (right - left - w) / 2, r.getCentreY() - 10 * zoom, w, 20 * zoom);
+	g.setColour(chipBg);
+	g.fillRoundedRectangle(chip, chip.getHeight() / 2);
+	g.setColour(nodeBorder);
+	g.drawRoundedRectangle(chip.reduced(.5f), chip.getHeight() / 2, 1);
+	g.setColour(text.withMultipliedAlpha(alpha));
+	g.setFont(f);
+	g.drawText(summary, chip.reduced(8 * zoom, 0), Justification::centred, true);
 }
 
 void LogicGraphPanel::paintGuides(Graphics& g)
@@ -653,51 +725,6 @@ void LogicGraphPanel::showCanvasMenu(Point<float> canvas)
 		});
 }
 
-void LogicGraphPanel::showNodeMenu(LogicNode* n)
-{
-	LogicGraph* graph = getGraph();
-	if (graph == nullptr) return;
-	PopupMenu m;
-	m.addItem(1, "Delete");
-	m.addItem(2, "Disconnect all");
-	WeakReference<Inspectable> ref(n);
-	WeakReference<Component> panelRef(this);
-	m.showMenuAsync(PopupMenu::Options(), [ref, panelRef](int result)
-		{
-			LogicGraphPanel* panel = dynamic_cast<LogicGraphPanel*>(panelRef.get());
-			LogicNode* node = dynamic_cast<LogicNode*>(ref.get());
-			if (node == nullptr || panel == nullptr) return;
-			LogicGraph* gr = panel->getGraph();
-			if (gr == nullptr) return;
-			if (result == 1) panel->removeNode(node);
-			else if (result == 2)
-			{
-				Array<UndoableAction*> actions = gr->getDisconnectNodeActions(node);
-				if (!actions.isEmpty()) UndoMaster::getInstance()->performActions("Disconnect " + node->niceName, actions);
-			}
-			panel->repaint();
-		});
-}
-
-void LogicGraphPanel::showPinMenu(const PinRef& p)
-{
-	LogicGraph* graph = getGraph();
-	LogicNode* n = dynamic_cast<LogicNode*>(p.node.get());
-	if (graph == nullptr || n == nullptr) return;
-	PopupMenu m;
-	m.addItem(1, "Disconnect");
-	WeakReference<ControllableContainer> ref(graph);
-	String uid = n->uid->stringValue(), pin = p.pin;
-	bool output = p.output;
-	m.showMenuAsync(PopupMenu::Options(), [ref, uid, pin, output](int result)
-		{
-			LogicGraph* gr = dynamic_cast<LogicGraph*>(ref.get());
-			if (gr == nullptr || result != 1) return;
-			for (auto& l : Array<LogicGraph::Link>(gr->links))
-				if ((output && l.fromNode == uid && l.fromPin == pin) || (!output && l.toNode == uid && l.toPin == pin)) gr->disconnect(l);
-		});
-}
-
 void LogicGraphPanel::showTabMenu(int index)
 {
 	SpatialModule* sm = getSpatialModule();
@@ -741,6 +768,51 @@ void LogicGraphPanel::removeNode(LogicNode* n)
 	Array<UndoableAction*> actions = graph->getDisconnectNodeActions(n);
 	actions.addArray(graph->nodes.getRemoveItemUndoableAction(n));
 	UndoMaster::getInstance()->performActions("Remove " + n->niceName, actions);
+}
+
+Array<LogicNode*> LogicGraphPanel::getSelectedNodes()
+{
+	Array<LogicNode*> result;
+	if (LogicGraph* graph = getGraph())
+		for (auto& n : graph->nodes.items) if (n->isSelected) result.add(n);
+	return result;
+}
+
+void LogicGraphPanel::removeSelectedNodes()
+{
+	LogicGraph* graph = getGraph();
+	Array<LogicNode*> sel = getSelectedNodes();
+	if (graph == nullptr || sel.isEmpty()) return;
+	if (sel.size() == 1) { removeNode(sel[0]); return; }
+	Array<UndoableAction*> actions;
+	for (auto& n : sel) actions.addArray(graph->getDisconnectNodeActions(n));
+	for (auto& n : sel) actions.addArray(graph->nodes.getRemoveItemUndoableAction(n));
+	UndoMaster::getInstance()->performActions("Remove " + String(sel.size()) + " nodes", actions);
+}
+
+void LogicGraphPanel::toggleHideSelected()
+{
+	Array<LogicNode*> sel = getSelectedNodes();
+	if (sel.isEmpty()) return;
+	bool anyShown = false;
+	for (auto& n : sel) anyShown |= n->enabled->boolValue();
+	Array<UndoableAction*> actions;
+	for (auto& n : sel)
+		if (n->enabled->boolValue() != !anyShown)
+			if (UndoableAction* a = n->enabled->setUndoableValue(n->enabled->boolValue(), !anyShown, true)) actions.add(a);
+	if (!actions.isEmpty()) UndoMaster::getInstance()->performActions(String(anyShown ? "Hide " : "Show ") + String(actions.size()) + " nodes", actions);
+	repaint();
+}
+
+void LogicGraphPanel::paintSelectRect(Graphics& g)
+{
+	using namespace LogicGraphStyle;
+	if (dragMode != SELECT_RECT) return;
+	Rectangle<float> r(toScreen(selectStart), toScreen(selectEnd));
+	g.setColour(accent.withAlpha(.08f));
+	g.fillRect(r);
+	g.setColour(accent.withAlpha(.8f));
+	g.drawRect(r, 1.0f);
 }
 
 // --- mouse and keys
@@ -855,18 +927,34 @@ void LogicGraphPanel::mouseDown(const MouseEvent& e)
 
 	if (LogicNode* n = getNodeAt(c))
 	{
-		n->selectThis();
+		//Ctrl / Shift : adds or removes it from the selection ; a node of the selection moves the whole selection
+		if (e.mods.isCtrlDown() || e.mods.isShiftDown())
+		{
+			if (n->isSelected) { n->deselectThis(); repaint(); return; }
+			n->selectThis(true);
+		}
+		else if (!n->isSelected) n->selectThis();
+
 		dragNode = n;
 		dragStartNode = n->viewUIPosition->getPoint();
 		dragStartMouse = c;
+		dragOthers.clearQuick();
+		dragOthersStart.clearQuick();
+		for (auto& o : getSelectedNodes())
+		{
+			if (o == n) continue;
+			dragOthers.add(o);
+			dragOthersStart.add(o->viewUIPosition->getPoint());
+		}
 		dragMode = MOVE_NODE;
 		repaint();
 		return;
 	}
 
-	if (InspectableSelectionManager::mainSelectionManager != nullptr) InspectableSelectionManager::mainSelectionManager->clearSelection();
-	dragMode = PAN;
-	panLastMouse = e.position;
+	//left in the void : selection rectangle when dragged (Ctrl / Shift : adds), a plain click clears the selection (mouseUp)
+	dragMode = SELECT_RECT;
+	selectStart = selectEnd = c;
+	selectAdd = e.mods.isCtrlDown() || e.mods.isShiftDown();
 	repaint();
 }
 
@@ -890,7 +978,16 @@ void LogicGraphPanel::mouseDrag(const MouseEvent& e)
 
 	case MOVE_NODE:
 		if (LogicNode* n = dynamic_cast<LogicNode*>(dragNode.get()))
+		{
 			n->viewUIPosition->setPoint(snapPosition(n, dragStartNode + (toCanvas(e.position) - dragStartMouse), e.mods.isAltDown()));
+			Point<float> delta = n->viewUIPosition->getPoint() - dragStartNode;	// the others follow the snapped node
+			for (int i = 0; i < dragOthers.size(); i++)
+				if (LogicNode* o = dynamic_cast<LogicNode*>(dragOthers[i].get())) o->viewUIPosition->setPoint(dragOthersStart[i] + delta);
+		}
+		break;
+
+	case SELECT_RECT:
+		selectEnd = toCanvas(e.position);
 		break;
 
 	case WIRE:
@@ -939,18 +1036,34 @@ void LogicGraphPanel::mouseUp(const MouseEvent& e)
 
 	if (dragMode == MOVE_NODE)
 	{
-		//one undo step for the whole move
-		if (LogicNode* n = dynamic_cast<LogicNode*>(dragNode.get()))
-		{
-			Point<float> end = n->viewUIPosition->getPoint();
-			if (end != dragStartNode)
+		//one undo step for the whole move, every node moved
+		Array<UndoableAction*> actions;
+		auto addMove = [&actions](LogicNode* n, Point<float> start)
 			{
-				n->viewUIPosition->setPoint(dragStartNode);
-				n->viewUIPosition->setUndoablePoint(dragStartNode, end);
-			}
-		}
+				Point<float> end = n->viewUIPosition->getPoint();
+				if (end == start) return;
+				n->viewUIPosition->setPoint(start);
+				if (UndoableAction* a = n->viewUIPosition->setUndoablePoint(start, end, true)) actions.add(a);
+			};
+		if (LogicNode* n = dynamic_cast<LogicNode*>(dragNode.get())) addMove(n, dragStartNode);
+		for (int i = 0; i < dragOthers.size(); i++)
+			if (LogicNode* o = dynamic_cast<LogicNode*>(dragOthers[i].get())) addMove(o, dragOthersStart[i]);
+		if (!actions.isEmpty()) UndoMaster::getInstance()->performActions(actions.size() > 1 ? "Move " + String(actions.size()) + " nodes" : String("Move node"), actions);
+		dragOthers.clearQuick();
+		dragOthersStart.clearQuick();
 		guides.clearQuick();
 		snapLabel.clear();
+	}
+	else if (dragMode == SELECT_RECT && graph != nullptr)
+	{
+		//every node touched by the rectangle ; a plain click selects nothing
+		if (!selectAdd && InspectableSelectionManager::mainSelectionManager != nullptr) InspectableSelectionManager::mainSelectionManager->clearSelection();
+		if (e.getDistanceFromDragStart() >= 4)
+		{
+			Rectangle<float> r(selectStart, selectEnd);
+			for (auto& n : graph->nodes.items)
+				if (r.intersects(getNodeRect(n)) && !n->isSelected) n->selectThis(true);
+		}
 	}
 	else if (dragMode == WIRE && graph != nullptr)
 	{
@@ -967,14 +1080,7 @@ void LogicGraphPanel::mouseUp(const MouseEvent& e)
 	}
 	else if (dragMode == PAN && e.mods.isRightButtonDown() && e.getDistanceFromDragStart() < 4 && graph != nullptr)
 	{
-		PinRef pin = getPinAt(c);
-		if (pin.isValid()) showPinMenu(pin);
-		else if (LogicNode* n = getNodeAt(c))
-		{
-			n->selectThis();
-			showNodeMenu(n);
-		}
-		else showCanvasMenu(c);
+		showCanvasMenu(c);	// a plain right click only creates nodes (Delete and H act on the selection)
 	}
 
 	dragMode = NONE;
@@ -1025,15 +1131,15 @@ bool LogicGraphPanel::keyPressed(const KeyPress& key)
 
 	if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey)
 	{
-		LogicGraph* graph = getGraph();
-		if (graph == nullptr) return false;
-		for (auto& n : graph->nodes.items)
-			if (n->isSelected)
-			{
-				removeNode(n);
-				return true;
-			}
-		return false;
+		if (getSelectedNodes().isEmpty()) return false;
+		removeSelectedNodes();
+		return true;
+	}
+	if (key == KeyPress('h') || key == KeyPress('H'))
+	{
+		if (getSelectedNodes().isEmpty()) return false;
+		toggleHideSelected();
+		return true;
 	}
 	if (key == KeyPress('f') || key == KeyPress('F'))
 	{

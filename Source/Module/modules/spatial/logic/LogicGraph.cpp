@@ -83,6 +83,7 @@ Colour LogicNode::getCategoryColour(Category c)
 	case READ: return Colour(0xff5ec8d8);
 	case ACTION: return Colour(0xff6aa8ff);
 	case VARIABLE: return Colour(0xff6fd08c);
+	case COMPARE: return Colour(0xfff0a35e);
 	default: return Colour(0xffa7adb7);
 	}
 }
@@ -95,6 +96,7 @@ String LogicNode::getCategoryName(Category c)
 	case READ: return "Read";
 	case ACTION: return "Output";
 	case VARIABLE: return "Variable";
+	case COMPARE: return "Compare";
 	default: return "Flow";
 	}
 }
@@ -673,6 +675,219 @@ bool PersonHeightNode::read(LogicGraph& g, Array<var>& values)
 	return true;
 }
 
+// BranchNode
+
+BranchNode::BranchNode(var params) :
+	LogicNode(getTypeStringStatic(), params)
+{
+	condition = addBoolParameter("Condition", "Used when the Condition input is not linked", false);
+	addPin("In", LogicPin::EXEC, false);
+	addPin("Condition", LogicPin::BOOL, false);
+	addPin("True", LogicPin::EXEC, true);
+	addPin("False", LogicPin::EXEC, true);
+}
+
+void BranchNode::execute(LogicGraph& g, const String&)
+{
+	if (!enabled->boolValue()) return;
+	var v = g.getInput(this, "Condition");
+	bool c = v.isVoid() ? condition->boolValue() : (bool)v;
+	g.trigger(this, c ? "True" : "False");
+}
+
+// LogicThreshold
+
+LogicThreshold::LogicThreshold(ControllableContainer* cc, const String& name, const String& help, double numberValue, double seconds, double percentValue, double metersValue)
+{
+	number = cc->addFloatParameter(name, help, numberValue);
+	time = (FloatParameter*)cc->addParameter(new TimecodeParameter(name + " Time", help + " (HH:MM:SS:FF)", seconds));
+	percent = (FloatParameter*)cc->addParameter(new PercentParameter(name + " Percentage", help + " (%)", percentValue));
+	meters = cc->addFloatParameter(name + " Meters", help + " (meters)", metersValue);
+	time->hideInEditor = true;
+	percent->hideInEditor = true;
+	meters->hideInEditor = true;
+}
+
+bool LogicThreshold::setUnit(LogicPin::Kind k)
+{
+	if (k != LogicPin::TIME && k != LogicPin::PERCENT && k != LogicPin::METERS) k = LogicPin::NUMBER;
+	if (k == unit) return false;
+	unit = k;
+	number->hideInEditor = unit != LogicPin::NUMBER;
+	time->hideInEditor = unit != LogicPin::TIME;
+	percent->hideInEditor = unit != LogicPin::PERCENT;
+	meters->hideInEditor = unit != LogicPin::METERS;
+	return true;
+}
+
+FloatParameter* LogicThreshold::current() const
+{
+	switch (unit)
+	{
+	case LogicPin::TIME: return time;
+	case LogicPin::PERCENT: return percent;
+	case LogicPin::METERS: return meters;
+	default: return number;
+	}
+}
+
+String LogicThreshold::format(double v, LogicPin::Kind k)
+{
+	switch (k)
+	{
+	case LogicPin::TIME: return TimecodeParameter::toTimecode(v);
+	case LogicPin::PERCENT: return PercentParameter::toPercent(v);
+	case LogicPin::METERS: return String(v, 2) + " m";
+	default: return v == std::floor(v) ? String((int64)v) : String(v, 3);
+	}
+}
+
+//the unit of the thresholds follows the value linked to inPin ; the Inspector is rebuilt when it changes
+static void updateThresholdUnits(LogicGraph& g, LogicNode* n, const String& inPin, Array<LogicThreshold*> thresholds)
+{
+	if (!g.isLinked(n, inPin)) return;
+	LogicPin::Kind k = g.getInputKind(n, inPin, LogicPin::NUMBER);
+	bool changed = false;
+	for (auto& t : thresholds) changed |= t->setUnit(k);
+	if (changed) n->queuedNotifier.addMessage(new ContainerAsyncEvent(ContainerAsyncEvent::ControllableContainerNeedsRebuild, n));
+}
+
+static bool readBool(LogicGraph& g, LogicNode* n, const String& pin)
+{
+	var v = g.getInput(n, pin);
+	return !v.isVoid() && (bool)v;
+}
+
+// CompareNode
+
+CompareNode::CompareNode(var params) :
+	LogicNode(getTypeStringStatic(), params),
+	b(this, "B", "Value compared to A, when the B input is not linked", 0, 10, .5, 1)
+{
+	op = addEnumParameter("Operator", "Result is on when A (operator) B is true");
+	op->addOption("=", EQUAL)->addOption("!=", NOT_EQUAL)->addOption(">", GREATER)->addOption(">=", GREATER_EQUAL)->addOption("<", LESS)->addOption("<=", LESS_EQUAL);
+	op->setValueWithKey(">=");
+	addPin("A", LogicPin::NUMBER, false);
+	addPin("B", LogicPin::NUMBER, false);
+	addPin("Result", LogicPin::BOOL, true);
+}
+
+String CompareNode::getSymbol() const
+{
+	switch ((Op)(int)op->getValueData())
+	{
+	case EQUAL: return "=";
+	case NOT_EQUAL: return String(CharPointer_UTF8("\xe2\x89\xa0"));
+	case GREATER: return ">";
+	case GREATER_EQUAL: return String(CharPointer_UTF8("\xe2\x89\xa5"));
+	case LESS: return "<";
+	case LESS_EQUAL: return String(CharPointer_UTF8("\xe2\x89\xa4"));
+	}
+	return "?";
+}
+
+void CompareNode::linksChanged(LogicGraph& g)
+{
+	bLinked = g.isLinked(this, "B");
+	updateThresholdUnits(g, this, "A", { &b });
+}
+
+var CompareNode::getOutputValue(LogicGraph& g, const String& outPin)
+{
+	if (outPin != "Result" || !enabled->boolValue()) return false;
+	var av = g.getInput(this, "A");
+	if (av.isVoid()) return false;
+	var bv = g.getInput(this, "B");
+	double x = (double)av;
+	double y = bv.isVoid() ? b.get() : (double)bv;
+	const double eps = 1e-6;
+	switch ((Op)(int)op->getValueData())
+	{
+	case EQUAL: return std::abs(x - y) < eps;
+	case NOT_EQUAL: return std::abs(x - y) >= eps;
+	case GREATER: return x > y;
+	case GREATER_EQUAL: return x >= y - eps;
+	case LESS: return x < y;
+	case LESS_EQUAL: return x <= y + eps;
+	}
+	return false;
+}
+
+// InRangeNode
+
+InRangeNode::InRangeNode(var params) :
+	LogicNode(getTypeStringStatic(), params),
+	minValue(this, "Min", "Lowest value of the range, when the Min input is not linked", 0, 0, 0, 0),
+	maxValue(this, "Max", "Highest value of the range, when the Max input is not linked", 1, 10, 1, 1)
+{
+	addPin("Value", LogicPin::NUMBER, false);
+	addPin("Min", LogicPin::NUMBER, false);
+	addPin("Max", LogicPin::NUMBER, false);
+	addPin("Result", LogicPin::BOOL, true);
+}
+
+String InRangeNode::getSummary() const
+{
+	if (minLinked && maxLinked) return String();
+	return (minLinked ? String("Min") : minValue.toText()) + " to " + (maxLinked ? String("Max") : maxValue.toText());
+}
+
+void InRangeNode::linksChanged(LogicGraph& g)
+{
+	minLinked = g.isLinked(this, "Min");
+	maxLinked = g.isLinked(this, "Max");
+	updateThresholdUnits(g, this, "Value", { &minValue, &maxValue });
+}
+
+var InRangeNode::getOutputValue(LogicGraph& g, const String& outPin)
+{
+	if (outPin != "Result" || !enabled->boolValue()) return false;
+	var v = g.getInput(this, "Value");
+	if (v.isVoid()) return false;
+	var mn = g.getInput(this, "Min");
+	var mx = g.getInput(this, "Max");
+	double x = (double)v;
+	double lo = mn.isVoid() ? minValue.get() : (double)mn;
+	double hi = mx.isVoid() ? maxValue.get() : (double)mx;
+	return x >= lo - 1e-6 && x <= hi + 1e-6;
+}
+
+// GateNode
+
+GateNode::GateNode(const String& name, var params, Gate gate) :
+	LogicNode(name, params),
+	gate(gate)
+{
+	addPin("A", LogicPin::BOOL, false);
+	if (gate != NOT) addPin("B", LogicPin::BOOL, false);
+	addPin("Result", LogicPin::BOOL, true);
+}
+
+String GateNode::getSymbol() const
+{
+	switch (gate)
+	{
+	case AND: return "AND";
+	case OR: return "OR";
+	case XOR: return "XOR";
+	default: return "NOT";
+	}
+}
+
+var GateNode::getOutputValue(LogicGraph& g, const String& outPin)
+{
+	if (outPin != "Result" || !enabled->boolValue()) return false;
+	bool a = readBool(g, this, "A");
+	if (gate == NOT) return !a;
+	bool bv = readBool(g, this, "B");
+	switch (gate)
+	{
+	case AND: return a && bv;
+	case OR: return a || bv;
+	default: return a != bv;
+	}
+}
+
 // LogNode
 
 LogNode::LogNode(var params) :
@@ -727,6 +942,13 @@ LogicNodeManager::LogicNodeManager() :
 	add(Factory<LogicNode>::Definition::createDef<PersonHeightNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<SlotPositionNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<ZoneDistanceNode>("Meters"));
+	add(Factory<LogicNode>::Definition::createDef<CompareNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<InRangeNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<AndNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<OrNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<XorNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<NotNode>("Compare"));
+	add(Factory<LogicNode>::Definition::createDef<BranchNode>("Flow"));
 	add(Factory<LogicNode>::Definition::createDef<LogNode>("Outputs"));
 }
 
@@ -776,11 +998,18 @@ LogicNode* LogicGraph::getNode(const String& id) const
 void LogicGraph::addLinkInternal(const Link& l)
 {
 	links.addIfNotAlreadyThere(l);
+	notifyLinksChanged(l.toNode);
 }
 
 void LogicGraph::removeLinkInternal(const Link& l)
 {
 	links.removeFirstMatchingValue(l);
+	notifyLinksChanged(l.toNode);
+}
+
+void LogicGraph::notifyLinksChanged(const String& nodeUid)
+{
+	for (auto& n : nodes.items) if (nodeUid.isEmpty() || n->uid->stringValue() == nodeUid) n->linksChanged(*this);
 }
 
 void LogicGraph::connect(const Link& l)
@@ -877,10 +1106,30 @@ var LogicGraph::getInput(LogicNode* node, const String& inPin)
 	return var();
 }
 
+bool LogicGraph::isLinked(LogicNode* node, const String& inPin) const
+{
+	String id = node->uid->stringValue();
+	for (auto& l : links) if (l.toNode == id && l.toPin == inPin) return true;
+	return false;
+}
+
+LogicPin::Kind LogicGraph::getInputKind(LogicNode* node, const String& inPin, LogicPin::Kind fallback) const
+{
+	String id = node->uid->stringValue();
+	for (auto& l : links)
+	{
+		if (l.toNode != id || l.toPin != inPin) continue;
+		if (LogicNode* n = getNode(l.fromNode))
+			if (const LogicPinDef* p = n->getPin(l.fromPin, true)) return p->kind;
+	}
+	return fallback;
+}
+
 void LogicGraph::itemRemoved(LogicNode* n)
 {
 	String id = n->uid->stringValue();
 	links.removeIf([id](const Link& l) { return l.fromNode == id || l.toNode == id; });
+	notifyLinksChanged(String());
 }
 
 void LogicGraph::itemsRemoved(Array<LogicNode*> ns)
@@ -916,6 +1165,7 @@ void LogicGraph::loadJSONDataInternal(var data)
 		if (lData.size() < 4) continue;
 		links.add({ lData[0].toString(), lData[1].toString(), lData[2].toString(), lData[3].toString() });
 	}
+	notifyLinksChanged(String());
 }
 
 // LogicGraphManager

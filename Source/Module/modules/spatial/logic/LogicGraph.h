@@ -49,7 +49,7 @@ public:
 	LogicNode(const String& name = "Node", var params = var());
 	virtual ~LogicNode();
 
-	enum Category { EVENT, FLOW, READ, ACTION, VARIABLE };
+	enum Category { EVENT, FLOW, READ, ACTION, VARIABLE, COMPARE };
 
 	StringParameter* uid;	// hidden, saved : what links point to
 	SpatialModule* module = nullptr;
@@ -64,6 +64,10 @@ public:
 	virtual void process(LogicGraph&) {}							// each update (events look for what happened)
 	virtual void execute(LogicGraph&, const String& inPin) {}		// an exec link reached inPin
 	virtual var getOutputValue(LogicGraph&, const String& outPin) { return var(); }
+	virtual void linksChanged(LogicGraph&) {}						// a link to this node was added or removed, or the graph loaded
+
+	//not empty : the node is drawn as a pill with this symbol, without header (compare nodes) ; the summary goes in a chip next to it
+	virtual String getSymbol() const { return String(); }
 
 	//inputs on the left, outputs on the right, one row each from the top : row of a pin, -1 if unknown
 	int getPinRow(const String& name, bool output) const;
@@ -530,6 +534,137 @@ public:
 	static String getTypeStringStatic() { return "Person Height"; }
 };
 
+//In -> True when the Condition input is on, False otherwise (the Condition setting when the input is not linked)
+class BranchNode :
+	public LogicNode
+{
+public:
+	BranchNode(var params = var());
+
+	BoolParameter* condition;
+
+	void execute(LogicGraph& g, const String& inPin) override;
+
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Branch"; }
+};
+
+// --- compare nodes : drawn as pills, a Result (On-Off) read by Branch
+
+//a setting compared to an input, shown in the unit of the value linked to that input :
+//one parameter per unit, only the one of the current unit is shown in the Inspector
+class LogicThreshold
+{
+public:
+	LogicThreshold(ControllableContainer* cc, const String& name, const String& help, double number, double seconds, double percent, double meters);
+
+	FloatParameter* number;
+	FloatParameter* time;
+	FloatParameter* percent;
+	FloatParameter* meters;
+	LogicPin::Kind unit = LogicPin::NUMBER;
+
+	bool setUnit(LogicPin::Kind k);	// true when it changed : the Inspector must be rebuilt
+	FloatParameter* current() const;
+	double get() const { return current()->floatValue(); }
+	String toText() const { return format(get(), unit); }
+	static String format(double v, LogicPin::Kind k);
+};
+
+class CompareNode :
+	public LogicNode
+{
+public:
+	CompareNode(var params = var());
+
+	enum Op { EQUAL, NOT_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL };
+	EnumParameter* op;
+	LogicThreshold b;
+
+	Category getCategory() const override { return COMPARE; }
+	int getWidth() const override { return 176; }
+	String getSymbol() const override;
+	String getSummary() const override { return bLinked ? String() : b.toText(); }
+	void linksChanged(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Compare"; }
+
+private:
+	bool bLinked = false;
+};
+
+//Result on when Min <= Value <= Max
+class InRangeNode :
+	public LogicNode
+{
+public:
+	InRangeNode(var params = var());
+
+	LogicThreshold minValue, maxValue;
+
+	Category getCategory() const override { return COMPARE; }
+	int getWidth() const override { return 260; }
+	String getSymbol() const override { return "IN"; }
+	String getSummary() const override;
+	void linksChanged(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "In Range"; }
+
+private:
+	bool minLinked = false, maxLinked = false;
+};
+
+//And, Or, Xor, Not of On-Off inputs (an input not linked is off)
+class GateNode :
+	public LogicNode
+{
+public:
+	enum Gate { AND, OR, XOR, NOT };
+	GateNode(const String& name, var params, Gate gate);
+	const Gate gate;
+
+	Category getCategory() const override { return COMPARE; }
+	int getWidth() const override { return 120; }
+	String getSymbol() const override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+};
+
+class AndNode : public GateNode
+{
+public:
+	AndNode(var params = var()) : GateNode(getTypeStringStatic(), params, AND) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "And"; }
+};
+
+class OrNode : public GateNode
+{
+public:
+	OrNode(var params = var()) : GateNode(getTypeStringStatic(), params, OR) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Or"; }
+};
+
+class XorNode : public GateNode
+{
+public:
+	XorNode(var params = var()) : GateNode(getTypeStringStatic(), params, XOR) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Xor"; }
+};
+
+class NotNode : public GateNode
+{
+public:
+	NotNode(var params = var()) : GateNode(getTypeStringStatic(), params, NOT) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Not"; }
+};
+
 //writes a line in the Chataigne logger
 class LogNode :
 	public LogicNode
@@ -589,11 +724,14 @@ public:
 	//raw, for the undo actions
 	void addLinkInternal(const Link& l);
 	void removeLinkInternal(const Link& l);
+	void notifyLinksChanged(const String& nodeUid);	// empty : every node
 
 	//engine
 	void process();
 	void trigger(LogicNode* from, const String& outPin);	// follows the exec links of outPin
 	var getInput(LogicNode* node, const String& inPin);		// value of the data link of inPin, void if none
+	bool isLinked(LogicNode* node, const String& inPin) const;
+	LogicPin::Kind getInputKind(LogicNode* node, const String& inPin, LogicPin::Kind fallback) const;	// kind of the output linked to inPin
 
 	void itemRemoved(LogicNode* n) override;
 	void itemsRemoved(Array<LogicNode*> ns) override;
