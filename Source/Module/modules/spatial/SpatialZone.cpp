@@ -63,7 +63,7 @@ SpatialZone::SpatialZone(var params) :
 	capacity = addIntParameter("Capacity", "Number of people for which this zone is considered full (Occupancy = 100 %)", 4, 1);
 
 	exitMargin = addFloatParameter("Exit Margin", "Anti-flicker : once inside, a person only leaves this zone when further than this distance outside its border, in meters", .1f, 0);
-	exitDelay = addFloatParameter("Exit Delay", "Anti-flicker : a person who leaves this zone or is lost by the tracking is still counted inside for this time, in seconds. Coming back meanwhile triggers neither Exited nor Entered", .3f, 0);
+	exitDelay = (FloatParameter*)addParameter(new TimecodeParameter("Exit Delay", "Anti-flicker : a person who leaves this zone or is lost by the tracking is still counted inside for this time, in seconds. Coming back meanwhile triggers neither Exited nor Entered", .3));
 
 	hiddenInMonitor = addBoolParameter("Hidden", "Hide this zone in the Tracking Monitor (it still detects people)", false);
 
@@ -85,9 +85,9 @@ SpatialZone::SpatialZone(var params) :
 	exited->setControllableFeedbackOnly(true);
 	lastEnteredId = zoneValues.addIntParameter("Last Entered Id", "Id of the last person who entered this zone (-1 = nobody yet)", -1, -1);
 	lastEnteredId->setControllableFeedbackOnly(true);
-	presenceTime = zoneValues.addFloatParameter("Presence Time", "Seconds since this zone became occupied without interruption (0 when empty)", 0, 0);
+	presenceTime = (FloatParameter*)zoneValues.addParameter(new TimecodeParameter("Presence Time", "Seconds since this zone became occupied without interruption (0 when empty)", 0));
 	presenceTime->setControllableFeedbackOnly(true);
-	occupancy = zoneValues.addFloatParameter("Occupancy", "Person Count / Capacity, from 0 (empty) to 1 (full, 100 %)", 0, 0, 1);
+	occupancy = (FloatParameter*)zoneValues.addParameter(new PercentParameter("Occupancy", "Person Count / Capacity, from 0 (empty) to 1 (full, 100 %)"));
 	occupancy->setControllableFeedbackOnly(true);
 	averagePosition = zoneValues.addPoint2DParameter("Average Position", "Barycenter of the people in this zone, from 0,0 (top left of the zone) to 1,1 (bottom right). Kept when the zone gets empty");
 	averagePosition->setBounds(0, 0, 1, 1);

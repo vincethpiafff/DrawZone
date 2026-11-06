@@ -28,9 +28,9 @@ class LogicGraph;
 
 namespace LogicPin
 {
-	enum Kind { EXEC, NUMBER, BOOL, TEXT, ANY };
+	enum Kind { EXEC, NUMBER, BOOL, TEXT, ANY, TIME, PERCENT };	// TIME : seconds shown HH:MM:SS:FF, PERCENT : 0-1 shown in %
 	Colour getColour(Kind k);
-	//an output can feed an input : exec to exec, data to data (ANY takes every data kind)
+	//an output can feed an input : exec to exec, data to data (ANY takes every data kind) ; NUMBER, TIME and PERCENT are all numbers
 	bool canConnect(Kind out, Kind in);
 }
 
@@ -59,6 +59,7 @@ public:
 	virtual void setup(SpatialModule* m) { module = m; }	// the module is known : target parameters can be set up
 
 	//engine, message thread, module timer
+	virtual void reset() {}											// the graph starts : forget what was seen before
 	virtual void process(LogicGraph&) {}							// each update (events look for what happened)
 	virtual void execute(LogicGraph&, const String& inPin) {}		// an exec link reached inPin
 	virtual var getOutputValue(LogicGraph&, const String& outPin) { return var(); }
@@ -82,30 +83,317 @@ public:
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogicNode)
 };
 
-// --- brick 1 nodes : enough to see a graph run
+// --- event nodes (brick 3) : one node per value of the Cockpit, by type
+//   trigger (something happened) : Then + who
+//   boolean : On (it becomes true), Off (it becomes false), State
+//   integer : Changed, Count
+// What is already true or counted when the graph starts does not fire.
 
-//fires once for each person who enters the zone (same membership as the zone, with its anti-flicker)
-class ZoneEnteredNode :
+namespace LogicTargets
+{
+	void setupZone(TargetParameter* t, SpatialModule* m);
+	SpatialZone* getZone(TargetParameter* t);			// nullptr without zone
+	String getZoneName(TargetParameter* t);
+	SpatialSurface* getSurface(TargetParameter* t, SpatialModule* m);	// empty target : the first surface
+	String getSlotSummary(TargetParameter* surface, IntParameter* slot);
+}
+
+//base of the boolean nodes
+class StateNode :
 	public LogicNode
 {
 public:
-	ZoneEnteredNode(var params = var());
+	StateNode(const String& name, var params);
+
+	Category getCategory() const override { return EVENT; }
+	void reset() override { primed = false; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+
+protected:
+	virtual bool getState(bool& valid) const = 0;	// valid = false : nothing to watch (no zone...)
+
+private:
+	bool lastState = false;
+	bool primed = false;
+};
+
+//base of the integer nodes
+class CountNode :
+	public LogicNode
+{
+public:
+	CountNode(const String& name, var params);
+
+	Category getCategory() const override { return EVENT; }
+	void reset() override { primed = false; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+
+protected:
+	virtual bool getCount(int& count) const = 0;	// false : nothing to watch
+
+private:
+	int lastCount = 0;
+	bool primed = false;
+};
+
+// - triggers
+
+//a person enters (Entered) or leaves (Exited) the zone : same as the Entered / Exited triggers of the zone
+class ZoneTriggerNode :
+	public LogicNode
+{
+public:
+	ZoneTriggerNode(const String& name, var params, bool entered);
 
 	TargetParameter* zoneTarget;
+	const bool entered;
+
+	Category getCategory() const override { return EVENT; }
+	void setup(SpatialModule* m) override;
+	void reset() override { lastIds.clear(); primed = false; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+	String getSummary() const override { return LogicTargets::getZoneName(zoneTarget); }
+
+private:
+	Array<int> lastIds;
+	int firedId = -1;
+	bool primed = false;
+};
+
+class ZoneEnteredNode : public ZoneTriggerNode
+{
+public:
+	ZoneEnteredNode(var params = var()) : ZoneTriggerNode(getTypeStringStatic(), params, true) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Entered"; }
+};
+
+class ZoneExitedNode : public ZoneTriggerNode
+{
+public:
+	ZoneExitedNode(var params = var()) : ZoneTriggerNode(getTypeStringStatic(), params, false) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Exited"; }
+};
+
+//a person takes (Joined) or loses (Left) a player slot : same as the Joined / Left triggers of the slot
+class SlotTriggerNode :
+	public LogicNode
+{
+public:
+	SlotTriggerNode(const String& name, var params, bool joined);
+
+	TargetParameter* surfaceTarget;
+	IntParameter* slotNumber;	// 0 = any slot
+	const bool joined;
 
 	Category getCategory() const override { return EVENT; }
 	void setup(SpatialModule* m) override;
 	void process(LogicGraph& g) override;
 	var getOutputValue(LogicGraph& g, const String& outPin) override;
-	String getSummary() const override;
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
 
+private:
+	int firedSlot = 0, firedId = -1;
+};
+
+class SlotJoinedNode : public SlotTriggerNode
+{
+public:
+	SlotJoinedNode(var params = var()) : SlotTriggerNode(getTypeStringStatic(), params, true) {}
 	String getTypeString() const override { return getTypeStringStatic(); }
-	static String getTypeStringStatic() { return "Zone Entered"; }
+	static String getTypeStringStatic() { return "Slot Joined"; }
+};
+
+class SlotLeftNode : public SlotTriggerNode
+{
+public:
+	SlotLeftNode(var params = var()) : SlotTriggerNode(getTypeStringStatic(), params, false) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Left"; }
+};
+
+//a person appears in the tracking (Appeared) or is lost (Lost), every source and surface
+class PersonTriggerNode :
+	public LogicNode
+{
+public:
+	PersonTriggerNode(const String& name, var params, bool appeared);
+
+	const bool appeared;
+
+	Category getCategory() const override { return EVENT; }
+	void reset() override { lastIds.clear(); primed = false; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
 
 private:
 	Array<int> lastIds;
 	int firedId = -1;
-	bool primed = false;	// the people already inside when the graph starts do not fire
+	bool primed = false;
+};
+
+class PersonAppearedNode : public PersonTriggerNode
+{
+public:
+	PersonAppearedNode(var params = var()) : PersonTriggerNode(getTypeStringStatic(), params, true) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Appeared"; }
+};
+
+class PersonLostNode : public PersonTriggerNode
+{
+public:
+	PersonLostNode(var params = var()) : PersonTriggerNode(getTypeStringStatic(), params, false) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Lost"; }
+};
+
+// - booleans
+
+//Presence of the zone : at least one person in it
+class ZonePresenceNode :
+	public StateNode
+{
+public:
+	ZonePresenceNode(var params = var());
+	TargetParameter* zoneTarget;
+	void setup(SpatialModule* m) override;
+	bool getState(bool& valid) const override;
+	String getSummary() const override { return LogicTargets::getZoneName(zoneTarget); }
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Presence"; }
+};
+
+//Person Count of the zone >= its Capacity
+class ZoneFullNode :
+	public StateNode
+{
+public:
+	ZoneFullNode(var params = var());
+	TargetParameter* zoneTarget;
+	void setup(SpatialModule* m) override;
+	bool getState(bool& valid) const override;
+	String getSummary() const override { return LogicTargets::getZoneName(zoneTarget); }
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Full"; }
+};
+
+//Occupied (has a person, or is held for one) or Held (waits for a lost person) of one player slot
+class SlotStateNode :
+	public StateNode
+{
+public:
+	SlotStateNode(const String& name, var params, bool held);
+	TargetParameter* surfaceTarget;
+	IntParameter* slotNumber;	// from 1
+	const bool held;
+	void setup(SpatialModule* m) override;
+	bool getState(bool& valid) const override;
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
+};
+
+class SlotOccupiedNode : public SlotStateNode
+{
+public:
+	SlotOccupiedNode(var params = var()) : SlotStateNode(getTypeStringStatic(), params, false) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Occupied"; }
+};
+
+class SlotHeldNode : public SlotStateNode
+{
+public:
+	SlotHeldNode(var params = var()) : SlotStateNode(getTypeStringStatic(), params, true) {}
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Held"; }
+};
+
+// - integers
+
+//Person Count of the Cockpit : people tracked, every source and surface
+class PersonCountNode :
+	public CountNode
+{
+public:
+	PersonCountNode(var params = var()) : CountNode(getTypeStringStatic(), params) {}
+	bool getCount(int& count) const override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Count"; }
+};
+
+//Person Count of the zone
+class ZonePersonCountNode :
+	public CountNode
+{
+public:
+	ZonePersonCountNode(var params = var());
+	TargetParameter* zoneTarget;
+	void setup(SpatialModule* m) override;
+	bool getCount(int& count) const override;
+	String getSummary() const override { return LogicTargets::getZoneName(zoneTarget); }
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Person Count"; }
+};
+
+//Free Slots of a surface
+class FreeSlotsNode :
+	public CountNode
+{
+public:
+	FreeSlotsNode(var params = var());
+	TargetParameter* surfaceTarget;
+	void setup(SpatialModule* m) override;
+	bool getCount(int& count) const override;
+	String getSummary() const override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Free Slots"; }
+};
+
+// - time
+
+//fires once when the graph starts (session loaded, graph enabled)
+class OnStartNode :
+	public LogicNode
+{
+public:
+	OnStartNode(var params = var());
+
+	Category getCategory() const override { return EVENT; }
+	void reset() override { pending = true; }
+	void process(LogicGraph& g) override;
+
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "On Start"; }
+
+private:
+	bool pending = false;
+};
+
+//fires every Interval (at the rate of the zones, 50 Hz at most)
+class TimerNode :
+	public LogicNode
+{
+public:
+	TimerNode(var params = var());
+
+	FloatParameter* interval;	// seconds, shown HH:MM:SS:FF
+
+	Category getCategory() const override { return EVENT; }
+	void reset() override { lastMs = 0; count = 0; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+	String getSummary() const override;
+
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Timer"; }
+
+private:
+	double lastMs = 0;
+	int count = 0;
 };
 
 //writes a line in the Chataigne logger
@@ -182,6 +470,7 @@ public:
 	String getTypeString() const override { return "Graph"; }
 
 private:
+	bool running = false;	// false while disabled : the nodes are reset when it runs again
 	int depth = 0;	// exec chain depth in one update, against loops
 	static const int maxDepth = 64;
 

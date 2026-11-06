@@ -16,6 +16,7 @@
 #pragma once
 
 #include "TrackingData.h"
+#include "SpatialUnits.h"
 #include "ui/SpatialStyle.h"
 #include "ui/SpatialSectionEditor.h"
 #include "PlayerSlots.h"
@@ -125,6 +126,8 @@ public:
 	void setupInspectorSections();
 
 	IntParameter* personCount;
+	IntParameter* frameRate;	// FF of the times shown HH:MM:SS:FF (SpatialUnits.h)
+	void onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c) override;
 
 	SpatialZoneManager zoneManager;
 	ControllableContainer zonesValuesCC;

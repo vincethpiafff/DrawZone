@@ -9,6 +9,7 @@
 */
 
 #include "TrackingData.cpp"
+#include "SpatialUnits.cpp"
 #include "SpatialSurface.cpp"
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
@@ -34,6 +35,8 @@ SpatialModule::SpatialModule() :
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of people currently tracked, all surfaces together", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
+	frameRate = moduleParams.addIntParameter("Frame Rate", "Frames per second of every time shown HH:MM:SS:FF (hours, minutes, seconds, frames), for the whole session", 25, 1, 240);
+	TimecodeParameter::setFrameRate(frameRate->intValue());	// new session : back to its default
 
 	legacySceneSizeMode = legacySceneCC.addEnumParameter("Size Mode", "Sessions before v0.6 only : moved into the first surface");
 	legacySceneSizeMode->addOption("Auto (From Sources)", LEGACY_SCENE_AUTO)->addOption("Manual", LEGACY_SCENE_MANUAL);
@@ -94,9 +97,16 @@ void SpatialModule::processMessageInternal(const OSCMessage& msg)
 	if (AugmentaSource* a = sourceManager.getAugmentaSource(localPort != nullptr ? localPort->intValue() : -1)) a->processMessage(msg, this);
 }
 
+void SpatialModule::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
+{
+	OSCModule::onControllableFeedbackUpdateInternal(cc, c);
+	if (c == frameRate) TimecodeParameter::setFrameRate(frameRate->intValue());
+}
+
 void SpatialModule::afterLoadJSONDataInternal()
 {
 	OSCModule::afterLoadJSONDataInternal();
+	TimecodeParameter::setFrameRate(frameRate->intValue());
 
 	//session before v0.6 : its Scene block goes into the first surface, then is put back to default (not saved again)
 	if (!legacySceneSizeMode->isOverriden && !legacySceneSizeManual->isOverriden) return;
@@ -155,6 +165,7 @@ void SpatialModule::updateZones()
 	psnOutput.update(s.persons);
 	updatePeople(s);
 	logicManager.process();	// after the zones, the slots and the people : the graphs read their values
+	for (auto& surface : surfaceManager.items) surface->playerSlots.events.clearQuick();	// read by the graphs
 }
 
 void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
@@ -231,7 +242,7 @@ SpatialPerson::SpatialPerson(int id) :
 	orientation->setControllableFeedbackOnly(true);
 	height = addFloatParameter("Height", "Height of the person as sent by the tracking system, in meters", 0);
 	height->setControllableFeedbackOnly(true);
-	age = addFloatParameter("Age", "Seconds since the person entered the surface, as sent by the tracking system", 0);
+	age = (FloatParameter*)addParameter(new TimecodeParameter("Age", "Seconds since the person entered the surface, as sent by the tracking system", 0));
 	age->setControllableFeedbackOnly(true);
 }
 

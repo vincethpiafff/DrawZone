@@ -126,6 +126,7 @@
 		01AF4475609BC6E15C3754AA /* Stream Deck.png */ /* Stream Deck.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Stream Deck.png"; path = "../../Resources/Modules/Stream Deck.png"; sourceTree = SOURCE_ROOT; };
 		01FB0EC51EDF5579E6446D73 /* Action.cpp */ /* Action.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Action.cpp; path = ../../Source/Common/Processor/Action/Action.cpp; sourceTree = SOURCE_ROOT; };
 		021E427BFA3E8B6BC6AC3D5A /* TCPClientModule.cpp */ /* TCPClientModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TCPClientModule.cpp; path = ../../Source/Module/modules/tcp/tcpclient/TCPClientModule.cpp; sourceTree = SOURCE_ROOT; };
+		023D1297D445EC8F6C92F28F /* SpatialUnits.h */ /* SpatialUnits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpatialUnits.h; path = ../../Source/Module/modules/spatial/SpatialUnits.h; sourceTree = SOURCE_ROOT; };
 		02719A9820DD6EE1547FA8FE /* ZeroconfManager.h */ /* ZeroconfManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ZeroconfManager.h; path = ../../Source/Common/Zeroconf/ZeroconfManager.h; sourceTree = SOURCE_ROOT; };
 		0330DBB20FDF9D9EBD0F983A /* process.png */ /* process.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = process.png; path = ../../Resources/process.png; sourceTree = SOURCE_ROOT; };
 		03AB9E7E2EEBA80B4F45E924 /* CustomValuesCommandArgumentManager.cpp */ /* CustomValuesCommandArgumentManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CustomValuesCommandArgumentManager.cpp; path = ../../Source/Common/Command/CustomValues/CustomValuesCommandArgumentManager.cpp; sourceTree = SOURCE_ROOT; };
@@ -425,6 +426,7 @@
 		5DB923BEF56F893D6C04B857 /* ConditionManagerListener.h */ /* ConditionManagerListener.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConditionManagerListener.h; path = ../../Source/Common/Processor/Action/Condition/ConditionManagerListener.h; sourceTree = SOURCE_ROOT; };
 		5E64FD363DAEBC97B49C0E98 /* DLight.png */ /* DLight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = DLight.png; path = ../../Resources/Modules/DLight.png; sourceTree = SOURCE_ROOT; };
 		5EC377995C54CB6F2FDDE628 /* ButtplugCommand.h */ /* ButtplugCommand.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ButtplugCommand.h; path = ../../Source/Module/modules/buttplug/commands/ButtplugCommand.h; sourceTree = SOURCE_ROOT; };
+		5F5EC1289D6A00C35ACFB006 /* SpatialUnits.cpp */ /* SpatialUnits.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialUnits.cpp; path = ../../Source/Module/modules/spatial/SpatialUnits.cpp; sourceTree = SOURCE_ROOT; };
 		5FA54638369A3C34CEB7FE3C /* default.chalayout */ /* default.chalayout */ = {isa = PBXFileReference; lastKnownFileType = file.chalayout; name = default.chalayout; path = ../../Resources/default.chalayout; sourceTree = SOURCE_ROOT; };
 		5FAFCDEFF94F762D189E98EF /* LoupedeckShapeManager.cpp */ /* LoupedeckShapeManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = LoupedeckShapeManager.cpp; path = ../../Source/Module/modules/controller/loupedeck/LoupedeckShapeManager.cpp; sourceTree = SOURCE_ROOT; };
 		60C2F429971AA38584B05844 /* ScriptFilter.cpp */ /* ScriptFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ScriptFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/ScriptFilter.cpp; sourceTree = SOURCE_ROOT; };
@@ -2335,6 +2337,8 @@
 		818B647A3216F9728281D915 /* spatial */ = {
 			isa = PBXGroup;
 			children = (
+				5F5EC1289D6A00C35ACFB006,
+				023D1297D445EC8F6C92F28F,
 				8D048454857E588A988A0B6C,
 				9391971DFF057072FA0322B0,
 				62D2257FE5B7FF045A6A036F,

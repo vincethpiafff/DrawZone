@@ -10,17 +10,17 @@ Pas de récit, pas de répétition. Version terminée → archive, au mot près.
 
 v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGELOG). Contenu prévu (ROADMAP) :
 événements, Branch, variables, sorties OSC.
-- 💬 06/11 briques proposées : 1 moteur (nœuds, broches, liens exécution / données, enregistré) · 2 éditeur « Logic Graph »
-  (+ 💬 Vincent : **snapping des nœuds**) · 3 événements · 4 données + Branch · 5 variables · 6 Send OSC · 7 test d'intégration.
-- 💬 06/11 Vincent : brique **8, la dernière de la v0.7.2** : suivi de la condition, le chemin parcouru entre les nœuds s'allume
+- 💬 06/11 briques proposées : 1 moteur (nodes, broches, liens exécution / données, enregistré) · 2 éditeur « Logic Graph »
+  (+ 💬 Vincent : **snapping des nodes**) · 3 événements · 4 données + Branch · 5 variables · 6 Send OSC · 7 test d'intégration.
+- 💬 06/11 Vincent : brique **8, la dernière de la v0.7.2** : suivi de la condition, le chemin parcouru entre les nodes s'allume
   (glow + flèches) pour voir la condition testée et vraie. ⬜ proposition graphique à montrer avant de coder.
   💬 06/11 Vincent : bloc **Logic** du Cockpit, **plusieurs graphes nommés**, ordre **1 + 2** (testés ensemble), puis 3 à 6, puis 7.
 - ✅ 06/11 4 rendus proposés (artifact « Logic Graph – 4 rendus ») : A Blueprint, B Cockpit, C Circuit, D Couloirs ;
-  💬 Vincent : **B** (style du Tracking Monitor, aimantation sur les nœuds, grille en option, mini-carte).
-- ⏭️ briques 1 + 2, plan (branche `feature/logic-graph`) : 1a données `logic/LogicGraph.h/.cpp` (bloc Logic → graphes →
-  nœuds avec type et position, liens enregistrés) · 1b moteur au rythme des zones, 1ers nœuds Zone Entered et Log · 2a panneau
+  💬 Vincent : **B** (style du Tracking Monitor, aimantation sur les nodes, grille en option, mini-carte).
+- ✅ briques 1 + 2, plan (branche `feature/logic-graph`) : 1a données `logic/LogicGraph.h/.cpp` (bloc Logic → graphes →
+  nodes avec type et position, liens enregistrés) · 1b moteur au rythme des zones, 1ers nodes Zone Entered et Log · 2a panneau
   « Logic Graph » (onglets des graphes, déplacer / zoomer, créer par clic droit, glisser, relier, supprimer, annuler) · 2b
-  aimantation sur les bords / centres des nœuds + repères, grille 20 px en option, Alt = libre · 2c mini-carte.
+  aimantation sur les bords / centres des nodes + repères, grille 20 px en option, Alt = libre · 2c mini-carte.
 - 💬 06/11 Vincent : **Live mode** (comme performance / On Air) avant le Logic Graph : coupe seulement l'affichage et l'édition
   (viewport gelé…) ; entrées tracking, zones, slots, Logic Graph, variables, OSC, PSN et Spout / NDI tournent toujours.
   Règle pour la brique 1 : le moteur du graphe tourne dans l'horloge du Cockpit, jamais dans le panneau. 
@@ -32,19 +32,24 @@ v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGE
   ❌ puis ✅ compilation : `setDescription` n'existe pas → `description`. Recompilation complète 0 erreur ; MCP : bloc présent,
   désactivé par défaut. Pas de simulation (pas de changement des données). ✅ Vincent : « ok commit et push », commit `e3f78409`.
 - ✅ 06/11 v0.7.1 publiée : CHANGELOG, ROADMAP, README, CLAUDE.md ; fusion `--no-ff` dans `develop`, tag `v0.7.1`, push `origin`.
-- ⏭️ 06/11 v0.7.2 briques 1 + 2, code : `logic/LogicGraph.h/.cpp` (bloc Logic → graphes → nœuds, liens exec / données par uid,
-  annulables ; moteur dans `updateZones` après zones, slots, personnes ; nœuds Zone Entered et Log) ; `ui/LogicGraphPanel.h/.cpp`
+- ✅ 06/11 v0.7.2 briques 1 + 2, code : `logic/LogicGraph.h/.cpp` (bloc Logic → graphes → nodes, liens exec / données par uid,
+  annulables ; moteur dans `updateZones` après zones, slots, personnes ; nodes Zone Entered et Log) ; `ui/LogicGraphPanel.h/.cpp`
   (style B : onglets + renommer / supprimer, fond à points, molette = zoom, clic droit glissé = déplacer la vue, clic droit =
   menus, glisser = déplacer, aimantation bords / centres + repères + étiquette, grille 20 px, Alt = libre, F = tout voir,
   Suppr, mini-carte, LIVE + Ctrl + Shift + L) ; sections Logic et Live dans l'Inspector ; panneau dans `MainComponent.cpp`
-  (`// DrawZone:`) ; `.jucer` + Projucer. ❌ puis ✅ compilation : `LogicNode` abstrait (le gestionnaire crée des nœuds vides)
+  (`// DrawZone:`) ; `.jucer` + Projucer. ❌ puis ✅ compilation : `LogicNode` abstrait (le gestionnaire crée des nodes vides)
   → catégorie par défaut. Compilé 0 erreur. Recompilation complète 0 erreur ; MCP : bloc Logic présent, 1 graphe. ✅ Vincent : « ok pour le logic graph ».
 - ❌ 06/11 💬 Vincent : fenêtre réduite → en-tête coupé (sélecteur de surface introuvable en 2D). → en-têtes du Monitor et du
   Logic Graph en bande défilante : clic droit glissé ou molette, dégradé + flèche aux bords, clics limités à la partie visible,
-  clic droit simple inchangé. Compilé 0 erreur. ⬜ test de Vincent.
+  clic droit simple inchangé. Compilé 0 erreur. ✅ Vincent : « ok », commit `57b470ec` (avec les briques 1 + 2).
 - ❌ 06/11 💬 Vincent : sens Y inversé entre 2D et 3D → écarté : Flip Y était coché sur sa source (pas un bug).
-- ⏸️ 06/11 fin de séance. Non commité sur `feature/logic-graph` : briques 1 + 2 (validées « ok ») et en-têtes défilants (test de
-  Vincent à faire). Reprise : test des en-têtes, commit, puis brique 3 (nœuds d'événement).
+- ❌ 06/11 brique 3, 1re version (7 nodes, On / Off pour tout) : 💬 Vincent : Person Tracked n'est pas un booléen → règle par type de valeur.
+- 💬 06/11 Vincent : nodes par type (Trigger → Then + Person Id ; Boolean → On / Off + State ; Integer → Changed + Count) ; temps en
+  HH:MM:SS:FF (Frame Rate réglable, valeurs + réglages) ; pourcentage affiché en %. Dire « node ».
+- ⏭️ 06/11 code : `SpatialUnits.h/.cpp` (Timecode, Percent ; `.jucer` + Projucer), Frame Rate du Cockpit, 6 temps + Occupancy convertis,
+  broches Time / Percentage, 15 nodes (Events > Time / Zones / Slots / People), `PlayerSlots::events` pour Slot Joined / Left.
+  Compilé 0 erreur, lien OK. `check_logic.ps1` réécrit (15 nodes, 77 puis 78 dans ZONE RECT) : simulation **40 / 40**. ⬜ tests de Vincent puis commit.
+- ❌ 06/11 bug brique 1 : l'uid des nodes n'est pas enregistré (valeur par défaut) → liens perdus au rechargement. ✅ uid enregistré, copie = nouvel uid. Compilé 0 erreur.
 
 ## ⬜ Questions ouvertes
 

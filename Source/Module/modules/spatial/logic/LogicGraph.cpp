@@ -16,6 +16,8 @@ Colour LogicPin::getColour(Kind k)
 	case NUMBER: return Colour(0xff5ec8d8);
 	case BOOL: return Colour(0xfff0a35e);
 	case TEXT: return Colour(0xff6fd08c);
+	case TIME: return Colour(0xffc792ea);
+	case PERCENT: return Colour(0xffe6d96a);
 	default: return Colour(0xffa7adb7);
 	}
 }
@@ -23,7 +25,8 @@ Colour LogicPin::getColour(Kind k)
 bool LogicPin::canConnect(Kind out, Kind in)
 {
 	if (out == EXEC || in == EXEC) return out == in;
-	return in == ANY || out == ANY || in == out;
+	auto isNumber = [](Kind k) { return k == NUMBER || k == TIME || k == PERCENT; };
+	return in == ANY || out == ANY || in == out || (isNumber(in) && isNumber(out));
 }
 
 // LogicNode
@@ -31,7 +34,9 @@ bool LogicPin::canConnect(Kind out, Kind in)
 LogicNode::LogicNode(const String& name, var params) :
 	BaseItem(name)
 {
-	uid = addStringParameter("Uid", "Identifier of this node for the links", Uuid().toString());
+	//empty default, then a value : a parameter equal to its default is not saved, and the links need it after a reload
+	uid = addStringParameter("Uid", "Identifier of this node for the links", "");
+	uid->setValue(Uuid().toString());
 	uid->hideInEditor = true;
 }
 
@@ -93,59 +98,371 @@ String LogicNode::getCategoryName(Category c)
 	}
 }
 
-// ZoneEnteredNode
+// LogicTargets
 
-ZoneEnteredNode::ZoneEnteredNode(var params) :
-	LogicNode(getTypeStringStatic(), params)
+void LogicTargets::setupZone(TargetParameter* t, SpatialModule* m)
 {
-	zoneTarget = addTargetParameter("Zone", "Zone watched : this event fires once for each person who enters it");
+	if (m == nullptr) return;
+	t->targetType = TargetParameter::CONTAINER;
+	t->maxDefaultSearchLevel = 0;
+	t->defaultContainerTypeCheckFunc = [](ControllableContainer* cc) { return dynamic_cast<SpatialZone*>(cc) != nullptr; };
+	t->setRootContainer(&m->zoneManager, false, true);
+}
+
+SpatialZone* LogicTargets::getZone(TargetParameter* t)
+{
+	return dynamic_cast<SpatialZone*>(t->targetContainer.get());
+}
+
+String LogicTargets::getZoneName(TargetParameter* t)
+{
+	ControllableContainer* z = t->targetContainer.get();
+	return z != nullptr ? z->niceName : String("(no zone)");
+}
+
+SpatialSurface* LogicTargets::getSurface(TargetParameter* t, SpatialModule* m)
+{
+	return m != nullptr ? m->surfaceManager.getSurface(t) : nullptr;
+}
+
+String LogicTargets::getSlotSummary(TargetParameter* surface, IntParameter* slot)
+{
+	ControllableContainer* s = surface->targetContainer.get();
+	String name = s != nullptr ? s->niceName : String("First surface");
+	return name + ", " + (slot->intValue() > 0 ? "slot " + String(slot->intValue()) : String("any slot"));
+}
+
+//people in "now" and not in "before" (in = true), or the other way : fires outPin for each one, firedId set first
+static void fireIdChanges(LogicGraph& g, LogicNode* node, const Array<int>& before, const Array<int>& now, bool in, int& firedId)
+{
+	const Array<int>& from = in ? now : before;
+	const Array<int>& other = in ? before : now;
+	for (int id : from) if (!other.contains(id)) { firedId = id; g.trigger(node, "Then"); }
+}
+
+// StateNode
+
+StateNode::StateNode(const String& name, var params) :
+	LogicNode(name, params)
+{
+	addPin("On", LogicPin::EXEC, true);
+	addPin("Off", LogicPin::EXEC, true);
+	addPin("State", LogicPin::BOOL, true);
+}
+
+void StateNode::process(LogicGraph& g)
+{
+	bool valid = enabled->boolValue();
+	bool state = valid ? getState(valid) : false;
+	if (!valid) { reset(); return; }
+
+	bool changed = primed && state != lastState;
+	lastState = state;
+	primed = true;
+	if (changed) g.trigger(this, state ? "On" : "Off");
+}
+
+var StateNode::getOutputValue(LogicGraph&, const String& outPin)
+{
+	if (outPin != "State") return var();
+	bool valid = true;
+	return getState(valid) && valid;
+}
+
+// CountNode
+
+CountNode::CountNode(const String& name, var params) :
+	LogicNode(name, params)
+{
+	addPin("Changed", LogicPin::EXEC, true);
+	addPin("Count", LogicPin::NUMBER, true);
+}
+
+void CountNode::process(LogicGraph& g)
+{
+	int count = 0;
+	if (!enabled->boolValue() || !getCount(count)) { reset(); return; }
+
+	bool changed = primed && count != lastCount;
+	lastCount = count;
+	primed = true;
+	if (changed) g.trigger(this, "Changed");
+}
+
+var CountNode::getOutputValue(LogicGraph&, const String& outPin)
+{
+	if (outPin != "Count") return var();
+	int count = 0;
+	return getCount(count) ? count : 0;
+}
+
+// ZoneTriggerNode
+
+ZoneTriggerNode::ZoneTriggerNode(const String& name, var params, bool entered) :
+	LogicNode(name, params),
+	entered(entered)
+{
+	zoneTarget = addTargetParameter("Zone", entered ? "Zone watched : fires once for each person who enters it" : "Zone watched : fires once for each person who leaves it or is lost by the tracking in it");
 	addPin("Then", LogicPin::EXEC, true);
 	addPin("Person Id", LogicPin::NUMBER, true);
 }
 
-void ZoneEnteredNode::setup(SpatialModule* m)
+void ZoneTriggerNode::setup(SpatialModule* m)
 {
 	LogicNode::setup(m);
-	if (m == nullptr) return;
-	zoneTarget->targetType = TargetParameter::CONTAINER;
-	zoneTarget->maxDefaultSearchLevel = 0;
-	zoneTarget->defaultContainerTypeCheckFunc = [](ControllableContainer* cc) { return dynamic_cast<SpatialZone*>(cc) != nullptr; };
-	zoneTarget->setRootContainer(&m->zoneManager, false, true);
+	LogicTargets::setupZone(zoneTarget, m);
 }
 
-void ZoneEnteredNode::process(LogicGraph& g)
+void ZoneTriggerNode::process(LogicGraph& g)
 {
-	SpatialZone* z = dynamic_cast<SpatialZone*>(zoneTarget->targetContainer.get());
-	if (z == nullptr || !enabled->boolValue())
-	{
-		lastIds.clear();
-		primed = false;
-		return;
-	}
+	SpatialZone* z = enabled->boolValue() ? LogicTargets::getZone(zoneTarget) : nullptr;
+	if (z == nullptr) { reset(); return; }
 
 	Array<int> ids = z->idsInside;
-	if (primed)
-	{
-		for (int id : ids)
-		{
-			if (lastIds.contains(id)) continue;
-			firedId = id;
-			g.trigger(this, "Then");
-		}
-	}
+	if (primed) fireIdChanges(g, this, lastIds, ids, entered, firedId);
 	lastIds = ids;
 	primed = true;
 }
 
-var ZoneEnteredNode::getOutputValue(LogicGraph&, const String& outPin)
+var ZoneTriggerNode::getOutputValue(LogicGraph&, const String& outPin)
 {
 	return outPin == "Person Id" ? var(firedId) : var();
 }
 
-String ZoneEnteredNode::getSummary() const
+// SlotTriggerNode
+
+SlotTriggerNode::SlotTriggerNode(const String& name, var params, bool joined) :
+	LogicNode(name, params),
+	joined(joined)
 {
-	ControllableContainer* z = zoneTarget->targetContainer.get();
-	return z != nullptr ? z->niceName : String("(no zone)");
+	surfaceTarget = addTargetParameter("Surface", "Surface of the slots watched. Empty : the first surface");
+	slotNumber = addIntParameter("Slot", joined ? "Player slot watched (1, 2...) : fires when a person takes it. 0 = any slot of the surface" : "Player slot watched (1, 2...) : fires when it is released. 0 = any slot of the surface", 0, 0);
+	addPin("Then", LogicPin::EXEC, true);
+	addPin("Slot", LogicPin::NUMBER, true);
+	addPin("Person Id", LogicPin::NUMBER, true);
+}
+
+void SlotTriggerNode::setup(SpatialModule* m)
+{
+	LogicNode::setup(m);
+	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+}
+
+void SlotTriggerNode::process(LogicGraph& g)
+{
+	SpatialSurface* surface = enabled->boolValue() ? LogicTargets::getSurface(surfaceTarget, module) : nullptr;
+	if (surface == nullptr) return;
+
+	int only = slotNumber->intValue();
+	Array<PlayerSlots::SlotEvent> events = surface->playerSlots.events;	// a copy : a node may change the slots
+	for (auto& e : events)
+	{
+		if (e.joined != joined || (only > 0 && e.slot != only)) continue;
+		firedSlot = e.slot;
+		firedId = e.personId;
+		g.trigger(this, "Then");
+	}
+}
+
+var SlotTriggerNode::getOutputValue(LogicGraph&, const String& outPin)
+{
+	if (outPin == "Slot") return firedSlot;
+	if (outPin == "Person Id") return firedId;
+	return var();
+}
+
+// PersonTriggerNode
+
+PersonTriggerNode::PersonTriggerNode(const String& name, var params, bool appeared) :
+	LogicNode(name, params),
+	appeared(appeared)
+{
+	addPin("Then", LogicPin::EXEC, true);
+	addPin("Person Id", LogicPin::NUMBER, true);
+}
+
+void PersonTriggerNode::process(LogicGraph& g)
+{
+	if (module == nullptr || !enabled->boolValue()) { reset(); return; }
+
+	Array<int> ids;
+	for (auto& p : module->people) ids.add(p.first);
+	if (primed) fireIdChanges(g, this, lastIds, ids, appeared, firedId);
+	lastIds = ids;
+	primed = true;
+}
+
+var PersonTriggerNode::getOutputValue(LogicGraph&, const String& outPin)
+{
+	return outPin == "Person Id" ? var(firedId) : var();
+}
+
+// ZonePresenceNode, ZoneFullNode
+
+ZonePresenceNode::ZonePresenceNode(var params) :
+	StateNode(getTypeStringStatic(), params)
+{
+	zoneTarget = addTargetParameter("Zone", "Zone watched : On when someone enters it while it was empty, Off when it is empty again");
+}
+
+void ZonePresenceNode::setup(SpatialModule* m)
+{
+	StateNode::setup(m);
+	LogicTargets::setupZone(zoneTarget, m);
+}
+
+bool ZonePresenceNode::getState(bool& valid) const
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	valid = z != nullptr;
+	return valid && z->idsInside.size() > 0;
+}
+
+ZoneFullNode::ZoneFullNode(var params) :
+	StateNode(getTypeStringStatic(), params)
+{
+	zoneTarget = addTargetParameter("Zone", "Zone watched : On when its Person Count reaches its Capacity, Off when it goes under it again");
+}
+
+void ZoneFullNode::setup(SpatialModule* m)
+{
+	StateNode::setup(m);
+	LogicTargets::setupZone(zoneTarget, m);
+}
+
+bool ZoneFullNode::getState(bool& valid) const
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	valid = z != nullptr;
+	return valid && z->idsInside.size() >= z->capacity->intValue();
+}
+
+// SlotStateNode
+
+SlotStateNode::SlotStateNode(const String& name, var params, bool held) :
+	StateNode(name, params),
+	held(held)
+{
+	surfaceTarget = addTargetParameter("Surface", "Surface of the slot watched. Empty : the first surface");
+	slotNumber = addIntParameter("Slot", held ? "Player slot watched (1, 2...) : On when it waits for a lost person (Hold Spot To Reclaim), Off when it stops waiting" : "Player slot watched (1, 2...) : On when a person takes it, Off when it is free again (a held slot stays occupied)", 1, 1);
+}
+
+void SlotStateNode::setup(SpatialModule* m)
+{
+	StateNode::setup(m);
+	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+}
+
+bool SlotStateNode::getState(bool& valid) const
+{
+	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
+	int i = slotNumber->intValue() - 1;
+	valid = surface != nullptr && i >= 0 && i < surface->playerSlots.slots.size();
+	if (!valid) return false;
+	PlayerSlot* s = surface->playerSlots.slots[i];
+	return held ? s->isHeld() : !s->isFree();
+}
+
+// PersonCountNode, ZonePersonCountNode, FreeSlotsNode
+
+bool PersonCountNode::getCount(int& count) const
+{
+	if (module == nullptr) return false;
+	count = (int)module->people.size();
+	return true;
+}
+
+ZonePersonCountNode::ZonePersonCountNode(var params) :
+	CountNode(getTypeStringStatic(), params)
+{
+	zoneTarget = addTargetParameter("Zone", "Zone watched : Changed fires each time its Person Count changes");
+}
+
+void ZonePersonCountNode::setup(SpatialModule* m)
+{
+	CountNode::setup(m);
+	LogicTargets::setupZone(zoneTarget, m);
+}
+
+bool ZonePersonCountNode::getCount(int& count) const
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	if (z == nullptr) return false;
+	count = z->idsInside.size();
+	return true;
+}
+
+FreeSlotsNode::FreeSlotsNode(var params) :
+	CountNode(getTypeStringStatic(), params)
+{
+	surfaceTarget = addTargetParameter("Surface", "Surface watched : Changed fires each time its number of free player slots changes. Empty : the first surface");
+}
+
+void FreeSlotsNode::setup(SpatialModule* m)
+{
+	CountNode::setup(m);
+	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+}
+
+bool FreeSlotsNode::getCount(int& count) const
+{
+	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
+	if (surface == nullptr) return false;
+	count = surface->playerSlots.freeSlots->intValue();
+	return true;
+}
+
+String FreeSlotsNode::getSummary() const
+{
+	ControllableContainer* s = surfaceTarget->targetContainer.get();
+	return s != nullptr ? s->niceName : String("First surface");
+}
+
+// OnStartNode
+
+OnStartNode::OnStartNode(var params) :
+	LogicNode(getTypeStringStatic(), params)
+{
+	addPin("Then", LogicPin::EXEC, true);
+}
+
+void OnStartNode::process(LogicGraph& g)
+{
+	if (!pending || !enabled->boolValue()) return;
+	pending = false;
+	g.trigger(this, "Then");
+}
+
+// TimerNode
+
+TimerNode::TimerNode(var params) :
+	LogicNode(getTypeStringStatic(), params)
+{
+	interval = (FloatParameter*)addParameter(new TimecodeParameter("Interval", "Time between two ticks (HH:MM:SS:FF)", 1, 0.02));
+	addPin("Then", LogicPin::EXEC, true);
+	addPin("Count", LogicPin::NUMBER, true);
+}
+
+void TimerNode::process(LogicGraph& g)
+{
+	if (!enabled->boolValue()) { reset(); return; }
+	double now = Time::getMillisecondCounterHiRes();
+	if (lastMs <= 0) { lastMs = now; return; }	// first tick one interval after the start
+	double step = interval->floatValue() * 1000.0;
+	if (now - lastMs < step) return;
+	lastMs = now - jmin(now - lastMs - step, step);	// keeps the rhythm, without a burst after a pause
+	count++;
+	g.trigger(this, "Then");
+}
+
+var TimerNode::getOutputValue(LogicGraph&, const String& outPin)
+{
+	return outPin == "Count" ? var(count) : var();
+}
+
+String TimerNode::getSummary() const
+{
+	return "every " + TimecodeParameter::toTimecode(interval->floatValue());
 }
 
 // LogNode
@@ -177,7 +494,21 @@ LogicNodeManager::LogicNodeManager() :
 	itemDataType = "LogicNode";
 	selectItemWhenCreated = false;
 	managerFactory = &factory;
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneEnteredNode>("Events"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<OnStartNode>("Events/Time"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<TimerNode>("Events/Time"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneEnteredNode>("Events/Zones"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneExitedNode>("Events/Zones"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZonePresenceNode>("Events/Zones"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneFullNode>("Events/Zones"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZonePersonCountNode>("Events/Zones"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotJoinedNode>("Events/Slots"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotLeftNode>("Events/Slots"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotOccupiedNode>("Events/Slots"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotHeldNode>("Events/Slots"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<FreeSlotsNode>("Events/Slots"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonAppearedNode>("Events/People"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonLostNode>("Events/People"));
+	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonCountNode>("Events/People"));
 	factory.defs.add(Factory<LogicNode>::Definition::createDef<LogNode>("Outputs"));
 }
 
@@ -195,6 +526,9 @@ LogicNode* LogicNodeManager::createItemFromData(var data)
 void LogicNodeManager::addItemInternal(LogicNode* item, var)
 {
 	item->setup(module);
+	//duplicated or pasted : the copy gets its own uid (links stay on the original)
+	for (auto& n : items)
+		if (n != item && n->uid->stringValue() == item->uid->stringValue()) { item->uid->setValue(Uuid().toString()); break; }
 }
 
 // LogicGraph
@@ -285,7 +619,12 @@ bool LogicGraph::LinkAction::undo()
 
 void LogicGraph::process()
 {
-	if (!enabled->boolValue()) return;
+	if (!enabled->boolValue()) { running = false; return; }
+	if (!running)
+	{
+		running = true;
+		for (auto& n : nodes.items) n->reset();
+	}
 	for (auto& n : nodes.items)
 	{
 		depth = 0;
