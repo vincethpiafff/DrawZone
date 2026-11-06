@@ -24,13 +24,14 @@
 #pragma once
 
 class SpatialModule;
+class SpatialPerson;
 class LogicGraph;
 
 namespace LogicPin
 {
-	enum Kind { EXEC, NUMBER, BOOL, TEXT, ANY, TIME, PERCENT };	// TIME : seconds shown HH:MM:SS:FF, PERCENT : 0-1 shown in %
+	enum Kind { EXEC, NUMBER, BOOL, TEXT, ANY, TIME, PERCENT, METERS };	// TIME : seconds shown HH:MM:SS:FF, PERCENT : 0-1 shown in %
 	Colour getColour(Kind k);
-	//an output can feed an input : exec to exec, data to data (ANY takes every data kind) ; NUMBER, TIME and PERCENT are all numbers
+	//an output can feed an input : exec to exec, data to data (ANY takes every data kind) ; NUMBER, TIME, PERCENT and METERS are all numbers
 	bool canConnect(Kind out, Kind in);
 }
 
@@ -394,6 +395,139 @@ public:
 private:
 	double lastMs = 0;
 	int count = 0;
+};
+
+// --- value nodes : a value of the Cockpit (time, percentage, meters) + Changed, fired each time it changes
+
+class ValueNode :
+	public LogicNode
+{
+public:
+	ValueNode(const String& name, var params);
+
+	Category getCategory() const override { return READ; }
+	void reset() override { primed = false; }
+	void process(LogicGraph& g) override;
+	var getOutputValue(LogicGraph& g, const String& outPin) override;
+
+protected:
+	void addValuePin(const String& name, LogicPin::Kind kind);
+	virtual bool read(LogicGraph& g, Array<var>& values) = 0;	// one value per value pin, in order ; false : nothing to read
+
+private:
+	bool readSafe(LogicGraph& g, Array<var>& values);	// against a loop of data links
+	StringArray valueNames;
+	Array<var> lastValues;
+	bool primed = false;
+	bool reading = false;
+};
+
+//value of a zone
+class ZoneValueNode :
+	public ValueNode
+{
+public:
+	ZoneValueNode(const String& name, var params, const String& help);
+	TargetParameter* zoneTarget;
+	void setup(SpatialModule* m) override;
+	String getSummary() const override { return LogicTargets::getZoneName(zoneTarget); }
+};
+
+//value of one player slot
+class SlotValueNode :
+	public ValueNode
+{
+public:
+	SlotValueNode(const String& name, var params);
+	TargetParameter* surfaceTarget;
+	IntParameter* slotNumber;	// from 1
+	void setup(SpatialModule* m) override;
+	PlayerSlot* getSlot() const;
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
+};
+
+//value of one tracked person : the Person Id setting, or the Person Id input when it is linked
+class PersonValueNode :
+	public ValueNode
+{
+public:
+	PersonValueNode(const String& name, var params);
+	IntParameter* personId;
+	SpatialPerson* getPerson(LogicGraph& g) const;	// nullptr when not tracked
+	String getSummary() const override { return "person " + String(personId->intValue()) + " (or input)"; }
+};
+
+class ZonePresenceTimeNode : public ZoneValueNode
+{
+public:
+	ZonePresenceTimeNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Presence Time"; }
+};
+
+class ZoneOccupancyNode : public ZoneValueNode
+{
+public:
+	ZoneOccupancyNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Occupancy"; }
+};
+
+class ZoneDistanceNode : public ZoneValueNode
+{
+public:
+	ZoneDistanceNode(var params = var());
+	int getWidth() const override { return 280; }
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Zone Average Distance To Center"; }
+};
+
+class SlotHoldRemainingNode : public SlotValueNode
+{
+public:
+	SlotHoldRemainingNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Hold Remaining"; }
+};
+
+class SlotPositionNode : public SlotValueNode
+{
+public:
+	SlotPositionNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Position"; }
+};
+
+class PersonAgeNode : public PersonValueNode
+{
+public:
+	PersonAgeNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Age"; }
+};
+
+class PersonPositionNode : public PersonValueNode
+{
+public:
+	PersonPositionNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Position"; }
+};
+
+class PersonHeightNode : public PersonValueNode
+{
+public:
+	PersonHeightNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Height"; }
 };
 
 //writes a line in the Chataigne logger

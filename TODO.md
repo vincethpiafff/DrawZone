@@ -48,7 +48,10 @@ v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGE
   HH:MM:SS:FF (Frame Rate réglable, valeurs + réglages) ; pourcentage affiché en %. Dire « node ».
 - ⏭️ 06/11 code : `SpatialUnits.h/.cpp` (Timecode, Percent ; `.jucer` + Projucer), Frame Rate du Cockpit, 6 temps + Occupancy convertis,
   broches Time / Percentage, 15 nodes (Events > Time / Zones / Slots / People), `PlayerSlots::events` pour Slot Joined / Left.
-  Compilé 0 erreur, lien OK. `check_logic.ps1` réécrit (15 nodes, 77 puis 78 dans ZONE RECT) : simulation **40 / 40**. ⬜ tests de Vincent puis commit.
+  Compilé 0 erreur, lien OK. `check_logic.ps1` réécrit (15 nodes, 77 puis 78 dans ZONE RECT) : simulation **40 / 40**. ✅ Vincent : liens conservés, commit `d1f28dff`.
+- ⏭️ 06/11 💬 Vincent : menu du clic droit par type (Trigger, On-Off, Count, Time, Percentage, Meters, Outputs ; « / » = sous-menu → « On-Off ») ;
+  8 nodes de données valeur + Changed (Zone Presence Time, Slot Hold Remaining, Person Age, Zone Occupancy, Person Position,
+  Person Height, Slot Position, Zone Average Distance To Center), broche Meters. Compilé 0 erreur. ✅ Vincent : « ok tout bon ».
 - ❌ 06/11 bug brique 1 : l'uid des nodes n'est pas enregistré (valeur par défaut) → liens perdus au rechargement. ✅ uid enregistré, copie = nouvel uid. Compilé 0 erreur.
 
 ## ⬜ Questions ouvertes

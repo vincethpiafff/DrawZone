@@ -18,6 +18,7 @@ Colour LogicPin::getColour(Kind k)
 	case TEXT: return Colour(0xff6fd08c);
 	case TIME: return Colour(0xffc792ea);
 	case PERCENT: return Colour(0xffe6d96a);
+	case METERS: return Colour(0xff7f9cff);
 	default: return Colour(0xffa7adb7);
 	}
 }
@@ -25,7 +26,7 @@ Colour LogicPin::getColour(Kind k)
 bool LogicPin::canConnect(Kind out, Kind in)
 {
 	if (out == EXEC || in == EXEC) return out == in;
-	auto isNumber = [](Kind k) { return k == NUMBER || k == TIME || k == PERCENT; };
+	auto isNumber = [](Kind k) { return k == NUMBER || k == TIME || k == PERCENT || k == METERS; };
 	return in == ANY || out == ANY || in == out || (isNumber(in) && isNumber(out));
 }
 
@@ -465,6 +466,213 @@ String TimerNode::getSummary() const
 	return "every " + TimecodeParameter::toTimecode(interval->floatValue());
 }
 
+// ValueNode
+
+ValueNode::ValueNode(const String& name, var params) :
+	LogicNode(name, params)
+{
+	addPin("Changed", LogicPin::EXEC, true);
+}
+
+void ValueNode::addValuePin(const String& name, LogicPin::Kind kind)
+{
+	addPin(name, kind, true);
+	valueNames.add(name);
+}
+
+bool ValueNode::readSafe(LogicGraph& g, Array<var>& values)
+{
+	if (reading) return false;
+	reading = true;
+	bool ok = read(g, values);
+	reading = false;
+	return ok && values.size() == valueNames.size();
+}
+
+void ValueNode::process(LogicGraph& g)
+{
+	Array<var> values;
+	if (!enabled->boolValue() || !readSafe(g, values)) { reset(); return; }
+
+	bool changed = primed && values != lastValues;
+	lastValues = values;
+	primed = true;
+	if (changed) g.trigger(this, "Changed");
+}
+
+var ValueNode::getOutputValue(LogicGraph& g, const String& outPin)
+{
+	int i = valueNames.indexOf(outPin);
+	Array<var> values;
+	if (i < 0 || !readSafe(g, values)) return var();
+	return values[i];
+}
+
+ZoneValueNode::ZoneValueNode(const String& name, var params, const String& help) :
+	ValueNode(name, params)
+{
+	zoneTarget = addTargetParameter("Zone", help);
+}
+
+void ZoneValueNode::setup(SpatialModule* m)
+{
+	ValueNode::setup(m);
+	LogicTargets::setupZone(zoneTarget, m);
+}
+
+SlotValueNode::SlotValueNode(const String& name, var params) :
+	ValueNode(name, params)
+{
+	surfaceTarget = addTargetParameter("Surface", "Surface of the slot watched. Empty : the first surface");
+	slotNumber = addIntParameter("Slot", "Player slot watched (1, 2...) : Changed fires each time its value changes", 1, 1);
+}
+
+void SlotValueNode::setup(SpatialModule* m)
+{
+	ValueNode::setup(m);
+	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+}
+
+PlayerSlot* SlotValueNode::getSlot() const
+{
+	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
+	int i = slotNumber->intValue() - 1;
+	if (surface == nullptr || i < 0 || i >= surface->playerSlots.slots.size()) return nullptr;
+	return surface->playerSlots.slots[i];
+}
+
+PersonValueNode::PersonValueNode(const String& name, var params) :
+	ValueNode(name, params)
+{
+	personId = addIntParameter("Person Id", "Person watched, while tracked. The Person Id input replaces it when it is linked (Zone Entered, Slot Joined...)", 1, 0);
+	addPin("Person Id", LogicPin::NUMBER, false);
+}
+
+SpatialPerson* PersonValueNode::getPerson(LogicGraph& g) const
+{
+	if (module == nullptr) return nullptr;
+	var in = g.getInput(const_cast<PersonValueNode*>(this), "Person Id");
+	int id = in.isVoid() ? personId->intValue() : (int)in;
+	auto it = module->people.find(id);
+	return it != module->people.end() ? it->second : nullptr;
+}
+
+ZonePresenceTimeNode::ZonePresenceTimeNode(var params) :
+	ZoneValueNode(getTypeStringStatic(), params, "Zone watched : time since it became occupied without interruption (0 when empty)")
+{
+	addValuePin("Time", LogicPin::TIME);
+}
+
+bool ZonePresenceTimeNode::read(LogicGraph&, Array<var>& values)
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	if (z == nullptr) return false;
+	values.add(z->presenceTime->floatValue());
+	return true;
+}
+
+ZoneOccupancyNode::ZoneOccupancyNode(var params) :
+	ZoneValueNode(getTypeStringStatic(), params, "Zone watched : Person Count / Capacity, 100 % = full")
+{
+	addValuePin("Percentage", LogicPin::PERCENT);
+}
+
+bool ZoneOccupancyNode::read(LogicGraph&, Array<var>& values)
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	if (z == nullptr) return false;
+	values.add(z->occupancy->floatValue());
+	return true;
+}
+
+ZoneDistanceNode::ZoneDistanceNode(var params) :
+	ZoneValueNode(getTypeStringStatic(), params, "Zone watched : distance between the barycenter of the people in it and its center, in meters")
+{
+	addValuePin("Distance", LogicPin::METERS);
+}
+
+bool ZoneDistanceNode::read(LogicGraph&, Array<var>& values)
+{
+	SpatialZone* z = LogicTargets::getZone(zoneTarget);
+	if (z == nullptr || z->averageDistanceToCenter == nullptr) return false;
+	values.add(z->averageDistanceToCenter->floatValue());
+	return true;
+}
+
+SlotHoldRemainingNode::SlotHoldRemainingNode(var params) :
+	SlotValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("Time", LogicPin::TIME);
+}
+
+bool SlotHoldRemainingNode::read(LogicGraph&, Array<var>& values)
+{
+	PlayerSlot* s = getSlot();
+	if (s == nullptr) return false;
+	values.add(s->holdRemaining->floatValue());
+	return true;
+}
+
+SlotPositionNode::SlotPositionNode(var params) :
+	SlotValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("X", LogicPin::METERS);
+	addValuePin("Y", LogicPin::METERS);
+}
+
+bool SlotPositionNode::read(LogicGraph&, Array<var>& values)
+{
+	PlayerSlot* s = getSlot();
+	if (s == nullptr) return false;
+	values.add(s->position->x);
+	values.add(s->position->y);
+	return true;
+}
+
+PersonAgeNode::PersonAgeNode(var params) :
+	PersonValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("Time", LogicPin::TIME);
+}
+
+bool PersonAgeNode::read(LogicGraph& g, Array<var>& values)
+{
+	SpatialPerson* p = getPerson(g);
+	if (p == nullptr) return false;
+	values.add(p->age->floatValue());
+	return true;
+}
+
+PersonPositionNode::PersonPositionNode(var params) :
+	PersonValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("X", LogicPin::METERS);
+	addValuePin("Y", LogicPin::METERS);
+}
+
+bool PersonPositionNode::read(LogicGraph& g, Array<var>& values)
+{
+	SpatialPerson* p = getPerson(g);
+	if (p == nullptr) return false;
+	values.add(p->position->x);
+	values.add(p->position->y);
+	return true;
+}
+
+PersonHeightNode::PersonHeightNode(var params) :
+	PersonValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("Height", LogicPin::METERS);
+}
+
+bool PersonHeightNode::read(LogicGraph& g, Array<var>& values)
+{
+	SpatialPerson* p = getPerson(g);
+	if (p == nullptr) return false;
+	values.add(p->height->floatValue());
+	return true;
+}
+
 // LogNode
 
 LogNode::LogNode(var params) :
@@ -494,22 +702,32 @@ LogicNodeManager::LogicNodeManager() :
 	itemDataType = "LogicNode";
 	selectItemWhenCreated = false;
 	managerFactory = &factory;
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<OnStartNode>("Events/Time"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<TimerNode>("Events/Time"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneEnteredNode>("Events/Zones"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneExitedNode>("Events/Zones"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZonePresenceNode>("Events/Zones"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZoneFullNode>("Events/Zones"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<ZonePersonCountNode>("Events/Zones"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotJoinedNode>("Events/Slots"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotLeftNode>("Events/Slots"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotOccupiedNode>("Events/Slots"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<SlotHeldNode>("Events/Slots"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<FreeSlotsNode>("Events/Slots"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonAppearedNode>("Events/People"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonLostNode>("Events/People"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<PersonCountNode>("Events/People"));
-	factory.defs.add(Factory<LogicNode>::Definition::createDef<LogNode>("Outputs"));
+	//menu by type of value
+	auto add = [this](Factory<LogicNode>::Definition* d) { factory.defs.add(d); };
+	add(Factory<LogicNode>::Definition::createDef<OnStartNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<TimerNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<ZoneEnteredNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<ZoneExitedNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<SlotJoinedNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<SlotLeftNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<PersonAppearedNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<PersonLostNode>("Trigger"));
+	add(Factory<LogicNode>::Definition::createDef<ZonePresenceNode>("On-Off"));
+	add(Factory<LogicNode>::Definition::createDef<ZoneFullNode>("On-Off"));
+	add(Factory<LogicNode>::Definition::createDef<SlotOccupiedNode>("On-Off"));
+	add(Factory<LogicNode>::Definition::createDef<SlotHeldNode>("On-Off"));
+	add(Factory<LogicNode>::Definition::createDef<PersonCountNode>("Count"));
+	add(Factory<LogicNode>::Definition::createDef<ZonePersonCountNode>("Count"));
+	add(Factory<LogicNode>::Definition::createDef<FreeSlotsNode>("Count"));
+	add(Factory<LogicNode>::Definition::createDef<ZonePresenceTimeNode>("Time"));
+	add(Factory<LogicNode>::Definition::createDef<SlotHoldRemainingNode>("Time"));
+	add(Factory<LogicNode>::Definition::createDef<PersonAgeNode>("Time"));
+	add(Factory<LogicNode>::Definition::createDef<ZoneOccupancyNode>("Percentage"));
+	add(Factory<LogicNode>::Definition::createDef<PersonPositionNode>("Meters"));
+	add(Factory<LogicNode>::Definition::createDef<PersonHeightNode>("Meters"));
+	add(Factory<LogicNode>::Definition::createDef<SlotPositionNode>("Meters"));
+	add(Factory<LogicNode>::Definition::createDef<ZoneDistanceNode>("Meters"));
+	add(Factory<LogicNode>::Definition::createDef<LogNode>("Outputs"));
 }
 
 LogicNodeManager::~LogicNodeManager()
