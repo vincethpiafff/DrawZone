@@ -40,3 +40,6 @@ Ajouter en bas, en 2 ou 3 lignes. Numéros de version : ceux de l'époque (voir 
   gardé pour `/scene` et les scènes Fusion). Chaque surface a ses slots et sa sortie vidéo
   (flux Spout / NDI au nom de la surface). PSN : « JOUEUR 1 (SOL) », n° = 60000 + 100 x rang + slot (B4, 06/11).
   Zones en volume (brique 4) : bonus, le jour d'un tracking 3D (ZacTrack, lidar 3D).
+- **D18 (06/11)** Logic Graph (v0.7) : bloc **Logic** du module Cockpit, plusieurs graphes nommés,
+  panneau « Logic Graph » au style du Tracking Monitor (rendu B : aimantation sur les nœuds,
+  grille en option, mini-carte). Moteur et éditeur faits ensemble (briques 1 + 2).

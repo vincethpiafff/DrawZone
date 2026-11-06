@@ -9,7 +9,16 @@ Pas de récit, pas de répétition. Version terminée → archive, au mot près.
 ## ⬜ Prochaine : v0.7, graphe nodal de base
 
 v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGELOG). Contenu prévu (ROADMAP) :
-événements, Branch, variables, sorties OSC. ⬜ à découper en briques avec Vincent.
+événements, Branch, variables, sorties OSC.
+- 💬 06/11 briques proposées : 1 moteur (nœuds, broches, liens exécution / données, enregistré) · 2 éditeur « Logic Graph »
+  (+ 💬 Vincent : **snapping des nœuds**) · 3 événements · 4 données + Branch · 5 variables · 6 Send OSC · 7 test d'intégration.
+  💬 06/11 Vincent : bloc **Logic** du Cockpit, **plusieurs graphes nommés**, ordre **1 + 2** (testés ensemble), puis 3 à 6, puis 7.
+- ✅ 06/11 4 rendus proposés (artifact « Logic Graph – 4 rendus ») : A Blueprint, B Cockpit, C Circuit, D Couloirs ;
+  💬 Vincent : **B** (style du Tracking Monitor, aimantation sur les nœuds, grille en option, mini-carte).
+- ⬜ briques 1 + 2, plan (branche `feature/logic-graph`) : 1a données `logic/LogicGraph.h/.cpp` (bloc Logic → graphes →
+  nœuds avec type et position, liens enregistrés) · 1b moteur au rythme des zones, 1ers nœuds Zone Entered et Log · 2a panneau
+  « Logic Graph » (onglets des graphes, déplacer / zoomer, créer par clic droit, glisser, relier, supprimer, annuler) · 2b
+  aimantation sur les bords / centres des nœuds + repères, grille 20 px en option, Alt = libre · 2c mini-carte.
 
 ## ⬜ Questions ouvertes
 
