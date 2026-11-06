@@ -100,7 +100,28 @@ namespace LogicTargets
 	SpatialZone* getZone(TargetParameter* t);			// nullptr without zone
 	String getZoneName(TargetParameter* t);
 	SpatialSurface* getSurface(TargetParameter* t, SpatialModule* m);	// empty target : the first surface
-	String getSlotSummary(TargetParameter* surface, IntParameter* slot);
+
+	//"Slot" setting of the slot nodes : a list of the slot names of the surface, as named in the Tracking Monitor.
+	//The slot number behind it is what is saved (hidden "Slot Number", address /slot as before)
+	class SlotSetting
+	{
+	public:
+		void create(ControllableContainer* node, bool withAny, const String& help);
+		void refresh(SpatialSurface* surface);	// message thread : the list follows the slots of the surface (names, count)
+		bool parameterChanged(Parameter* p);	// true : p was the list, the number follows it
+		int getNumber() const { return number->intValue(); }	// from 1, 0 = any slot
+		String getName() const;
+
+		EnumParameter* choice = nullptr;
+		IntParameter* number = nullptr;
+
+	private:
+		bool withAny = false;
+		bool refreshing = false;
+		StringArray lastKeys;
+	};
+
+	String getSlotSummary(TargetParameter* surface, const SlotSetting& slot);
 }
 
 //base of the boolean nodes
@@ -192,14 +213,15 @@ public:
 	SlotTriggerNode(const String& name, var params, bool joined);
 
 	TargetParameter* surfaceTarget;
-	IntParameter* slotNumber;	// 0 = any slot
+	LogicTargets::SlotSetting slot;	// 0 = any slot
 	const bool joined;
 
 	Category getCategory() const override { return EVENT; }
 	void setup(SpatialModule* m) override;
 	void process(LogicGraph& g) override;
+	void onContainerParameterChangedInternal(Parameter* p) override;
 	var getOutputValue(LogicGraph& g, const String& outPin) override;
-	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slot); }
 
 private:
 	int firedSlot = 0, firedId = -1;
@@ -294,11 +316,13 @@ class SlotStateNode :
 public:
 	SlotStateNode(const String& name, var params, bool held);
 	TargetParameter* surfaceTarget;
-	IntParameter* slotNumber;	// from 1
+	LogicTargets::SlotSetting slot;	// from 1
 	const bool held;
 	void setup(SpatialModule* m) override;
+	void process(LogicGraph& g) override;	// the slot list follows the surface, then StateNode::process
+	void onContainerParameterChangedInternal(Parameter* p) override;
 	bool getState(bool& valid) const override;
-	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slot); }
 };
 
 class SlotOccupiedNode : public SlotStateNode
@@ -423,6 +447,7 @@ private:
 	StringArray valueNames;
 	Array<var> lastValues;
 	bool primed = false;
+	bool hadValues = false;
 	bool reading = false;
 };
 
@@ -444,10 +469,12 @@ class SlotValueNode :
 public:
 	SlotValueNode(const String& name, var params);
 	TargetParameter* surfaceTarget;
-	IntParameter* slotNumber;	// from 1
+	LogicTargets::SlotSetting slot;	// from 1
 	void setup(SpatialModule* m) override;
+	void process(LogicGraph& g) override;	// the slot list follows the surface, then ValueNode::process
+	void onContainerParameterChangedInternal(Parameter* p) override;
 	PlayerSlot* getSlot() const;
-	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slotNumber); }
+	String getSummary() const override { return LogicTargets::getSlotSummary(surfaceTarget, slot); }
 };
 
 //value of one tracked person : the Person Id setting, or the Person Id input when it is linked
@@ -665,6 +692,35 @@ public:
 	static String getTypeStringStatic() { return "Not"; }
 };
 
+//relative positions (0-1, -1 outside) : Zone X / Y in the zone the person is in, Surface X / Y on its surface
+class PersonRelativePositionNode : public PersonValueNode
+{
+public:
+	PersonRelativePositionNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Person Relative Position"; }
+};
+
+class SlotRelativePositionNode : public SlotValueNode
+{
+public:
+	SlotRelativePositionNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Relative Position"; }
+};
+
+//id of the person in a slot (-1 when free) : feeds the Person Id input of the person nodes
+class SlotPersonNode : public SlotValueNode
+{
+public:
+	SlotPersonNode(var params = var());
+	bool read(LogicGraph& g, Array<var>& values) override;
+	String getTypeString() const override { return getTypeStringStatic(); }
+	static String getTypeStringStatic() { return "Slot Person"; }
+};
+
 //writes a line in the Chataigne logger
 class LogNode :
 	public LogicNode
@@ -693,7 +749,39 @@ public:
 	SpatialModule* module = nullptr;	// set by the graph before anything is added
 
 	LogicNode* createItemFromData(var data) override;	// the module is given before the node loads (its targets)
+	static String getDescription(const String& type);	// one line of help, in the create menu
 	void addItemInternal(LogicNode* item, var data) override;
+};
+
+//a frame around nodes in the panel (look C of 06/11/2026 : filled with its color, the title large in the background,
+//the nodes inside tinted). Only for the display : collapsed, its nodes are hidden but keep running.
+//viewUIPosition / viewUISize : the frame when expanded, canvas pixels
+class LogicGroup :
+	public BaseItem
+{
+public:
+	LogicGroup(var params = var());
+
+	ColorParameter* color;
+	BoolParameter* collapsed;
+	StringParameter* members;	// hidden : uids of its nodes, kept when it collapses ("," between them)
+
+	static Point<float> getNodeAnchor(LogicNode* n);	// a node is in the frame when this point is (its header)
+	bool containsNode(LogicNode* n) const;				// expanded : by position ; collapsed : by members
+
+	void onContainerParameterChangedInternal(Parameter* p) override;
+
+	String getTypeString() const override { return "Group"; }
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogicGroup)
+};
+
+class LogicGroupManager :
+	public BaseManager<LogicGroup>
+{
+public:
+	LogicGroupManager();
+	~LogicGroupManager();
 };
 
 class LogicGraph :
@@ -712,9 +800,15 @@ public:
 
 	SpatialModule* module;
 	LogicNodeManager nodes;
+	LogicGroupManager groups;
 	Array<Link> links;
 
 	LogicNode* getNode(const String& uid) const;
+
+	//groups : expanded, the nodes whose header is in the frame ; collapsed, the nodes kept when it collapsed
+	Array<LogicNode*> getGroupNodes(LogicGroup* g) const;
+	LogicGroup* getGroupOf(LogicNode* n) const;			// nullptr : in no group
+	LogicGroup* getCollapsedGroupOf(LogicNode* n) const;	// the node is hidden in this group
 
 	//undoable ; an exec output and a data input take one link only : the old one goes
 	void connect(const Link& l);

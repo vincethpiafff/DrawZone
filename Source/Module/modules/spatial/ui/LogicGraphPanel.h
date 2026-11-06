@@ -42,7 +42,7 @@ public:
 	void mouseUp(const MouseEvent& e) override;
 	void mouseDoubleClick(const MouseEvent& e) override;
 	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
-	bool keyPressed(const KeyPress& key) override;	// Delete : selected nodes, H : hide / show them, F : frame all, Ctrl + Shift + L : Live Mode
+	bool keyPressed(const KeyPress& key) override;	// Delete : selected nodes and groups, H : hide / show them, G : group them, F : frame all, Ctrl + Shift + L : Live Mode
 
 private:
 	SpatialModule* getSpatialModule();
@@ -67,6 +67,7 @@ private:
 	Point<float> toScreen(Point<float> canvas) const;
 	Point<float> toCanvas(Point<float> screen) const;
 	void frameAll();
+	Rectangle<float> getContentBounds(LogicGraph* graph) const;	// visible nodes and groups, empty if none
 
 	//options of the panel (not saved in the session)
 	bool snapToNodes = true;
@@ -93,8 +94,28 @@ private:
 	PinRef getPinAt(Point<float> canvas) const;
 	LogicNode* getNodeAt(Point<float> canvas) const;
 
+	//groups (look C) : expanded, a filled frame with its title large in the background ; collapsed, a card with
+	//the pins of the links leaving it. Title : arrow (collapse), color capsule (picker), the rest moves it
+	static const int groupTitleHeight = 44;
+	struct GroupPin { String node, pin; bool output = false; LogicPin::Kind kind = LogicPin::EXEC; String label; };
+	enum GroupPart { GROUP_NONE, GROUP_ARROW, GROUP_COLOR, GROUP_TITLE, GROUP_RESIZE };
+	Rectangle<float> getGroupRect(LogicGraph* graph, LogicGroup* gr) const;	// canvas, as drawn
+	Rectangle<float> getGroupColorRect(LogicGroup* gr) const;					// canvas, the capsule
+	Array<GroupPin> getGroupPins(LogicGraph* graph, LogicGroup* gr) const;
+	Point<float> getGroupPinPosition(LogicGroup* gr, int row, bool output) const;
+	bool getLinkEnd(LogicGraph* graph, const String& nodeUid, const String& pin, bool output, Point<float>& pos) const;	// false : not drawn (inside a collapsed group)
+	LogicGroup* getGroupAt(Point<float> canvas, GroupPart& part) const;
+	void paintGroup(Graphics& g, LogicGraph* graph, LogicGroup* gr);
+	void groupSelectedNodes();		// G
+	void ungroupSelected();			// Shift + G : the selected groups go, their nodes stay
+	void toggleGroup(LogicGroup* gr);
+	void showGroupColorPicker(LogicGroup* gr);
+	Array<LogicGroup*> getSelectedGroups();
+	WeakReference<Inspectable> dragGroup;
+	Point<float> dragGroupStart;	// its position (move) or size (resize) at the start
+
 	//interactions
-	enum DragMode { NONE, PAN, MOVE_NODE, WIRE, MINIMAP, SELECT_RECT };
+	enum DragMode { NONE, PAN, MOVE_NODE, WIRE, MINIMAP, SELECT_RECT, MOVE_GROUP, RESIZE_GROUP };
 	DragMode dragMode = NONE;
 	WeakReference<Inspectable> dragNode;
 	Point<float> dragStartNode, dragStartMouse;	// canvas
@@ -133,6 +154,12 @@ private:
 	void paintMiniMap(Graphics& g, LogicGraph* graph);
 	void paintLive(Graphics& g);
 	Path getWirePath(Point<float> from, Point<float> to) const;	// screen
+
+	//create menu of the right click (look C of 06/11/2026 : two columns, sections and types on the left,
+	//the nodes of the type with one line of help on the right) ; Escape or a click beside closes it
+	std::unique_ptr<Component> createMenu;
+	void closeCreateMenu();
+	void createFromMenu(const String& type, Point<float> canvas);	// a factory type, "#group" or "#emptyGroup"
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogicGraphPanel)
 };

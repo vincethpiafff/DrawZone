@@ -66,6 +66,10 @@ Event "free" "Free Slots" @() @(, @("Changed", "FREE", "Count"))
 Event "pin" "Person Appeared" @() @(, @("Then", "PIN", "Person Id"))
 Event "pout" "Person Lost" @() @(, @("Then", "POUT", "Person Id"))
 Event "pc" "Person Count" @() @(, @("Changed", "PC", "Count"))
+#relative positions (brick 4b) : slot 1 = person 77, at the centre of ZONE RECT
+Event "sper" "Slot Person" @(P "/slot" 1) @(, @("Changed", "SPER", "Person Id"))
+Event "srel" "Slot Relative Position" @(P "/slot" 1) @(, @("Changed", "SREL_ZX", "Zone X", "SREL_SX", "Surface X"))
+Event "prel" "Person Relative Position" @(P "/personId" 77) @(, @("Changed", "PREL_ZY", "Zone Y", "PREL_SY", "Surface Y"))
 
 $graph = @{ niceName = "Test"; type = "Graph"; containers = @{ nodes = @{ items = $nodes } }; links = $links }
 $graphJson = @{ items = @($graph) } | ConvertTo-Json -Depth 20 -Compress
@@ -119,6 +123,19 @@ Check "Zone Presence : On before Off" ((Index "PRES_ON 1") -ge 0 -and (Index "PR
 Check "Zone Full : On with 78, Off when 78 leaves" ((Index "ZIN 77") -lt (Index "FULL_ON") -and (Index "FULL_ON") -lt (Index "FULL_OFF") -and (Index "FULL_OFF") -lt (Index "PRES_OFF 0")) ""
 Check "Slots : 2 joined < 2 left < 1 left" ((Index "SJOIN 2") -ge 0 -and (Index "SJOIN 2") -lt (Index "SLEFT 2") -and (Index "SLEFT 2") -lt (Index "SLEFT 1")) ""
 Check "People : 77 in < 78 in < 78 out < 77 out" ((Index "PIN 77") -lt (Index "PIN 78") -and (Index "PIN 78") -lt (Index "POUT 78") -and (Index "POUT 78") -lt (Index "POUT 77")) ""
+
+#relative positions : last value logged, 77 at the centre of ZONE RECT, surface SOL
+function LastValue([string]$word) { $l = @($test | Where-Object { $_ -like "$word *" }); if ($l.Count -eq 0) { return $null }; return [double]::Parse(($l[-1] -split " ")[1], [Globalization.CultureInfo]::InvariantCulture) }
+#Size Mode Auto : SOL takes the /scene of the simulator (augmenta_sim.ps1 : 8 x 4.5 m), Manual : its Size
+$sol = if ((Value "spatial/parameters/surfaces/sol/sizeMode") -eq "Manual") { Value "spatial/parameters/surfaces/sol/size" } else { @(8.0, 4.5) }
+$sx = if ($sol) { $x / $sol[0] } else { -1 }
+$sy = if ($sol) { $yy / $sol[1] } else { -1 }
+Check "Slot Person : 77 then -1" ((Index "SPER 77") -ge 0 -and (Index "SPER 77") -lt [array]::LastIndexOf($test, "SPER -1")) ""
+foreach ($c in @(@("SREL_ZX", 0.5), @("SREL_SX", $sx), @("PREL_ZY", 0.5), @("PREL_SY", $sy)))
+{
+	$v = LastValue $c[0]
+	Check "$($c[0]) = $([math]::Round($c[1], 3))" ($null -ne $v -and (Near $v $c[1] 0.03)) "$v"
+}
 
 $bad = @($logs | Where-Object { $_.severity -ne "info" -and $_.source -notin @("CommunityModuleManager", "HelpBox") })
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"

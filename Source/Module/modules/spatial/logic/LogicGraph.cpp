@@ -128,11 +128,67 @@ SpatialSurface* LogicTargets::getSurface(TargetParameter* t, SpatialModule* m)
 	return m != nullptr ? m->surfaceManager.getSurface(t) : nullptr;
 }
 
-String LogicTargets::getSlotSummary(TargetParameter* surface, IntParameter* slot)
+String LogicTargets::getSlotSummary(TargetParameter* surface, const SlotSetting& slot)
 {
 	ControllableContainer* s = surface->targetContainer.get();
 	String name = s != nullptr ? s->niceName : String("First surface");
-	return name + ", " + (slot->intValue() > 0 ? "slot " + String(slot->intValue()) : String("any slot"));
+	return name + ", " + slot.getName();
+}
+
+// SlotSetting
+
+void LogicTargets::SlotSetting::create(ControllableContainer* node, bool any, const String& help)
+{
+	withAny = any;
+	choice = node->addEnumParameter("Slot", help + ". The names are the slots of the surface, as named in the Tracking Monitor");
+	choice->setCustomShortName("slotName");	// /slot is the number
+	choice->isSavable = false;	// the number is saved : a renamed slot stays selected
+	number = node->addIntParameter("Slot Number", "Slot of the list above, from 1 (0 = any slot)", any ? 0 : 1, any ? 0 : 1);
+	number->setCustomShortName("slot");	// address /slot : same as the number setting of the first versions
+	number->hideInEditor = true;
+	refresh(nullptr);
+}
+
+String LogicTargets::SlotSetting::getName() const
+{
+	int n = getNumber();
+	if (n <= 0) return "any slot";
+	String key = choice->getValueKey();
+	return key.isNotEmpty() ? key : "slot " + String(n);
+}
+
+void LogicTargets::SlotSetting::refresh(SpatialSurface* surface)
+{
+	//keys : the slot names, made unique ; a number missing from the surface keeps its own entry so it stays selected
+	Array<EnumParameter::EnumValue> options;
+	StringArray keys;
+	auto add = [&](String key, int n)
+	{
+		String k = key;
+		for (int i = 2; keys.contains(k); i++) k = key + " (" + String(i) + ")";
+		keys.add(k);
+		options.add(EnumParameter::EnumValue(k, n));
+	};
+	if (withAny) add("Any slot", 0);
+	int count = surface != nullptr ? surface->playerSlots.slots.size() : 0;
+	for (int i = 0; i < count; i++) add(surface->playerSlots.slots[i]->niceName, i + 1);
+	int n = getNumber();
+	if (n > count) add("Slot " + String(n) + (surface != nullptr ? " (not on this surface)" : ""), n);
+
+	if (keys == lastKeys && choice->getValueData() == var(n)) return;
+	lastKeys = keys;
+
+	refreshing = true;
+	choice->setOptions(options);
+	choice->setValueWithData(n);	// parameterChanged ignores it : the number does not change
+	refreshing = false;
+}
+
+bool LogicTargets::SlotSetting::parameterChanged(Parameter* p)
+{
+	if (p != choice) return false;
+	if (!refreshing && !choice->getValueData().isVoid()) number->setValue((int)choice->getValueData());
+	return true;
 }
 
 //people in "now" and not in "before" (in = true), or the other way : fires outPin for each one, firedId set first
@@ -239,7 +295,7 @@ SlotTriggerNode::SlotTriggerNode(const String& name, var params, bool joined) :
 	joined(joined)
 {
 	surfaceTarget = addTargetParameter("Surface", "Surface of the slots watched. Empty : the first surface");
-	slotNumber = addIntParameter("Slot", joined ? "Player slot watched (1, 2...) : fires when a person takes it. 0 = any slot of the surface" : "Player slot watched (1, 2...) : fires when it is released. 0 = any slot of the surface", 0, 0);
+	slot.create(this, true, joined ? "Player slot watched : fires when a person takes it. Any slot : every slot of the surface" : "Player slot watched : fires when it is released. Any slot : every slot of the surface");
 	addPin("Then", LogicPin::EXEC, true);
 	addPin("Slot", LogicPin::NUMBER, true);
 	addPin("Person Id", LogicPin::NUMBER, true);
@@ -249,14 +305,22 @@ void SlotTriggerNode::setup(SpatialModule* m)
 {
 	LogicNode::setup(m);
 	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+	slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+}
+
+void SlotTriggerNode::onContainerParameterChangedInternal(Parameter* p)
+{
+	if (p == surfaceTarget) slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+	else slot.parameterChanged(p);
 }
 
 void SlotTriggerNode::process(LogicGraph& g)
 {
-	SpatialSurface* surface = enabled->boolValue() ? LogicTargets::getSurface(surfaceTarget, module) : nullptr;
-	if (surface == nullptr) return;
+	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
+	slot.refresh(surface);
+	if (!enabled->boolValue() || surface == nullptr) return;
 
-	int only = slotNumber->intValue();
+	int only = slot.getNumber();
 	Array<PlayerSlots::SlotEvent> events = surface->playerSlots.events;	// a copy : a node may change the slots
 	for (auto& e : events)
 	{
@@ -347,19 +411,32 @@ SlotStateNode::SlotStateNode(const String& name, var params, bool held) :
 	held(held)
 {
 	surfaceTarget = addTargetParameter("Surface", "Surface of the slot watched. Empty : the first surface");
-	slotNumber = addIntParameter("Slot", held ? "Player slot watched (1, 2...) : On when it waits for a lost person (Hold Spot To Reclaim), Off when it stops waiting" : "Player slot watched (1, 2...) : On when a person takes it, Off when it is free again (a held slot stays occupied)", 1, 1);
+	slot.create(this, false, held ? "Player slot watched : On when it waits for a lost person (Hold Spot To Reclaim), Off when it stops waiting" : "Player slot watched : On when a person takes it, Off when it is free again (a held slot stays occupied)");
 }
 
 void SlotStateNode::setup(SpatialModule* m)
 {
 	StateNode::setup(m);
 	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+	slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+}
+
+void SlotStateNode::onContainerParameterChangedInternal(Parameter* p)
+{
+	if (p == surfaceTarget) slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+	else slot.parameterChanged(p);
+}
+
+void SlotStateNode::process(LogicGraph& g)
+{
+	slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+	StateNode::process(g);
 }
 
 bool SlotStateNode::getState(bool& valid) const
 {
 	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
-	int i = slotNumber->intValue() - 1;
+	int i = slot.getNumber() - 1;
 	valid = surface != nullptr && i >= 0 && i < surface->playerSlots.slots.size();
 	if (!valid) return false;
 	PlayerSlot* s = surface->playerSlots.slots[i];
@@ -493,11 +570,14 @@ bool ValueNode::readSafe(LogicGraph& g, Array<var>& values)
 
 void ValueNode::process(LogicGraph& g)
 {
-	Array<var> values;
-	if (!enabled->boolValue() || !readSafe(g, values)) { reset(); return; }
+	if (!enabled->boolValue()) { reset(); return; }
 
-	bool changed = primed && values != lastValues;
+	//nothing to read (person not tracked, slot free...) : no value ; a value that appears later fires Changed
+	Array<var> values;
+	bool has = readSafe(g, values);
+	bool changed = primed && has && (!hadValues || values != lastValues);
 	lastValues = values;
+	hadValues = has;
 	primed = true;
 	if (changed) g.trigger(this, "Changed");
 }
@@ -526,19 +606,32 @@ SlotValueNode::SlotValueNode(const String& name, var params) :
 	ValueNode(name, params)
 {
 	surfaceTarget = addTargetParameter("Surface", "Surface of the slot watched. Empty : the first surface");
-	slotNumber = addIntParameter("Slot", "Player slot watched (1, 2...) : Changed fires each time its value changes", 1, 1);
+	slot.create(this, false, "Player slot watched : Changed fires each time its value changes");
 }
 
 void SlotValueNode::setup(SpatialModule* m)
 {
 	ValueNode::setup(m);
 	if (m != nullptr) m->surfaceManager.setupTarget(surfaceTarget);
+	slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+}
+
+void SlotValueNode::onContainerParameterChangedInternal(Parameter* p)
+{
+	if (p == surfaceTarget) slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+	else slot.parameterChanged(p);
+}
+
+void SlotValueNode::process(LogicGraph& g)
+{
+	slot.refresh(LogicTargets::getSurface(surfaceTarget, module));
+	ValueNode::process(g);
 }
 
 PlayerSlot* SlotValueNode::getSlot() const
 {
 	SpatialSurface* surface = LogicTargets::getSurface(surfaceTarget, module);
-	int i = slotNumber->intValue() - 1;
+	int i = slot.getNumber() - 1;
 	if (surface == nullptr || i < 0 || i >= surface->playerSlots.slots.size()) return nullptr;
 	return surface->playerSlots.slots[i];
 }
@@ -672,6 +765,84 @@ bool PersonHeightNode::read(LogicGraph& g, Array<var>& values)
 	SpatialPerson* p = getPerson(g);
 	if (p == nullptr) return false;
 	values.add(p->height->floatValue());
+	return true;
+}
+
+// relative positions
+
+static void addRelativePins(std::function<void(const String&, LogicPin::Kind)> add)
+{
+	add("Zone X", LogicPin::PERCENT);
+	add("Zone Y", LogicPin::PERCENT);
+	add("Surface X", LogicPin::PERCENT);
+	add("Surface Y", LogicPin::PERCENT);
+}
+
+//position in meters on surface -> 0-1 of the surface (-1 when its size is unknown)
+static void addSurfaceRelative(Array<var>& values, Point<float> meters, SpatialSurface* s)
+{
+	bool known = s != nullptr && s->size.x > 0 && s->size.y > 0;
+	values.add(known ? meters.x / s->size.x : -1.0f);
+	values.add(known ? meters.y / s->size.y : -1.0f);
+}
+
+static SpatialSurface* getSurfaceNamed(SpatialModule* m, const String& name)
+{
+	if (m == nullptr) return nullptr;
+	for (auto& s : m->surfaceManager.items) if (s->niceName == name) return s;
+	return nullptr;
+}
+
+PersonRelativePositionNode::PersonRelativePositionNode(var params) :
+	PersonValueNode(getTypeStringStatic(), params)
+{
+	addRelativePins([this](const String& name, LogicPin::Kind k) { addValuePin(name, k); });
+}
+
+bool PersonRelativePositionNode::read(LogicGraph& g, Array<var>& values)
+{
+	SpatialPerson* p = getPerson(g);
+	if (p == nullptr) return false;
+	values.add(p->relativePosition->x);
+	values.add(p->relativePosition->y);
+	addSurfaceRelative(values, p->position->getPoint(), getSurfaceNamed(module, p->surfaceName->stringValue()));
+	return true;
+}
+
+SlotRelativePositionNode::SlotRelativePositionNode(var params) :
+	SlotValueNode(getTypeStringStatic(), params)
+{
+	addRelativePins([this](const String& name, LogicPin::Kind k) { addValuePin(name, k); });
+}
+
+bool SlotRelativePositionNode::read(LogicGraph&, Array<var>& values)
+{
+	PlayerSlot* s = getSlot();
+	if (s == nullptr || s->isFree()) return false;
+	//in the zone : the person of the slot (-1 while held, the person is lost) ; on the surface : the slot position (frozen while held)
+	SpatialPerson* p = nullptr;
+	if (module != nullptr && !s->isHeld())
+	{
+		auto it = module->people.find(s->trackedId);
+		if (it != module->people.end()) p = it->second;
+	}
+	values.add(p != nullptr ? p->relativePosition->x : -1.0f);
+	values.add(p != nullptr ? p->relativePosition->y : -1.0f);
+	addSurfaceRelative(values, s->position->getPoint(), LogicTargets::getSurface(surfaceTarget, module));
+	return true;
+}
+
+SlotPersonNode::SlotPersonNode(var params) :
+	SlotValueNode(getTypeStringStatic(), params)
+{
+	addValuePin("Person Id", LogicPin::NUMBER);
+}
+
+bool SlotPersonNode::read(LogicGraph&, Array<var>& values)
+{
+	PlayerSlot* s = getSlot();
+	if (s == nullptr) return false;
+	values.add(s->isFree() || s->isHeld() ? -1 : s->trackedId);
 	return true;
 }
 
@@ -934,10 +1105,13 @@ LogicNodeManager::LogicNodeManager() :
 	add(Factory<LogicNode>::Definition::createDef<PersonCountNode>("Count"));
 	add(Factory<LogicNode>::Definition::createDef<ZonePersonCountNode>("Count"));
 	add(Factory<LogicNode>::Definition::createDef<FreeSlotsNode>("Count"));
+	add(Factory<LogicNode>::Definition::createDef<SlotPersonNode>("Count"));
 	add(Factory<LogicNode>::Definition::createDef<ZonePresenceTimeNode>("Time"));
 	add(Factory<LogicNode>::Definition::createDef<SlotHoldRemainingNode>("Time"));
 	add(Factory<LogicNode>::Definition::createDef<PersonAgeNode>("Time"));
 	add(Factory<LogicNode>::Definition::createDef<ZoneOccupancyNode>("Percentage"));
+	add(Factory<LogicNode>::Definition::createDef<PersonRelativePositionNode>("Percentage"));
+	add(Factory<LogicNode>::Definition::createDef<SlotRelativePositionNode>("Percentage"));
 	add(Factory<LogicNode>::Definition::createDef<PersonPositionNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<PersonHeightNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<SlotPositionNode>("Meters"));
@@ -973,6 +1147,55 @@ void LogicNodeManager::addItemInternal(LogicNode* item, var)
 
 // LogicGraph
 
+// LogicGroup
+
+LogicGroup::LogicGroup(var params) :
+	BaseItem("Group", false)
+{
+	nameCanBeChangedByUser = true;
+	color = addColorParameter("Color", "Color of the group : its frame and a tint on the nodes inside", Colour(0xff4f7fe0));
+	collapsed = addBoolParameter("Collapsed", "Collapsed : the nodes inside are hidden behind the group (they keep running), its links leave from its edges", false);
+	members = addStringParameter("Members", "Nodes kept inside while collapsed", "");
+	members->hideInEditor = true;
+	viewUISize->setPoint(400, 240);
+}
+
+Point<float> LogicGroup::getNodeAnchor(LogicNode* n)
+{
+	return n->viewUIPosition->getPoint() + Point<float>(30, 17);
+}
+
+bool LogicGroup::containsNode(LogicNode* n) const
+{
+	if (collapsed->boolValue()) return StringArray::fromTokens(members->stringValue(), ",", "").contains(n->uid->stringValue());
+	return Rectangle<float>(viewUIPosition->getPoint().x, viewUIPosition->getPoint().y, viewUISize->getPoint().x, viewUISize->getPoint().y).contains(getNodeAnchor(n));
+}
+
+void LogicGroup::onContainerParameterChangedInternal(Parameter* p)
+{
+	//it collapses (panel, Inspector or redo) : the nodes in the frame now are the ones it keeps
+	if (p != collapsed || !collapsed->boolValue() || isCurrentlyLoadingData) return;
+	LogicGraph* graph = parentContainer != nullptr ? dynamic_cast<LogicGraph*>(parentContainer->parentContainer.get()) : nullptr;
+	if (graph == nullptr) return;
+	Rectangle<float> r(viewUIPosition->getPoint().x, viewUIPosition->getPoint().y, viewUISize->getPoint().x, viewUISize->getPoint().y);
+	StringArray ids;
+	for (auto& n : graph->nodes.items) if (r.contains(getNodeAnchor(n))) ids.add(n->uid->stringValue());
+	members->setValue(ids.joinIntoString(","));
+}
+
+LogicGroupManager::LogicGroupManager() :
+	BaseManager("Groups")
+{
+	itemDataType = "LogicGroup";
+	selectItemWhenCreated = false;
+}
+
+LogicGroupManager::~LogicGroupManager()
+{
+}
+
+// LogicGraph
+
 LogicGraph::LogicGraph(SpatialModule* module) :
 	BaseItem("Graph"),
 	module(module)
@@ -980,8 +1203,29 @@ LogicGraph::LogicGraph(SpatialModule* module) :
 	nodes.module = module;
 	nodes.addBaseManagerListener(this);
 	addChildControllableContainer(&nodes);
+	addChildControllableContainer(&groups);
 	saveAndLoadRecursiveData = true;
 	nodes.editorIsCollapsed = true;
+	groups.editorIsCollapsed = true;
+}
+
+Array<LogicNode*> LogicGraph::getGroupNodes(LogicGroup* g) const
+{
+	Array<LogicNode*> result;
+	for (auto& n : nodes.items) if (g->containsNode(n)) result.add(n);
+	return result;
+}
+
+LogicGroup* LogicGraph::getGroupOf(LogicNode* n) const
+{
+	for (int i = groups.items.size() - 1; i >= 0; i--) if (groups.items[i]->containsNode(n)) return groups.items[i];
+	return nullptr;
+}
+
+LogicGroup* LogicGraph::getCollapsedGroupOf(LogicNode* n) const
+{
+	for (auto& g : groups.items) if (g->collapsed->boolValue() && g->containsNode(n)) return g;
+	return nullptr;
 }
 
 LogicGraph::~LogicGraph()
@@ -1184,4 +1428,29 @@ LogicGraphManager::~LogicGraphManager()
 void LogicGraphManager::process()
 {
 	for (auto& g : items) g->process();
+}
+
+// one line of help per node, shown in the create menu of the Logic Graph panel
+String LogicNodeManager::getDescription(const String& type)
+{
+	static const std::map<String, String> help = {
+		{ "On Start", "Once when the graph starts" }, { "Timer", "Every N seconds" },
+		{ "Zone Entered", "A person enters a zone" }, { "Zone Exited", "A person leaves a zone" },
+		{ "Slot Joined", "A person takes a player slot" }, { "Slot Left", "A player slot is released" },
+		{ "Person Appeared", "A new person is tracked" }, { "Person Lost", "A person is no longer tracked" },
+		{ "Zone Presence", "Someone is in the zone" }, { "Zone Full", "The zone reached its capacity" },
+		{ "Slot Occupied", "The slot has a player" }, { "Slot Held", "The slot waits for a lost player" },
+		{ "Person Count", "People tracked" }, { "Zone Person Count", "People in a zone" },
+		{ "Free Slots", "Player slots still free" }, { "Slot Person", "Id of the person in a slot" },
+		{ "Zone Presence Time", "Time since the zone is occupied" }, { "Slot Hold Remaining", "Time before a held slot is released" },
+		{ "Person Age", "Time since the person appeared" }, { "Zone Occupancy", "People / capacity of a zone" },
+		{ "Person Relative Position", "0-1 in its zone and on its surface" }, { "Slot Relative Position", "0-1 of the player of a slot" },
+		{ "Person Position", "X / Y in meters" }, { "Person Height", "Height in meters" },
+		{ "Slot Position", "X / Y of a player slot" }, { "Zone Average Distance To Center", "Mean distance of the people to the centre" },
+		{ "Compare", "= != > >= < <= a threshold" }, { "In Range", "Between two values" },
+		{ "And", "On when both are On" }, { "Or", "On when one is On" }, { "Xor", "On when only one is On" }, { "Not", "Inverts On / Off" },
+		{ "Branch", "Goes on by True or False" }, { "Log", "Writes a line in the Logger" },
+	};
+	auto it = help.find(type);
+	return it != help.end() ? it->second : String();
 }
