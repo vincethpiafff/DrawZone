@@ -118,6 +118,12 @@ private:
 
 	//"Spout Output" and "NDI Output" chips in the header : the box turns the output on / off, the label shows its parameters in the Inspector
 	Rectangle<int> spoutRect, ndiRect;
+	//Live Mode of the module : header button, frozen view (or 1 image per second), no editing
+	Rectangle<int> liveRect;
+	bool live = false;
+	uint32 lastLivePreviewMs = 0;
+	void toggleLiveMode();
+	void paintLive(Graphics& g);
 	bool spoutOn = false, ndiOn = false;
 	bool spoutHovered = false, ndiHovered = false;
 	static Rectangle<int> getOutputBoxRect(Rectangle<int> chip);

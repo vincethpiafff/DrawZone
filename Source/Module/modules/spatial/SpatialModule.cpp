@@ -18,6 +18,9 @@
 #include "SpatialVideoOutput.cpp"
 #include "SpatialPSNOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
+#if ORGANICUI_USE_MCP
+#include "MCP/ChataigneMcp.h"	// Live Mode : MCP server paused
+#endif
 
 SpatialModule::SpatialModule() :
 	OSCModule(getDefaultTypeString(), 12000, 9000),
@@ -63,6 +66,7 @@ SpatialModule::SpatialModule() :
 	valuesCC.addChildControllableContainer(&slotsValuesCC);
 
 	moduleParams.addChildControllableContainer(&psnOutput);
+	moduleParams.addChildControllableContainer(&liveMode);
 
 	setupInspectorSections();
 
@@ -268,7 +272,7 @@ void SpatialModule::timerCallback()
 	//people not updated (missed leave, or their source went silent), disabled sources
 	trackingData.removeStalePersons(personTimeoutMs);
 	{
-		bool updateStatus = ++statusTick >= zoneUpdateRateHz / statusUpdateRateHz;
+		bool updateStatus = ++statusTick >= zoneUpdateRateHz / (liveMode.isLive() ? 1 : statusUpdateRateHz);
 		if (updateStatus) statusTick = 0;
 
 		const ScopedLock sl(sourceManager.items.getLock());
@@ -534,9 +538,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones
+	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager };
+	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)
@@ -547,4 +551,50 @@ void SpatialModule::setupInspectorSections()
 		if (i < 0) continue;
 		list.move(i, pos++);
 	}
+}
+
+// SpatialLiveMode
+
+SpatialLiveMode::SpatialLiveMode() :
+	EnablingControllableContainer("Live Mode")
+{
+	enabled->setDefaultValue(false);
+	enabled->description = ("Live Mode : only the display and the editing stop, to save the computer for the show. Tracking, zones, slots, logic, variables and every output (OSC, PSN, Spout, NDI) keep running. Stopped : the Tracking Monitor view, editing in it, the Inspector (nothing can be selected : leave Live Mode with the LIVE button of the Tracking Monitor, the State Machine, OSC or the Dashboard), status texts at 1 Hz");
+	slowPreview = addBoolParameter("Slow Preview", "Live Mode : the Tracking Monitor view is redrawn once a second instead of being frozen", false);
+	pauseMcp = addBoolParameter("Pause MCP", "Live Mode : the MCP server (link with Claude) is turned off while live, and back on when Live Mode stops", false);
+}
+
+SpatialLiveMode::~SpatialLiveMode()
+{
+	if (!isLive()) return;
+	enabled->setValue(false, true); //what Live Mode turned off comes back if the module goes away while live
+	apply();
+}
+
+void SpatialLiveMode::onContainerParameterChanged(Parameter* p)
+{
+	EnablingControllableContainer::onContainerParameterChanged(p);
+	if (p == enabled || p == pauseMcp) apply();
+}
+
+void SpatialLiveMode::apply()
+{
+	bool live = isLive();
+	if (InspectableSelectionManager::mainSelectionManager != nullptr) InspectableSelectionManager::mainSelectionManager->setEnabled(!live);
+
+#if ORGANICUI_USE_MCP
+	ChataigneEngine* e = dynamic_cast<ChataigneEngine*>(Engine::mainEngine);
+	if (e == nullptr || e->mcp == nullptr) return;
+	if (live && pauseMcp->boolValue())
+	{
+		if (!e->mcp->enabled->boolValue()) return;
+		mcpPausedByUs = true;
+		e->mcp->enabled->setValue(false);
+	}
+	else if (mcpPausedByUs)
+	{
+		mcpPausedByUs = false;
+		e->mcp->enabled->setValue(true);
+	}
+#endif
 }

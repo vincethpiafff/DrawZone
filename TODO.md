@@ -6,7 +6,7 @@ Légende : ✅ fait · ❌ échec / écarté (+ cause) · ⏭️ en cours · ⬜
 **Écrire court** : une ligne par étape (date, quoi, résultat, chiffres du test).
 Pas de récit, pas de répétition. Version terminée → archive, au mot près.
 
-## ⬜ Prochaine : v0.7, graphe nodal de base
+## ⏭️ En cours : v0.7.1 Live Mode, puis v0.7.2 Logic Graph
 
 v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGELOG). Contenu prévu (ROADMAP) :
 événements, Branch, variables, sorties OSC.
@@ -19,6 +19,16 @@ v0.6.0 publiée le 06/11/2026 (détail : `docs/drawzone/TODO-archive.md`, CHANGE
   nœuds avec type et position, liens enregistrés) · 1b moteur au rythme des zones, 1ers nœuds Zone Entered et Log · 2a panneau
   « Logic Graph » (onglets des graphes, déplacer / zoomer, créer par clic droit, glisser, relier, supprimer, annuler) · 2b
   aimantation sur les bords / centres des nœuds + repères, grille 20 px en option, Alt = libre · 2c mini-carte.
+- 💬 06/11 Vincent : **Live mode** (comme performance / On Air) avant le Logic Graph : coupe seulement l'affichage et l'édition
+  (viewport gelé…) ; entrées tracking, zones, slots, Logic Graph, variables, OSC, PSN et Spout / NDI tournent toujours.
+  Règle pour la brique 1 : le moteur du graphe tourne dans l'horloge du Cockpit, jamais dans le panneau. 
+- 💬 06/11 Vincent : Live Mode = **v0.7.1**, Logic Graph = **v0.7.2**. Coupures retenues : viewport gelé, Logic Graph figé (avec la
+  v0.7.2), Inspector gelé, statuts à 1 Hz, Logger réduit, édition verrouillée ; MCP en pause en option (désactivée par défaut).
+- ⏭️ 06/11 v0.7.1 code (branche `feature/live-mode`) : bloc **Live Mode** du Cockpit (Enabled, Slow Preview, Pause MCP) ;
+  Inspector : sélection coupée ; statuts 1 Hz ; Monitor : bouton LIVE, Ctrl + Shift + L, vue gelée ou 1 image / s, édition
+  verrouillée. ❌ Logger réduit : pas de filtre dans le Logger d'organicUI (code de Ben) → écarté, à revoir avec Vincent.
+  ❌ puis ✅ compilation : `setDescription` n'existe pas → `description`. Recompilation complète 0 erreur ; MCP : bloc présent,
+  désactivé par défaut. Pas de simulation (pas de changement des données). ⬜ test de Vincent.
 
 ## ⬜ Questions ouvertes
 

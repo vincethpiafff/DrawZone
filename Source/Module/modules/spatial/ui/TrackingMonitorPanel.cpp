@@ -57,6 +57,8 @@ void TrackingMonitorPanel::resized()
 	headerRect = r.removeFromTop(24);
 	shortcutsRect = headerRect.removeFromRight(104).reduced(0, 1);
 	headerRect.removeFromRight(8);
+	liveRect = headerRect.removeFromRight(64).reduced(0, 1);
+	headerRect.removeFromRight(8);
 	ndiRect = headerRect.removeFromRight(106).reduced(0, 1);
 	headerRect.removeFromRight(8);
 	spoutRect = headerRect.removeFromRight(118).reduced(0, 1);
@@ -224,6 +226,27 @@ Rectangle<int> TrackingMonitorPanel::getCardArrowRect(Rectangle<int> card)
 void TrackingMonitorPanel::timerCallback()
 {
 	SpatialModule* sm = getSpatialModule();
+
+	//Live Mode : nothing is copied or drawn, or once a second with Slow Preview ; no editing
+	bool wasLive = live;
+	live = sm != nullptr && sm->liveMode.isLive();
+	if (live != wasLive)
+	{
+		slotMinusButton.setEnabled(!live);
+		slotPlusButton.setEnabled(!live);
+		for (auto& e : surfaceEditors) { e->position->setEnabled(!live); e->rotation->setEnabled(!live); }
+		if (live) { dragZone = nullptr; dragCorner = -1; dragPoint = -1; slotDragging = false; slotDragPersonId = -1; slotDragSlot = -1; boxDragging = false; cameraDrag = 0; }
+	}
+	if (live)
+	{
+		uint32 now = Time::getMillisecondCounter();
+		if (!sm->liveMode.slowPreview->boolValue() || now - lastLivePreviewMs < 1000)
+		{
+			if (!wasLive) repaint();
+			return;
+		}
+		lastLivePreviewMs = now;
+	}
 	model.update(sm, shownSurface);
 	if (model.surfaceIndex >= 0) shownSurface = model.surfaceIndex;
 	if (view3D) model3D.update(sm, -1);
@@ -286,8 +309,9 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
 	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
 	paintViewSwitch(g);
-	if (view3D) paintSurfacesPanel(g);
+	if (view3D && !live) paintSurfacesPanel(g);
 	paintShortcuts(g); //last : the unfolded list goes over everything
+	paintLive(g);
 }
 
 Rectangle<int> TrackingMonitorPanel::getOutputBoxRect(Rectangle<int> chip)
@@ -1325,6 +1349,7 @@ TrackingMonitorPanel::ZoneHit TrackingMonitorPanel::hitTest(Point<float> pos) co
 
 void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 {
+	if (live) return;
 	if (drawingFreeShape || drawingBoxShape >= 0)
 	{
 		drawMouse = e.position;
@@ -1387,6 +1412,13 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 {
+	if (liveRect.contains(e.getPosition()))
+	{
+		toggleLiveMode();
+		return;
+	}
+	if (live) return; //Live Mode : no editing
+
 	if (drawingBoxShape >= 0)
 	{
 		if (e.mods.isRightButtonDown() || surfaceScale <= 0 || !surfaceScreenRect.contains(e.position)) return;
@@ -1592,6 +1624,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 {
+	if (live) return;
 	if (cameraDrag != 0)
 	{
 		Point<float> delta = e.position - cameraDragLast;
@@ -1678,6 +1711,7 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
 {
+	if (live) return;
 	if (cameraDrag != 0)
 	{
 		cameraDrag = 0;
@@ -1792,6 +1826,7 @@ void TrackingMonitorPanel::showColorEditor(Inspectable* owner, ColorParameter* c
 
 void TrackingMonitorPanel::mouseDoubleClick(const MouseEvent& e)
 {
+	if (live) return;
 	if (drawingFreeShape || drawingBoxShape >= 0 || Time::getMillisecondCounter() - drawFinishedMs < 500) return;
 
 	if (view3D && topViewRect.contains(e.getPosition()))
@@ -2088,6 +2123,13 @@ void TrackingMonitorPanel::paintDrawingHelp(Graphics& g, const String& text)
 
 bool TrackingMonitorPanel::keyPressed(const KeyPress& key)
 {
+	if (key == KeyPress('L', ModifierKeys::ctrlModifier | ModifierKeys::shiftModifier, 0))
+	{
+		toggleLiveMode();
+		return true;
+	}
+	if (live) return false;
+
 	if (drawingBoxShape >= 0)
 	{
 		if (key != KeyPress::escapeKey) return false;
@@ -2196,6 +2238,7 @@ void TrackingMonitorPanel::paintViewSwitch(Graphics& g)
 
 void TrackingMonitorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
 {
+	if (live) return;
 	if (!view3D || !topViewRect.contains(e.getPosition()))
 	{
 		Component::mouseWheelMove(e, wheel);
@@ -2389,4 +2432,68 @@ bool TrackingMonitorPanel::handleSurfacesPanelClick(Point<int> pos)
 	layoutSurfaceEditors();
 	repaint();
 	return true;
+}
+
+void TrackingMonitorPanel::toggleLiveMode()
+{
+	SpatialModule* sm = getSpatialModule();
+	if (sm == nullptr) return;
+	BoolParameter* on = sm->liveMode.enabled;
+	on->setValue(!on->boolValue());
+	timerCallback();
+}
+
+void TrackingMonitorPanel::paintLive(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+	const Colour liveRed(0xffe5484d);
+
+	//header button : red when live, outlined otherwise
+	if (!liveRect.isEmpty())
+	{
+		Rectangle<float> b = liveRect.toFloat();
+		if (live)
+		{
+			g.setColour(liveRed);
+			g.fillRoundedRectangle(b, 4);
+		}
+		else
+		{
+			g.setColour(dimText);
+			g.drawRoundedRectangle(b.reduced(.5f), 4, 1.2f);
+		}
+		g.setColour(live ? Colours::white : dimText);
+		g.fillEllipse(Rectangle<float>(7, 7).withCentre(Point<float>(b.getX() + 12, b.getCentreY())));
+		g.setFont(Font(12.0f, Font::bold));
+		g.drawText("LIVE", b.withTrimmedLeft(20), Justification::centredLeft);
+	}
+	if (!live) return;
+
+	SpatialModule* sm = getSpatialModule();
+	bool slow = sm != nullptr && sm->liveMode.slowPreview->boolValue();
+	Rectangle<int> content = getLocalBounds().withTrimmedTop(headerRect.getBottom() + 4);
+
+	//frozen : the last image stays dimmed under the banner ; slow preview : a small badge only
+	if (!slow)
+	{
+		g.setColour(Colours::black.withAlpha(.72f));
+		g.fillRect(content);
+	}
+
+	Rectangle<float> banner = slow ? Rectangle<float>(250, 26).withPosition((float)content.getX() + 12, (float)content.getY() + 10)
+		: Rectangle<float>(460, 96).withCentre(content.toFloat().getCentre());
+	g.setColour(liveRed.withAlpha(slow ? .9f : 1.0f));
+	g.fillRoundedRectangle(banner, 6);
+	g.setColour(Colours::white);
+	if (slow)
+	{
+		g.setFont(Font(12.0f, Font::bold));
+		g.drawText("LIVE : view at 1 image / s, editing locked", banner.reduced(10, 0), Justification::centredLeft);
+		return;
+	}
+	g.setFont(Font(22.0f, Font::bold));
+	g.drawText("LIVE", banner.withHeight(44).translated(0, 10), Justification::centred);
+	g.setFont(Font(12.0f));
+	g.drawText("Display frozen, editing locked. Tracking, zones, slots and outputs keep running.", banner.withTrimmedTop(50).reduced(12, 0), Justification::centredTop);
+	g.drawText("Click LIVE in the header (or Ctrl + Shift + L) to leave.", banner.withTrimmedTop(68).reduced(12, 0), Justification::centredTop);
 }
