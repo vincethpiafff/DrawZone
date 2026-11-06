@@ -188,7 +188,10 @@ private:
 	//right click on a row = rename / default value / delete, drag a row into the graph = Get or Set
 	bool variablesCardOpen = true;
 	Rectangle<int> varCardRect, varFoldRect, varAddRect;
-	struct VarRow { WeakReference<Inspectable> variable; Rectangle<int> row, name, value, reset; };
+	struct VarRow { WeakReference<Inspectable> variable; Rectangle<int> row, name, value, osc, reset, address; };	// address : under the row while Send OSC is on
+	//monitor of the card (OSC out) : the variables sent, their address and last value, folded by default
+	bool oscMonitorOpen = false;
+	Rectangle<int> oscMonitorHeader;
 	Array<VarRow> varRows;
 	WeakReference<Inspectable> dragVariable;
 	Point<float> dragVariableMouse;	// screen

@@ -30,6 +30,8 @@ public:
 	SpatialVariableValues() : ControllableContainer("Variable") {}
 	Trigger* resetTrigger = nullptr;
 	std::function<void()> onReset;
+	std::function<void()> onValueChanged;
+	void onContainerParameterChanged(Parameter*) override { if (onValueChanged) onValueChanged(); }
 	void onContainerTriggerTriggered(Trigger* t) override { if (t == resetTrigger && onReset) onReset(); }
 };
 
@@ -47,6 +49,13 @@ public:
 	SpatialVariableValues valuesCC;	// Values > Variables > <name>
 	Parameter* value;
 
+	//OSC (brick 6, look A of 07/11/2026) : the value sent at each change to the OSC outputs of the Cockpit
+	BoolParameter* sendOSC;
+	StringParameter* oscAddress;	// empty : /drawzone/variables/<name>, follows a rename
+	String getOSCAddress() const;
+	String lastSent;			// value of the last message sent, for the monitor of the card
+	uint32 lastSentMs = 0;
+
 	void resetValue();	// back to Default Value
 
 	static Type getTypeFromName(const String& name);
@@ -59,6 +68,7 @@ public:
 	static String format(Type t, const var& v);
 
 	void onContainerNiceNameChanged() override;	// its values follow its name
+	void onContainerParameterChangedInternal(Parameter* p) override;	// Send OSC turned on : the value goes at once
 
 	InspectableEditor* getEditorInternal(bool isRoot, Array<Inspectable*> inspectables = Array<Inspectable*>()) override;
 
@@ -79,6 +89,10 @@ public:
 
 	Array<SpatialVariable*> getVariables(SpatialVariable::Type t) const;
 	void resetAll();
+
+	OSCModule* oscModule = nullptr;	// the Cockpit : its OSC outputs, set by the module
+	void sendValue(SpatialVariable* v);	// when Send OSC is on
+	String getOutputsText() const;		// "127.0.0.1:9000", "3 outputs", "no OSC output"
 
 	void addItemInternal(SpatialVariable* v, var data) override;
 	void addItemsInternal(Array<SpatialVariable*> vs, var data) override;

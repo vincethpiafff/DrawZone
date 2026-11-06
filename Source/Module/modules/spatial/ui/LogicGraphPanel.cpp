@@ -1842,7 +1842,7 @@ void LogicGraphPanel::showGroupColorPicker(LogicGroup* gr)
 void LogicGraphPanel::layoutVariablesCard()
 {
 	varRows.clearQuick();
-	varAddRect = varFoldRect = varCardRect = Rectangle<int>();
+	varAddRect = varFoldRect = varCardRect = oscMonitorHeader = Rectangle<int>();
 	SpatialModule* sm = getSpatialModule();
 	if (sm == nullptr || getGraph() == nullptr || canvasRect.getWidth() < 300) return;
 	Rectangle<int> c = canvasRect.reduced(12);
@@ -1851,25 +1851,39 @@ void LogicGraphPanel::layoutVariablesCard()
 		varCardRect = varFoldRect = Rectangle<int>(c.getX(), c.getY(), 132, 28);
 		return;
 	}
-	int n = sm->variableManager.items.size();
-	varCardRect = Rectangle<int>(c.getX(), c.getY(), 262, 36 + jmax(1, n) * 28 + 6);
-	Rectangle<int> header = varCardRect.withHeight(36);
-	varAddRect = Rectangle<int>(header.getRight() - 32, header.getY() + 8, 22, 22);
-	varFoldRect = header.withRight(varAddRect.getX() - 4);
-	int y = header.getBottom();
+	const int width = 300;
+	int y = c.getY() + 36;
+	oscMonitorHeader = Rectangle<int>();
 	for (auto& v : sm->variableManager.items)
 	{
 		VarRow r;
 		r.variable = v;
-		r.row = Rectangle<int>(varCardRect.getX() + 6, y, varCardRect.getWidth() - 12, 26);
+		r.row = Rectangle<int>(c.getX() + 6, y, width - 12, 26);
 		Rectangle<int> rest = r.row;
 		r.reset = rest.removeFromRight(24);
-		r.value = rest.removeFromRight(92);
+		r.osc = rest.removeFromRight(38).reduced(2, 5);
+		r.value = rest.removeFromRight(88);
 		rest.removeFromLeft(22);	// type dot
 		r.name = rest;
-		varRows.add(r);
 		y += 28;
+		if (v->sendOSC->boolValue())
+		{
+			r.address = Rectangle<int>(r.name.getX(), y - 3, width - 12 - 22 - 24, 16);
+			y += 16;
+		}
+		varRows.add(r);
 	}
+	if (sm->variableManager.items.isEmpty()) y += 28;
+	//OSC monitor : header, then one line per variable sent while open
+	int sent = 0;
+	for (auto& v : sm->variableManager.items) if (v->sendOSC->boolValue()) sent++;
+	y += 4;
+	oscMonitorHeader = Rectangle<int>(c.getX() + 6, y, width - 12, 24);
+	y += 26 + (oscMonitorOpen ? jmax(1, sent) * 18 + 22 : 0);
+	varCardRect = Rectangle<int>(c.getX(), c.getY(), width, y - c.getY() + 4);
+	Rectangle<int> header = varCardRect.withHeight(36);
+	varAddRect = Rectangle<int>(header.getRight() - 32, header.getY() + 8, 22, 22);
+	varFoldRect = header.withRight(varAddRect.getX() - 4);
 }
 
 void LogicGraphPanel::paintVariablesCard(Graphics& g)
@@ -1927,8 +1941,50 @@ void LogicGraphPanel::paintVariablesCard(Graphics& g)
 	{
 		g.setColour(dim);
 		g.setFont(Font(11.5f));
-		g.drawText("No variable : + to add one", box.withTrimmedTop(36).reduced(14, 0), Justification::centredLeft);
-		return;
+		g.drawText("No variable : + to add one", Rectangle<float>(box.getX() + 14, box.getY() + 36, box.getWidth() - 28, 28), Justification::centredLeft);
+	}
+
+	//OSC monitor : what the variables send (Send OSC on), folded by default
+	{
+		const Colour blue(0xff4fb3ff);
+		Rectangle<float> h = oscMonitorHeader.toFloat();
+		g.setColour(nodeLine);
+		g.drawHorizontalLine((int)h.getY() - 2, box.getX() + 8, box.getRight() - 8);
+		int sent = 0;
+		for (auto& v : sm->variableManager.items) if (v->sendOSC->boolValue()) sent++;
+		g.setColour(dim);
+		chevron(Point<float>(h.getX() + 10, h.getCentreY()), oscMonitorOpen);
+		g.setFont(Font(10.0f, Font::bold));
+		g.drawText("OSC OUT", h.withTrimmedLeft(22), Justification::centredLeft);
+		g.setColour(sent > 0 ? blue : dim);
+		g.drawText(String(sent), h.withTrimmedLeft(78).withWidth(30), Justification::centredLeft);
+		g.setColour(dim);
+		g.setFont(Font(Font::getDefaultMonospacedFontName(), 10.5f, Font::plain));
+		g.drawText(sm->variableManager.getOutputsText(), h.withTrimmedRight(6), Justification::centredRight, true);
+		if (oscMonitorOpen)
+		{
+			float y = h.getBottom() + 2;
+			uint32 now = Time::getMillisecondCounter();
+			if (sent == 0)
+			{
+				g.setFont(Font(11.0f));
+				g.drawText("Nothing sent : OSC on a variable", Rectangle<float>(h.getX() + 10, y, h.getWidth() - 20, 18), Justification::centredLeft);
+			}
+			for (auto& v : sm->variableManager.items)
+			{
+				if (!v->sendOSC->boolValue()) continue;
+				Rectangle<float> line(h.getX() + 6, y, h.getWidth() - 12, 18);
+				bool flash = v->lastSentMs != 0 && now - v->lastSentMs < 250;	// just sent
+				g.setColour(flash ? blue : nodeBorder);
+				g.fillEllipse(Rectangle<float>(6, 6).withCentre(Point<float>(line.getX() + 4, line.getCentreY())));
+				g.setColour(blue);
+				g.setFont(Font(Font::getDefaultMonospacedFontName(), 10.5f, Font::plain));
+				g.drawText(v->getOSCAddress(), line.withTrimmedLeft(14).withTrimmedRight(70), Justification::centredLeft, true);
+				g.setColour(flash ? text : dim);
+				g.drawText(v->lastSent.isEmpty() ? String("-") : v->lastSent, line.withTrimmedLeft(line.getWidth() - 68), Justification::centredRight, true);
+				y += 18;
+			}
+		}
 	}
 
 	for (auto& r : varRows)
@@ -1946,6 +2002,27 @@ void LogicGraphPanel::paintVariablesCard(Graphics& g)
 		g.setColour(col);
 		g.setFont(Font(Font::getDefaultMonospacedFontName(), 11.5f, Font::plain));
 		g.drawText(v->formatValue(), r.value.toFloat().withTrimmedRight(4), Justification::centredRight, true);
+		//OSC : a small switch-chip, blue when the variable is sent, its address under the row
+		{
+			const Colour blue(0xff4fb3ff);
+			bool on = v->sendOSC->boolValue();
+			Rectangle<float> b = r.osc.toFloat();
+			if (on)
+			{
+				g.setColour(blue.withAlpha(.12f));
+				g.fillRoundedRectangle(b, b.getHeight() / 2);
+			}
+			g.setColour(on ? blue.withAlpha(.6f) : nodeBorder);
+			g.drawRoundedRectangle(b.reduced(.5f), b.getHeight() / 2, 1);
+			g.setColour(on ? blue : Colour(0xff6b717c));
+			g.setFont(Font(Font::getDefaultMonospacedFontName(), 9.5f, Font::bold));
+			g.drawText("OSC", b, Justification::centred);
+			if (on)
+			{
+				g.setFont(Font(Font::getDefaultMonospacedFontName(), 10.5f, Font::plain));
+				g.drawText(v->getOSCAddress(), r.address.toFloat(), Justification::centredLeft, true);
+			}
+		}
 		//reset : a circular arrow
 		Point<float> o = r.reset.toFloat().getCentre();
 		Path p;
@@ -1990,6 +2067,25 @@ bool LogicGraphPanel::variablesCardMouseDown(const MouseEvent& e)
 	if (varAddRect.contains(p)) { showNewVariableMenu(); return true; }
 	for (auto& r : varRows)
 	{
+		if (r.address.contains(p))
+		{
+			//its OSC address ; typed back to /drawzone/variables/<name>, it follows a rename again
+			if (SpatialVariable* v = dynamic_cast<SpatialVariable*>(r.variable.get()))
+			{
+				WeakReference<Inspectable> ref(v);
+				askText("OSC address of " + v->niceName, v->getOSCAddress(), [ref](const String& a)
+					{
+						SpatialVariable* x = dynamic_cast<SpatialVariable*>(ref.get());
+						if (x == nullptr) return;
+						String was = x->oscAddress->stringValue();
+						x->oscAddress->setValue("");
+						bool automatic = a == x->getOSCAddress();	// unchanged : stays automatic
+						x->oscAddress->setValue(was);
+						x->oscAddress->setUndoableValue(was, automatic ? String() : a);
+					});
+			}
+			return true;
+		}
 		if (!r.row.contains(p)) continue;
 		SpatialVariable* v = dynamic_cast<SpatialVariable*>(r.variable.get());
 		if (v == nullptr) return true;
@@ -2012,7 +2108,8 @@ bool LogicGraphPanel::variablesCardMouseDown(const MouseEvent& e)
 				});
 			return true;
 		}
-		if (r.reset.contains(p)) v->resetValue();
+		if (r.osc.contains(p)) v->sendOSC->setUndoableValue(v->sendOSC->boolValue(), !v->sendOSC->boolValue());
+		else if (r.reset.contains(p)) v->resetValue();
 		else if (r.value.contains(p))
 		{
 			if (v->varType == SpatialVariable::ONOFF) v->value->setValue(!v->value->boolValue());
@@ -2028,7 +2125,8 @@ bool LogicGraphPanel::variablesCardMouseDown(const MouseEvent& e)
 		repaint();
 		return true;
 	}
-	if (varFoldRect.contains(p) && e.mods.isLeftButtonDown()) variablesCardOpen = false;
+	if (oscMonitorHeader.contains(p)) oscMonitorOpen = !oscMonitorOpen;
+	else if (varFoldRect.contains(p) && e.mods.isLeftButtonDown()) variablesCardOpen = false;
 	repaint();
 	return true;
 }

@@ -23,6 +23,14 @@ SpatialVariable::SpatialVariable(var params) :
 	valuesCC.resetTrigger = valuesCC.addTrigger("Reset", "Back to the Default Value");
 	valuesCC.onReset = [this] { resetValue(); };
 	valuesCC.saveAndLoadRecursiveData = false;	// the value is live : the Default Value is what is saved
+
+	sendOSC = addBoolParameter("Send OSC", "Sends the value to the OSC outputs of the Cockpit each time it changes", false);
+	oscAddress = addStringParameter("OSC Address", "Address of the messages. Empty : /drawzone/variables/<name of the variable>", "");
+	valuesCC.onValueChanged = [this]
+		{
+			if (!sendOSC->boolValue()) return;
+			if (SpatialVariableManager* m = dynamic_cast<SpatialVariableManager*>(parentContainer.get())) m->sendValue(this);
+		};
 }
 
 SpatialVariable::~SpatialVariable()
@@ -370,4 +378,51 @@ void SetVariableNode::process(LogicGraph& g)
 	if (in.isVoid()) return;	// nothing to read (person not tracked...) : the variable keeps its value
 	var now = varType == SpatialVariable::ONOFF ? var((bool)in) : var((double)in);
 	if (v->value->getValue() != now) v->value->setValue(now);
+}
+
+// --- OSC (brick 6)
+
+String SpatialVariable::getOSCAddress() const
+{
+	String a = oscAddress->stringValue().trim();
+	if (a.isNotEmpty()) return a.startsWithChar('/') ? a : "/" + a;
+	//from the name : lower case, spaces and other signs as _
+	String slug;
+	for (auto c : niceName.toLowerCase())
+		slug += CharacterFunctions::isLetterOrDigit(c) ? String::charToString(c) : String("_");
+	return "/drawzone/variables/" + slug;
+}
+
+void SpatialVariableManager::sendValue(SpatialVariable* v)
+{
+	if (oscModule == nullptr) return;
+	try
+	{
+		OSCMessage m{ OSCAddressPattern(v->getOSCAddress()) };
+		if (v->varType == SpatialVariable::ONOFF) m.addInt32(v->value->boolValue() ? 1 : 0);
+		else m.addFloat32((float)v->value->floatValue());
+		oscModule->sendOSC(m);
+		v->lastSent = v->varType == SpatialVariable::ONOFF ? String(v->value->boolValue() ? 1 : 0) : String(v->value->floatValue(), 3);
+		v->lastSentMs = Time::getMillisecondCounter();
+	}
+	catch (OSCFormatError&)
+	{
+		v->lastSent = "bad address";
+	}
+}
+
+String SpatialVariableManager::getOutputsText() const
+{
+	if (oscModule == nullptr || oscModule->outputManager == nullptr) return "no OSC output";
+	Array<OSCOutput*> on;
+	for (auto& o : oscModule->outputManager->items) if (o->enabled->boolValue()) on.add(o);
+	if (on.isEmpty()) return "no OSC output";
+	if (on.size() > 1) return String(on.size()) + " outputs";
+	return on[0]->remoteHost->stringValue() + ":" + String(on[0]->remotePort->intValue());
+}
+
+void SpatialVariable::onContainerParameterChangedInternal(Parameter* p)
+{
+	if ((p == sendOSC || p == oscAddress) && sendOSC->boolValue() && !isCurrentlyLoadingData)
+		if (SpatialVariableManager* m = dynamic_cast<SpatialVariableManager*>(parentContainer.get())) m->sendValue(this);
 }

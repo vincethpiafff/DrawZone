@@ -71,6 +71,12 @@ Event "sper" "Slot Person" @(P "/slot" 1) @(, @("Changed", "SPER", "Person Id"))
 Event "srel" "Slot Relative Position" @(P "/slot" 1) @(, @("Changed", "SREL_ZX", "Zone X", "SREL_SX", "Surface X"))
 Event "prel" "Person Relative Position" @(P "/personId" 77) @(, @("Changed", "PREL_ZY", "Zone Y", "PREL_SY", "Surface Y"))
 Event "prelz" "Person Relative Position" @(P "/personId" 77) @(, @("Changed", "PREL_ZN", "Zone"))
+#variables + OSC (brick 6) : Fill (Percentage, Send OSC on) follows Zone X of 77 live (Set without In), sent to 127.0.0.1:9000
+Node "oscrel" "Person Relative Position" @(P "/personId" 77) 0
+Node "oscset" "Set Percentage" @(P "/variable" "/fill") 360
+$links.Add(@("oscrel", "Zone X", "oscset", "Value"))
+$script:y += 90
+$variablesJson = '{"hideInEditor": true, "items": [{"niceName": "Fill", "type": "Percentage", "parameters": [{"value": true, "controlAddress": "/sendOSC"}]}]}'
 
 $graph = @{ niceName = "Test"; type = "Graph"; containers = @{ nodes = @{ items = $nodes } }; links = $links }
 $graphJson = @{ items = @($graph) } | ConvertTo-Json -Depth 20 -Compress
@@ -80,6 +86,28 @@ $text = [System.IO.File]::ReadAllText($copy)
 $pattern = '(?s)"logic": \{.*?\}, "scene": \{'
 if (-not [regex]::IsMatch($text, $pattern)) { throw "Logic block not found in $copy" }
 $text = [regex]::Replace($text, $pattern, { param($m) '"logic": ' + $graphJson + ', "scene": {' })
+[System.IO.File]::WriteAllText($copy, $text)
+#the Variables block of the copy : replaced by Fill (balanced braces, the block may hold the variables of the session)
+function ReplaceBlock([string]$t, [string]$key, [string]$json, [string]$before)
+{
+	$from = 0
+	while (($i = $t.IndexOf('"' + $key + '": {', $from)) -ge 0)
+	{
+		$start = $t.IndexOf('{', $i); $depth = 0; $inStr = $false
+		for ($k = $start; $k -lt $t.Length; $k++)
+		{
+			$c = $t[$k]
+			if ($inStr) { if ($c -eq '\') { $k++ } elseif ($c -eq '"') { $inStr = $false }; continue }
+			if ($c -eq '"') { $inStr = $true } elseif ($c -eq '{') { $depth++ }
+			elseif ($c -eq '}') { $depth--; if ($depth -eq 0) { break } }
+		}
+		if ($t.Substring($start, $k - $start).Contains('"items"')) { return $t.Substring(0, $start) + $json + $t.Substring($k + 1) }
+		$from = $k
+	}
+	return $t.Replace($before, '"' + $key + '": ' + $json + ', ' + $before)	# none yet : before the Logic block
+}
+$text = [System.IO.File]::ReadAllText($copy)
+$text = ReplaceBlock $text "variables" $variablesJson '"logic": '
 [System.IO.File]::WriteAllText($copy, $text)
 
 # --- run
@@ -92,11 +120,18 @@ $rect = Value "spatial/parameters/zones/zoneRECT/center"
 if ($null -eq $rect) { "STOP : ZONE RECT not found"; exit 99 }
 $x = [math]::Round($rect[0], 3); $yy = [math]::Round($rect[1], 3)
 
+#OSC sent by the Cockpit (127.0.0.1:9000), read during the run
+$capFile = Join-Path $dir "osc_capture.json"
+Remove-Item $capFile -ErrorAction SilentlyContinue
+$cap = Sim (Join-Path $PSScriptRoot "osc_capture.ps1") @("-Port", "9000", "-Seconds", "8", "-Out", $capFile)
+Start-Sleep -Milliseconds 300
+
 #77 : 5 s in the zone ; 78 : from 1.5 s to 3.5 s, so the zone is full (Capacity 2) for 2 s
 $p77 = Sim $sim @("-Id", "77", "-X", "$x", "-Y", "$yy", "-Seconds", "5")
 Start-Sleep -Milliseconds 1500
 $p78 = Sim $sim @("-Id", "78", "-X", "$x", "-Y", "$([math]::Round($yy + 0.2, 3))", "-Seconds", "2")
 $p78.WaitForExit(); $p77.WaitForExit()
+$cap.WaitForExit()
 Start-Sleep -Milliseconds 1500
 
 $diag = Tool "chataigne_diagnostics" @{ limit = 200 }
@@ -139,6 +174,12 @@ foreach ($c in @(@("SREL_ZX", 0.5), @("SREL_SX", $sx), @("PREL_ZY", 0.5), @("PRE
 	Check "$($c[0]) = $([math]::Round($c[1], 3))" ($null -ne $v -and (Near $v $c[1] 0.03)) "$v"
 }
 
+#OSC of the variables : Fill sent at each change, about 0.5 while 77 is at the centre of ZONE RECT
+$osc = if (Test-Path $capFile) { Get-Content $capFile -Raw | ConvertFrom-Json } else { $null }
+$fill = if ($osc -and $osc.values.PSObject.Properties["/drawzone/variables/fill"]) { @($osc.values."/drawzone/variables/fill") } else { @() }
+Check "OSC : /drawzone/variables/fill received" ($fill.Count -ge 1) "$($fill.Count) messages"
+Check "OSC : Fill = Zone X of 77 (0.5)" ($fill.Count -ge 1 -and (@($fill | Where-Object { Near $_ 0.5 0.03 }).Count -ge 1)) "$(($fill | Select-Object -First 6) -join ', ')"
+Check "OSC : sent on change only (77 still : few messages)" ($fill.Count -ge 1 -and $fill.Count -le 40) "$($fill.Count)"
 $bad = @($logs | Where-Object { $_.severity -ne "info" -and $_.source -notin @("CommunityModuleManager", "HelpBox") })
 Check "no warning / error in logs" ($bad.Count -eq 0) "$($bad.Count) messages"
 $bad | ForEach-Object { "FAIL log, $($_.severity): $($_.message)" }

@@ -76,6 +76,7 @@ SpatialModule::SpatialModule() :
 	moduleParams.addChildControllableContainer(&liveMode);
 	//before the graphs : their Get / Set nodes point to the variables
 	variableManager.valuesParent = &variablesValuesCC;
+	variableManager.oscModule = this;	// Send OSC of the variables : the OSC outputs of the Cockpit
 	variablesValuesCC.saveAndLoadRecursiveData = false;	// live values, the Default Values are saved with the variables
 	valuesCC.addChildControllableContainer(&variablesValuesCC);
 	moduleParams.addChildControllableContainer(&variableManager);
