@@ -57,6 +57,30 @@ public:
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialPerson)
 };
 
+//Live Mode (like a performance / On Air mode) : only display and editing stop. Tracking, zones, slots, the logic,
+//variables and every output (OSC, PSN, Spout, NDI) keep running at full rate.
+//Stopped : the Tracking Monitor view (or 1 image per second), editing in the Monitor, the Inspector (nothing
+//selectable), status texts at 1 Hz ; optionally the MCP server.
+class SpatialLiveMode :
+	public EnablingControllableContainer
+{
+public:
+	SpatialLiveMode();
+	~SpatialLiveMode();
+
+	BoolParameter* slowPreview;	// Tracking Monitor redrawn once a second instead of frozen
+	BoolParameter* pauseMcp;		// MCP server off while live, back on after
+
+	bool isLive() const { return enabled->boolValue(); }
+	void onContainerParameterChanged(Parameter* p) override;
+
+private:
+	bool mcpPausedByUs = false;
+	void apply();
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpatialLiveMode)
+};
+
 class SpatialModule :
 	public OSCModule,
 	public Timer,
@@ -113,6 +137,7 @@ public:
 	SpatialSurface* getSurface(int index) const;	// clamped, nullptr without surface
 
 	SpatialPSNOutput psnOutput;		// player slots sent as PSN trackers
+	SpatialLiveMode liveMode;
 
 	void processMessageInternal(const OSCMessage& msg) override;
 

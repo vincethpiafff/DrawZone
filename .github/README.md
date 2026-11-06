@@ -9,7 +9,7 @@ dessiner des zones sur des surfaces, d'y définir une logique inspirée du
 game design (entrées/sorties de zone, conditions, timers, machines à états)
 et d'envoyer le résultat en OSC : booléens, pourcentages, durées, compteurs.
 
-> **Statut : en développement (v0.6.0 publiée : surfaces en 3D ; suite : graphe nodal).** Pas encore prêt pour la production.
+> **Statut : en développement (v0.7.1 publiée : Live Mode ; suite : Logic Graph).** Pas encore prêt pour la production.
 
 ## Basé sur Chataigne
 
