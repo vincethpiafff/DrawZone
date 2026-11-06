@@ -532,6 +532,7 @@
 		79C7DF572850E6FDA55CEC12 /* ChataigneSequenceManager.cpp */ /* ChataigneSequenceManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChataigneSequenceManager.cpp; path = ../../Source/TimeMachine/ChataigneSequenceManager.cpp; sourceTree = SOURCE_ROOT; };
 		79EA796B591281322DA21A35 /* GamepadModule.h */ /* GamepadModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = GamepadModule.h; path = ../../Source/Module/modules/controller/gamepad/GamepadModule.h; sourceTree = SOURCE_ROOT; };
 		7A33EADEDCB3B4815709D2C4 /* ConversionSourceParameterUI.cpp */ /* ConversionSourceParameterUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConversionSourceParameterUI.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/conversion/ui/ConversionSourceParameterUI.cpp; sourceTree = SOURCE_ROOT; };
+		7A6084111AE2CC374C34BD6F /* LogicVariables.h */ /* LogicVariables.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LogicVariables.h; path = ../../Source/Module/modules/spatial/logic/LogicVariables.h; sourceTree = SOURCE_ROOT; };
 		7A91E8D798CAD8D2754205F1 /* Resolume.png */ /* Resolume.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Resolume.png; path = ../../Resources/Modules/Resolume.png; sourceTree = SOURCE_ROOT; };
 		7A9B6888EBC9458C82269185 /* SpatialPSNOutput.cpp */ /* SpatialPSNOutput.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SpatialPSNOutput.cpp; path = ../../Source/Module/modules/spatial/SpatialPSNOutput.cpp; sourceTree = SOURCE_ROOT; };
 		7ABB941A2D9C97F17BD7AF8F /* encoder.c */ /* encoder.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = encoder.c; path = ../../Source/Common/LTC/encoder.c; sourceTree = SOURCE_ROOT; };
@@ -785,6 +786,7 @@
 		C1D2BE99C657D67B5FB22423 /* StreamDeckV2.h */ /* StreamDeckV2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StreamDeckV2.h; path = ../../Source/Module/modules/controller/streamdeck/models/StreamDeckV2.h; sourceTree = SOURCE_ROOT; };
 		C27204324F51AD1704E2383F /* CVGroupUI.cpp */ /* CVGroupUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CVGroupUI.cpp; path = ../../Source/CustomVariables/ui/CVGroupUI.cpp; sourceTree = SOURCE_ROOT; };
 		C286D9E96D885B02CA708694 /* OneEuroFilter.cpp */ /* OneEuroFilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = OneEuroFilter.cpp; path = ../../Source/Common/Processor/Mapping/Filter/filters/number/oneeuro/OneEuroFilter.cpp; sourceTree = SOURCE_ROOT; };
+		C3286E27ED96D8D69F377AA6 /* LogicVariables.cpp */ /* LogicVariables.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = LogicVariables.cpp; path = ../../Source/Module/modules/spatial/logic/LogicVariables.cpp; sourceTree = SOURCE_ROOT; };
 		C3DDE9B9D449A6FB26D1D354 /* NetworkStreamingModule.h */ /* NetworkStreamingModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NetworkStreamingModule.h; path = ../../Source/Module/modules/common/streaming/NetworkStreamingModule.h; sourceTree = SOURCE_ROOT; };
 		C4027CFB515DA11787FE11A9 /* commandScriptTemplate.js */ /* commandScriptTemplate.js */ = {isa = PBXFileReference; lastKnownFileType = file.js; name = commandScriptTemplate.js; path = ../../Resources/Templates/Scripts/commandScriptTemplate.js; sourceTree = SOURCE_ROOT; };
 		C45B37ABCDE0A9FA3B40EA19 /* MIDIDeviceParameter.cpp */ /* MIDIDeviceParameter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MIDIDeviceParameter.cpp; path = ../../Source/Common/MIDI/MIDIDeviceParameter.cpp; sourceTree = SOURCE_ROOT; };
@@ -3306,6 +3308,8 @@
 			children = (
 				E510BF79EE10574170DBDABD,
 				9353E4338820A2F9E73C30F8,
+				C3286E27ED96D8D69F377AA6,
+				7A6084111AE2CC374C34BD6F,
 			);
 			name = logic;
 			sourceTree = "<group>";

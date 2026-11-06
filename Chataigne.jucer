@@ -1465,6 +1465,10 @@
             <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F503}" name="logic">
               <FILE id="dzLgCp" name="LogicGraph.cpp" compile="0" resource="0" file="Source/Module/modules/spatial/logic/LogicGraph.cpp"/>
               <FILE id="dzLgHd" name="LogicGraph.h" compile="0" resource="0" file="Source/Module/modules/spatial/logic/LogicGraph.h"/>
+              <FILE id="dzLvCp" name="LogicVariables.cpp" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/logic/LogicVariables.cpp"/>
+              <FILE id="dzLvHd" name="LogicVariables.h" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/logic/LogicVariables.h"/>
             </GROUP>
             <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F502}" name="ui">
               <FILE id="dzLpCp" name="LogicGraphPanel.cpp" compile="0" resource="0"

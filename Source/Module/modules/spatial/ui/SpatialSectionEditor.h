@@ -18,7 +18,7 @@
 
 namespace SpatialSection
 {
-	enum Type { SOURCES, SURFACE, ZONES, SLOTS, OUTPUT, NETWORK, LOGIC, LIVE };
+	enum Type { SOURCES, SURFACE, ZONES, SLOTS, OUTPUT, NETWORK, LOGIC, VARIABLES, LIVE };
 
 	struct Chip
 	{
@@ -40,6 +40,7 @@ namespace SpatialSection
 		case SLOTS: return TrackingMonitorStyle::activeColor;
 		case OUTPUT: return Colour(0xff4f9de8);
 		case LOGIC: return Colour(0xff6fd08c);
+		case VARIABLES: return Colour(0xff6fd08c);
 		case LIVE: return Colour(0xffe5484d);
 		default: return Colour(0xff8f8f8f);
 		}
@@ -81,6 +82,10 @@ namespace SpatialSection
 			p.addRoundedRectangle(1.5f, 2.5f, 5, 4, 1);
 			p.addRoundedRectangle(9.5f, 9.5f, 5, 4, 1);
 			p.startNewSubPath(6.5f, 4.5f); p.cubicTo(10, 4.5f, 6, 11.5f, 9.5f, 11.5f);
+			break;
+		case VARIABLES:
+			p.addRoundedRectangle(2, 3, 12, 10, 2.5f);
+			p.startNewSubPath(5, 6); p.lineTo(8, 10); p.lineTo(11, 6);
 			break;
 		case LIVE:
 			p.addEllipse(5, 5, 6, 6);

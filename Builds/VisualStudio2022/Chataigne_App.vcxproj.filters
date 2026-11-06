@@ -2161,6 +2161,9 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
@@ -5341,6 +5344,9 @@
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.h">
       <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.h">

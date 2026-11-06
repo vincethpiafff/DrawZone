@@ -70,6 +70,7 @@ Event "pc" "Person Count" @() @(, @("Changed", "PC", "Count"))
 Event "sper" "Slot Person" @(P "/slot" 1) @(, @("Changed", "SPER", "Person Id"))
 Event "srel" "Slot Relative Position" @(P "/slot" 1) @(, @("Changed", "SREL_ZX", "Zone X", "SREL_SX", "Surface X"))
 Event "prel" "Person Relative Position" @(P "/personId" 77) @(, @("Changed", "PREL_ZY", "Zone Y", "PREL_SY", "Surface Y"))
+Event "prelz" "Person Relative Position" @(P "/personId" 77) @(, @("Changed", "PREL_ZN", "Zone"))
 
 $graph = @{ niceName = "Test"; type = "Graph"; containers = @{ nodes = @{ items = $nodes } }; links = $links }
 $graphJson = @{ items = @($graph) } | ConvertTo-Json -Depth 20 -Compress
@@ -131,6 +132,7 @@ $sol = if ((Value "spatial/parameters/surfaces/sol/sizeMode") -eq "Manual") { Va
 $sx = if ($sol) { $x / $sol[0] } else { -1 }
 $sy = if ($sol) { $yy / $sol[1] } else { -1 }
 Check "Slot Person : 77 then -1" ((Index "SPER 77") -ge 0 -and (Index "SPER 77") -lt [array]::LastIndexOf($test, "SPER -1")) ""
+Check "Zone output : PREL_ZN ZONE RECT while 77 is inside" (@($test | Where-Object { $_ -eq "PREL_ZN ZONE RECT" }).Count -ge 1) "$(@($test | Where-Object { $_ -like 'PREL_ZN*' }) -join ', ')"
 foreach ($c in @(@("SREL_ZX", 0.5), @("SREL_SX", $sx), @("PREL_ZY", 0.5), @("PREL_SY", $sy)))
 {
 	$v = LastValue $c[0]

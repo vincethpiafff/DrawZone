@@ -14,6 +14,7 @@
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
 #include "logic/LogicGraph.cpp"
+#include "logic/LogicVariables.cpp"
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
 #include "ui/Viewport3DRenderer.cpp"
@@ -31,6 +32,7 @@ SpatialModule::SpatialModule() :
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
 	slotsValuesCC("Slots"),
+	variablesValuesCC("Variables"),
 	psnOutput(this)
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of people currently tracked, all surfaces together", 0, 0);
@@ -72,6 +74,12 @@ SpatialModule::SpatialModule() :
 
 	moduleParams.addChildControllableContainer(&psnOutput);
 	moduleParams.addChildControllableContainer(&liveMode);
+	//before the graphs : their Get / Set nodes point to the variables
+	variableManager.valuesParent = &variablesValuesCC;
+	variablesValuesCC.saveAndLoadRecursiveData = false;	// live values, the Default Values are saved with the variables
+	valuesCC.addChildControllableContainer(&variablesValuesCC);
+	moduleParams.addChildControllableContainer(&variableManager);
+	variableManager.hideInEditor = true;	// edited from the Logic Graph panel only (card Variables), 06/11/2026
 	logicManager.module = this;
 	moduleParams.addChildControllableContainer(&logicManager);
 	logicManager.addItem(new LogicGraph(this), var(), false);
@@ -535,6 +543,12 @@ void SpatialModule::setupInspectorSections()
 			return Array<Chip>({ chip(String(n) + (n == 1 ? " surface" : " surfaces"), false) });
 		};
 
+	variableManager.sectionSummary = [this, chip]()
+		{
+			int n = variableManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " variable" : " variables"), n > 0) });
+		};
+
 	logicManager.sectionSummary = [this, chip]()
 		{
 			int n = logicManager.items.size();
@@ -570,9 +584,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones, Logic
+	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones, Variables, Logic
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager, &logicManager };
+	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager, &variableManager, &logicManager };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)

@@ -776,6 +776,7 @@ static void addRelativePins(std::function<void(const String&, LogicPin::Kind)> a
 	add("Zone Y", LogicPin::PERCENT);
 	add("Surface X", LogicPin::PERCENT);
 	add("Surface Y", LogicPin::PERCENT);
+	add("Zone", LogicPin::TEXT);	// name of the zone the person is in ("A + B" where zones overlap), empty outside
 }
 
 //position in meters on surface -> 0-1 of the surface (-1 when its size is unknown)
@@ -806,6 +807,7 @@ bool PersonRelativePositionNode::read(LogicGraph& g, Array<var>& values)
 	values.add(p->relativePosition->x);
 	values.add(p->relativePosition->y);
 	addSurfaceRelative(values, p->position->getPoint(), getSurfaceNamed(module, p->surfaceName->stringValue()));
+	values.add(p->zoneName->stringValue());
 	return true;
 }
 
@@ -829,6 +831,7 @@ bool SlotRelativePositionNode::read(LogicGraph&, Array<var>& values)
 	values.add(p != nullptr ? p->relativePosition->x : -1.0f);
 	values.add(p != nullptr ? p->relativePosition->y : -1.0f);
 	addSurfaceRelative(values, s->position->getPoint(), LogicTargets::getSurface(surfaceTarget, module));
+	values.add(p != nullptr ? p->zoneName->stringValue() : String());
 	return true;
 }
 
@@ -1116,6 +1119,10 @@ LogicNodeManager::LogicNodeManager() :
 	add(Factory<LogicNode>::Definition::createDef<PersonHeightNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<SlotPositionNode>("Meters"));
 	add(Factory<LogicNode>::Definition::createDef<ZoneDistanceNode>("Meters"));
+	//variables (brick 5) : the create menu lists one entry per variable of the Cockpit, these are their node types
+	auto typed = [](const String& t) { var p(new DynamicObject()); p.getDynamicObject()->setProperty("varType", t); return p; };
+	add(Factory<LogicNode>::Definition::createDef<GetOnOffVariableNode>("Variables"));
+	for (auto& t : StringArray { "Number", "Percentage", "Time", "Meters" }) add(Factory<LogicNode>::Definition::createDef<GetVariableNode>("Variables", "Get " + t, typed(t)));
 	add(Factory<LogicNode>::Definition::createDef<CompareNode>("Compare"));
 	add(Factory<LogicNode>::Definition::createDef<InRangeNode>("Compare"));
 	add(Factory<LogicNode>::Definition::createDef<AndNode>("Compare"));
@@ -1124,6 +1131,8 @@ LogicNodeManager::LogicNodeManager() :
 	add(Factory<LogicNode>::Definition::createDef<NotNode>("Compare"));
 	add(Factory<LogicNode>::Definition::createDef<BranchNode>("Flow"));
 	add(Factory<LogicNode>::Definition::createDef<LogNode>("Outputs"));
+	for (auto& t : StringArray { "On-Off", "Number", "Percentage", "Time", "Meters" }) add(Factory<LogicNode>::Definition::createDef<SetVariableNode>("Set Variables", "Set " + t, typed(t)));
+	add(Factory<LogicNode>::Definition::createDef<ResetVariablesNode>("Set Variables"));
 }
 
 LogicNodeManager::~LogicNodeManager()
@@ -1444,7 +1453,7 @@ String LogicNodeManager::getDescription(const String& type)
 		{ "Free Slots", "Player slots still free" }, { "Slot Person", "Id of the person in a slot" },
 		{ "Zone Presence Time", "Time since the zone is occupied" }, { "Slot Hold Remaining", "Time before a held slot is released" },
 		{ "Person Age", "Time since the person appeared" }, { "Zone Occupancy", "People / capacity of a zone" },
-		{ "Person Relative Position", "0-1 in its zone and on its surface" }, { "Slot Relative Position", "0-1 of the player of a slot" },
+		{ "Person Relative Position", "0-1 in its zone and on its surface, and that zone" }, { "Slot Relative Position", "0-1 of the player of a slot, and its zone" },
 		{ "Person Position", "X / Y in meters" }, { "Person Height", "Height in meters" },
 		{ "Slot Position", "X / Y of a player slot" }, { "Zone Average Distance To Center", "Mean distance of the people to the centre" },
 		{ "Compare", "= != > >= < <= a threshold" }, { "In Range", "Between two values" },
