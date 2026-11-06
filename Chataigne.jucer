@@ -1459,7 +1459,15 @@
             <FILE id="dzTdCp" name="TrackingData.cpp" compile="0" resource="0"
                   file="Source/Module/modules/spatial/TrackingData.cpp"/>
             <FILE id="dzTdHd" name="TrackingData.h" compile="0" resource="0" file="Source/Module/modules/spatial/TrackingData.h"/>
+            <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F503}" name="logic">
+              <FILE id="dzLgCp" name="LogicGraph.cpp" compile="0" resource="0" file="Source/Module/modules/spatial/logic/LogicGraph.cpp"/>
+              <FILE id="dzLgHd" name="LogicGraph.h" compile="0" resource="0" file="Source/Module/modules/spatial/logic/LogicGraph.h"/>
+            </GROUP>
             <GROUP id="{6A1F3C2E-8B4D-4E7A-9C15-D2A7B3E4F502}" name="ui">
+              <FILE id="dzLpCp" name="LogicGraphPanel.cpp" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/LogicGraphPanel.cpp"/>
+              <FILE id="dzLpHd" name="LogicGraphPanel.h" compile="0" resource="0"
+                    file="Source/Module/modules/spatial/ui/LogicGraphPanel.h"/>
               <FILE id="dzTvCp" name="TopViewRenderer.cpp" compile="0" resource="0"
                     file="Source/Module/modules/spatial/ui/TopViewRenderer.cpp"/>
               <FILE id="dzSeHd" name="SpatialSectionEditor.h" compile="0" resource="0"

@@ -964,6 +964,12 @@
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3366,6 +3372,8 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>

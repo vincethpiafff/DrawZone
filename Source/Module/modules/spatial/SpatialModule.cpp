@@ -12,12 +12,14 @@
 #include "SpatialSurface.cpp"
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
+#include "logic/LogicGraph.cpp"
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
 #include "ui/Viewport3DRenderer.cpp"
 #include "SpatialVideoOutput.cpp"
 #include "SpatialPSNOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
+#include "ui/LogicGraphPanel.cpp"
 #if ORGANICUI_USE_MCP
 #include "MCP/ChataigneMcp.h"	// Live Mode : MCP server paused
 #endif
@@ -67,6 +69,9 @@ SpatialModule::SpatialModule() :
 
 	moduleParams.addChildControllableContainer(&psnOutput);
 	moduleParams.addChildControllableContainer(&liveMode);
+	logicManager.module = this;
+	moduleParams.addChildControllableContainer(&logicManager);
+	logicManager.addItem(new LogicGraph(this), var(), false);
 
 	setupInspectorSections();
 
@@ -149,6 +154,7 @@ void SpatialModule::updateZones()
 	}
 	psnOutput.update(s.persons);
 	updatePeople(s);
+	logicManager.process();	// after the zones, the slots and the people : the graphs read their values
 }
 
 void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
@@ -518,6 +524,21 @@ void SpatialModule::setupInspectorSections()
 			return Array<Chip>({ chip(String(n) + (n == 1 ? " surface" : " surfaces"), false) });
 		};
 
+	logicManager.sectionSummary = [this, chip]()
+		{
+			int n = logicManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " graph" : " graphs"), false) });
+		};
+
+	liveMode.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<EnablingControllableContainerEditor>(LIVE, [this, chip]()
+				{
+					bool on = liveMode.isLive();
+					return Array<Chip>({ chip(on ? "On air" : "Off", on) });
+				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+		};
+
 	psnOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
 		{
 			return new SpatialSectionEditor<EnablingControllableContainerEditor>(OUTPUT, [this, chip]()
@@ -538,9 +559,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones
+	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones, Logic
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager };
+	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager, &logicManager };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)

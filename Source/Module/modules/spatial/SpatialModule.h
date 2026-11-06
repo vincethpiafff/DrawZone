@@ -25,6 +25,7 @@
 #include "SpatialSurface.h"
 #include "SpatialSource.h"
 #include "SpatialZone.h"
+#include "logic/LogicGraph.h"
 #include "SpatialPSNOutput.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
@@ -139,6 +140,9 @@ public:
 	SpatialPSNOutput psnOutput;		// player slots sent as PSN trackers
 	SpatialLiveMode liveMode;
 
+	//Logic Graph (D18) : named graphs, run in updateZones after the zones and the slots
+	LogicGraphManager logicManager;
+
 	void processMessageInternal(const OSCMessage& msg) override;
 
 	void updateZones();
@@ -174,3 +178,4 @@ public:
 };
 
 #include "ui/TrackingMonitorPanel.h"
+#include "ui/LogicGraphPanel.h"
