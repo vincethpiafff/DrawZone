@@ -5,6 +5,34 @@ Versions [SemVer](https://semver.org/lang/fr/) propres à DrawZone.
 
 ## [Non publié]
 
+## [0.7.2] - 2026-11-07
+
+Logic Graph : la logique du Cockpit en graphes de nodes, façon Blueprints, avec des variables envoyées en OSC.
+
+### Ajouté
+- Panneau **Logic Graph** : graphes nommés en onglets (bloc Logic du Cockpit), liens d'exécution et de
+  données, aimantation sur les nodes, grille en option, mini-carte, annuler / refaire. Les graphes tournent
+  dans le Cockpit au rythme des zones, même panneau fermé ou en Live Mode.
+- **Nodes** : événements (On Start, Timer, Zone Entered / Exited, Slot Joined / Left, Person Appeared / Lost),
+  états On-Off (Zone Presence, Zone Full, Slot Occupied, Slot Held), compteurs, temps (HH:MM:SS:FF),
+  pourcentages, mètres (positions, hauteur, distance au centre), positions relatives dans la zone et la surface
+  avec le nom de la zone, Compare, In Range, And, Or, Xor, Not, Branch, Log.
+- **Variables** (On-Off, Number, Percentage, Time, Meters) : carte Variables flottante sur le graphe (créer,
+  renommer, valeur, valeur par défaut, Reset), valeurs aussi dans Values > Variables ; nodes Get, Set (Set / Add /
+  Subtract, On / Off / Toggle, en continu quand seule Value est reliée), Reset Variables.
+- **OSC** : bouton OSC par variable, la valeur part à chaque changement par les sorties OSC du Cockpit
+  (`/drawzone/variables/<nom>` par défaut) ; moniteur OSC OUT dépliable sur la carte.
+- Édition : menu du clic droit en deux colonnes (Grouping, Input Data, Logic, Output Data, une ligne d'aide par
+  node) ; lien lâché dans le vide = menu filtré des nodes compatibles, créés reliés, New Variable ; réglages
+  modifiables dans les nodes ; groupes de nodes colorés et repliables (G, Maj + G, renommer) ; sélection au
+  rectangle, H masque, Ctrl + clic sur un lien le supprime.
+- Simulations : `check_logic.ps1` (49 checks) et `check_logic_full.ps1` (61 checks, tous les nodes, slots tenus,
+  zones qui se croisent), `osc_capture.ps1`.
+
+### Limites connues
+- L'illumination du chemin parcouru (prévue en brique 8) est reportée en bonus (v0.8).
+- Une variable Percentage reçoit -1 hors zone (affiché « -- » sur la carte, « -100 % » dans Values).
+
 ## [0.7.1] - 2026-11-06
 
 Live Mode : un mode spectacle qui coupe l'affichage et l'édition pendant que tout le calcul continue.
