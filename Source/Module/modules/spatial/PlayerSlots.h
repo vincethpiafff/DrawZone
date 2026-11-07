@@ -63,6 +63,10 @@ public:
 	Array<int> waitingIds;	// tracked people without a slot, in order of arrival
 	Array<int> releasedIds;	// slot removed by hand : no slot again until they leave the surface or are assigned by hand
 
+	//Joined and Left since the Logic Graph last read them (slot from 1), cleared after each run of the graphs
+	struct SlotEvent { int slot; int personId; bool joined; };
+	Array<SlotEvent> events;
+
 	void update(const Array<TrackedPerson>& persons);
 	int getSlotIndexForPerson(int id) const;	// 0-based, -1 = no slot
 

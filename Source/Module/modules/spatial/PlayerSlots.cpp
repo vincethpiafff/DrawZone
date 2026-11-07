@@ -22,7 +22,7 @@ PlayerSlot::PlayerSlot(int index) :
 	position->setControllableFeedbackOnly(true);
 	held = addBoolParameter("Held", "Hold Spot To Reclaim mode : the person was lost, the slot waits at its last position for anyone without a slot to walk in", false);
 	held->setControllableFeedbackOnly(true);
-	holdRemaining = addFloatParameter("Hold Remaining", "Seconds before a held slot is released (-1 = held until reclaimed, 0 = not held)", 0, -1);
+	holdRemaining = (FloatParameter*)addParameter(new TimecodeParameter("Hold Remaining", "Seconds before a held slot is released (-1 = held until reclaimed, 0 = not held)", 0, -1));
 	holdRemaining->setControllableFeedbackOnly(true);
 	joined = addTrigger("Joined", "Triggered when a person takes this slot (not when a held slot is reclaimed)");
 	joined->setControllableFeedbackOnly(true);
@@ -47,7 +47,7 @@ PlayerSlots::PlayerSlots() :
 	releaseMode = addEnumParameter("Slot Release", "When a person is lost by the tracking : Next Person Takes Slot frees the slot at once for the last person who arrived ; Hold Spot To Reclaim keeps the slot at the last position, the first person without a slot who walks in takes it");
 	releaseMode->addOption("Next Person Takes Slot", NEXT_PERSON)->addOption("Hold Spot To Reclaim", HOLD_SPOT);
 
-	holdTime = addFloatParameter("Hold Time", "Hold Spot To Reclaim : time a held slot waits, in seconds, then it goes to the next person. 0 = waits until reclaimed", 5, 0);
+	holdTime = (FloatParameter*)addParameter(new TimecodeParameter("Hold Time", "Hold Spot To Reclaim : time a held slot waits, in seconds, then it goes to the next person. 0 = waits until reclaimed", 5));
 	reclaimRadius = addFloatParameter("Reclaim Radius", "Hold Spot To Reclaim : a person without a slot closer than this to the held spot takes the slot, in meters", .5f, 0);
 
 	slotsValues.saveAndLoadRecursiveData = false; //live data, names and colors are saved by getJSONData
@@ -144,6 +144,7 @@ void PlayerSlots::assign(PlayerSlot* slot, int id, Point<float> positionMeters)
 void PlayerSlots::release(PlayerSlot* slot)
 {
 	if (slot->isFree()) return;
+	events.add({ slots.indexOf(slot) + 1, slot->trackedId, false });
 	slot->trackedId = -1;
 	slot->occupied->setValue(false);
 	slot->personId->setValue(-1);
@@ -191,11 +192,13 @@ void PlayerSlots::assignByHand(int personId, Point<float> positionMeters, int sl
 		if (occupantId >= 0) //swap
 		{
 			assign(current, occupantId, occupantPosition);
+			events.add({ slots.indexOf(current) + 1, occupantId, true });
 			current->joined->trigger();
 		}
 	}
 
 	assign(target, personId, positionMeters);
+	events.add({ slotIndex + 1, personId, true });
 	target->joined->trigger();
 
 	waitingIds.removeFirstMatchingValue(personId);
@@ -292,6 +295,7 @@ void PlayerSlots::update(const Array<TrackedPerson>& persons)
 	{
 		int id = waitingIds[firstWaiting + i];
 		assign(freeList[i], id, findPerson(id)->position);
+		events.add({ slots.indexOf(freeList[i]) + 1, id, true });
 		freeList[i]->joined->trigger();
 	}
 	waitingIds.removeRange(firstWaiting, numAssigned);

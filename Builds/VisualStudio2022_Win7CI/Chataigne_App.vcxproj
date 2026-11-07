@@ -939,6 +939,9 @@
     <ClCompile Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialUnits.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\PlayerSlots.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -961,6 +964,15 @@
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.cpp">
@@ -3357,6 +3369,7 @@
     <ClInclude Include="..\..\Source\Module\modules\gpio\GPIOModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\commands\PosiStageNetCommand.h"/>
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialUnits.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialModule.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialSurface.h"/>
@@ -3365,6 +3378,9 @@
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialPSNOutput.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialZone.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.h"/>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialStyle.h"/>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.h"/>

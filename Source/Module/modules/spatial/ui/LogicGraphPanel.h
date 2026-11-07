@@ -1,0 +1,208 @@
+/*
+  ==============================================================================
+
+	LogicGraphPanel.h
+	Created: 6 Nov 2026
+	Author:  DrawZone
+
+	"Logic Graph" panel : edits the graphs of the Logic block of the first
+	Cockpit module (look B of 06/11/2026 : like the Tracking Monitor).
+	Tabs for the graphs, a dotted canvas (wheel = zoom, right or middle drag
+	= pan), nodes created with a right click, moved by dragging (magnetic on
+	the edges and centres of the other nodes, optional 20 px grid, Alt = free),
+	links pulled from pin to pin, a mini-map. Everything goes through the undo.
+
+	The graphs never run here : the module runs them (LogicGraph.h). Live Mode
+	freezes this panel and locks editing.
+
+  ==============================================================================
+*/
+
+#pragma once
+
+class LogicGraphPanel :
+	public ShapeShifterContentComponent,
+	private Timer
+{
+public:
+	LogicGraphPanel(const String& contentName);
+	~LogicGraphPanel();
+
+	static ShapeShifterContent* create(const String& contentName) { return new LogicGraphPanel(contentName); }
+
+	static const int refreshRateHz = 15;
+
+	void paint(Graphics& g) override;
+	void resized() override;
+	void timerCallback() override;
+
+	void mouseMove(const MouseEvent& e) override;
+	void mouseDown(const MouseEvent& e) override;
+	void mouseDrag(const MouseEvent& e) override;
+	void mouseUp(const MouseEvent& e) override;
+	void mouseDoubleClick(const MouseEvent& e) override;
+	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
+	bool keyPressed(const KeyPress& key) override;	// Delete : selected nodes and groups, H : hide / show them, G : group them, F : frame all, Ctrl + Shift + L : Live Mode
+
+private:
+	SpatialModule* getSpatialModule();
+	LogicGraph* getGraph();	// the graph of the selected tab
+	int graphIndex = 0;
+
+	//layout
+	Rectangle<int> headerRect, canvasRect, miniMapRect;
+	//header wider than the panel : scrolled by a right drag or the wheel over it, clicks only in its visible part
+	Rectangle<int> headerVisibleRect;
+	int headerScroll = 0, headerOverflow = 0;
+	bool headerScrolling = false;
+	bool replayingClick = false;	// a right click without drag on the header keeps its usual action
+	float headerScrollLastX = 0;
+	bool hitHeader(Rectangle<int> r, Point<int> p) const { return r.contains(p) && headerVisibleRect.contains(p); }
+	Array<Rectangle<int>> tabRects;
+	Rectangle<int> addTabRect, snapNodesRect, gridRect, zoomRect, liveRect;
+
+	//view : screen = canvasRect top left + (canvas - viewOrigin) x zoom
+	Point<float> viewOrigin { -40, -40 };
+	float zoom = 1;
+	Point<float> toScreen(Point<float> canvas) const;
+	Point<float> toCanvas(Point<float> screen) const;
+	void frameAll();
+	Rectangle<float> getContentBounds(LogicGraph* graph) const;	// visible nodes and groups, empty if none
+
+	//options of the panel (not saved in the session)
+	bool snapToNodes = true;
+	bool snapToGrid = false;
+	static constexpr float gridStep = 20;
+
+	//node geometry, canvas pixels
+	static const int headerHeight = 34;
+	static const int rowHeight = 26;
+	static const int padding = 6;
+	Rectangle<float> getNodeRect(LogicNode* n) const;
+
+	//settings edited in the nodes (look C of 06/11/2026, like Unreal) : one row per setting under the header, and a field
+	//next to an input that is not linked when a setting gives its value (Value, Condition, B...). A click edits it :
+	//switch, list (choices, zones, variables...) or a text box. Pills (compare nodes) : a click opens their settings
+	struct NodeField { Parameter* parameter = nullptr; String pin; Rectangle<float> rect; };	// rect : canvas ; pin empty = its own row
+	Array<NodeField> getNodeFields(LogicGraph* graph, LogicNode* n) const;
+	int getSettingRows(LogicNode* n) const;
+	void paintField(Graphics& g, Parameter* p, Rectangle<float> screen, float alpha);
+	void editField(Parameter* p, Rectangle<int> screen);
+	void showPillSettings(LogicNode* n);
+	std::unique_ptr<TextEditor> fieldEditor;
+	WeakReference<Controllable> fieldEditorParameter;
+	void closeFieldEditor(bool commit);
+	Point<float> getPinPosition(LogicNode* n, const String& pin, bool output) const;
+	Point<float> paintPin(Graphics& g, LogicGraph* graph, LogicNode* n, const LogicPinDef& p, float alpha);	// returns its screen position
+	void paintPillNode(Graphics& g, LogicGraph* graph, LogicNode* n, Rectangle<float> r, const String& symbol, float alpha, bool showText);
+
+	struct PinRef
+	{
+		WeakReference<Inspectable> node;
+		String pin;
+		bool output = false;
+		LogicPin::Kind kind = LogicPin::EXEC;
+		bool isValid() const { return node != nullptr && pin.isNotEmpty(); }
+	};
+	PinRef getPinAt(Point<float> canvas) const;
+	LogicNode* getNodeAt(Point<float> canvas) const;
+
+	//groups (look C) : expanded, a filled frame with its title large in the background ; collapsed, a card with
+	//the pins of the links leaving it. Title : arrow (collapse), color capsule (picker), double click (rename), the rest moves it
+	static const int groupTitleHeight = 44;
+	struct GroupPin { String node, pin; bool output = false; LogicPin::Kind kind = LogicPin::EXEC; String label; };
+	enum GroupPart { GROUP_NONE, GROUP_ARROW, GROUP_COLOR, GROUP_TITLE, GROUP_RESIZE };
+	Rectangle<float> getGroupRect(LogicGraph* graph, LogicGroup* gr) const;	// canvas, as drawn
+	Rectangle<float> getGroupColorRect(LogicGroup* gr) const;					// canvas, the capsule
+	Array<GroupPin> getGroupPins(LogicGraph* graph, LogicGroup* gr) const;
+	Point<float> getGroupPinPosition(LogicGroup* gr, int row, bool output) const;
+	bool getLinkEnd(LogicGraph* graph, const String& nodeUid, const String& pin, bool output, Point<float>& pos) const;	// false : not drawn (inside a collapsed group)
+	LogicGroup* getGroupAt(Point<float> canvas, GroupPart& part) const;
+	void paintGroup(Graphics& g, LogicGraph* graph, LogicGroup* gr);
+	void groupSelectedNodes();		// G
+	void ungroupSelected();			// Shift + G : the selected groups go, their nodes stay
+	void toggleGroup(LogicGroup* gr);
+	void renameGroup(LogicGroup* gr);	// double click on its title, or Grouping > Rename Group
+	void showGroupColorPicker(LogicGroup* gr);
+	Array<LogicGroup*> getSelectedGroups();
+	WeakReference<Inspectable> dragGroup;
+	Point<float> dragGroupStart;	// its position (move) or size (resize) at the start
+
+	//interactions
+	enum DragMode { NONE, PAN, MOVE_NODE, WIRE, MINIMAP, SELECT_RECT, MOVE_GROUP, RESIZE_GROUP, DRAG_VARIABLE };
+	DragMode dragMode = NONE;
+	WeakReference<Inspectable> dragNode;
+	Point<float> dragStartNode, dragStartMouse;	// canvas
+	Array<WeakReference<Inspectable>> dragOthers;	// the other selected nodes, moved with dragNode
+	Array<Point<float>> dragOthersStart;
+	Point<float> selectStart, selectEnd;		// canvas, right drag
+	bool selectAdd = false;						// Ctrl or Shift : adds to the selection
+
+	Array<LogicNode*> getSelectedNodes();
+	void removeSelectedNodes();
+	void toggleHideSelected();	// H : hidden nodes do nothing until shown again
+	void paintSelectRect(Graphics& g);
+	Point<float> panLastMouse;					// screen
+	PinRef wireFrom;
+	Point<float> wireMouse;						// canvas
+	PinRef hoveredPin;
+	//Ctrl + left click on a link removes it ; while Ctrl is held, the link under the mouse shows in red
+	int hoveredLink = -1;
+	int getLinkAt(LogicGraph* graph, Point<float> screen) const;	// index in graph->links, -1 if none
+	void updateHoveredLink(Point<float> screen, bool ctrl);
+	void modifierKeysChanged(const ModifierKeys& mods) override;
+
+	//magnetic guides while a node moves (canvas), and what it is aligned on
+	Array<Line<float>> guides;
+	String snapLabel;
+	Point<float> snapPosition(LogicNode* n, Point<float> wanted, bool free);
+
+	//from : a link dropped in the void from this pin : only the nodes that plug on it, created linked
+	void showCanvasMenu(Point<float> canvas, const PinRef* from = nullptr);
+	void showTabMenu(int index);
+	void removeNode(LogicNode* n);
+	void renameGraph(LogicGraph* g);
+
+	bool live = false;
+
+	void paintHeader(Graphics& g);
+	void paintHeaderEdges(Graphics& g);
+	void paintGrid(Graphics& g);
+	void paintLinks(Graphics& g, LogicGraph* graph);
+	void paintNode(Graphics& g, LogicGraph* graph, LogicNode* n);
+	void paintGuides(Graphics& g);
+	void paintMiniMap(Graphics& g, LogicGraph* graph);
+	void paintLive(Graphics& g);
+	Path getWirePath(Point<float> from, Point<float> to) const;	// screen
+
+	//create menu of the right click (look C of 06/11/2026 : two columns, sections and types on the left,
+	//the nodes of the type with one line of help on the right) ; Escape or a click beside closes it
+	std::unique_ptr<Component> createMenu;
+	void closeCreateMenu();
+	void createFromMenu(const String& type, Point<float> canvas);	// a factory type, "#group", "#emptyGroup", "#ungroup", "#get:<variable>", "#set:<variable>", "#newVariable"
+	PinRef menuFrom;	// the pin of the link dropped in the void, while its menu is open
+	void linkFromMenu(LogicNode* created);	// links menuFrom to the first pin of created that fits
+
+	//card Variables (look B of 06/11/2026) : floating at the top left of the canvas, folds into a pill.
+	//+ = new variable (type), double click on a name = rename, click on a value = change it, reset button,
+	//right click on a row = rename / default value / delete, drag a row into the graph = Get or Set
+	bool variablesCardOpen = true;
+	Rectangle<int> varCardRect, varFoldRect, varAddRect;
+	struct VarRow { WeakReference<Inspectable> variable; Rectangle<int> row, name, value, osc, reset, address; };	// address : under the row while Send OSC is on
+	//monitor of the card (OSC out) : the variables sent, their address and last value, folded by default
+	bool oscMonitorOpen = false;
+	Rectangle<int> oscMonitorHeader;
+	Array<VarRow> varRows;
+	WeakReference<Inspectable> dragVariable;
+	Point<float> dragVariableMouse;	// screen
+	void layoutVariablesCard();
+	void paintVariablesCard(Graphics& g);
+	bool variablesCardMouseDown(const MouseEvent& e);	// true : the card took the click
+	bool variablesCardDoubleClick(const MouseEvent& e);
+	void showNewVariableMenu();
+	void editVariableValue(SpatialVariable* v, bool defaultValue);
+	void askText(const String& title, const String& initial, std::function<void(const String&)> onOK);
+	static bool setVariableFromText(Parameter* p, SpatialVariable::Type t, const String& text);
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogicGraphPanel)
+};

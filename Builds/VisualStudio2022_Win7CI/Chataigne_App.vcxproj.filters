@@ -536,6 +536,9 @@
     <Filter Include="Chataigne\Source\Module\modules\posistagenet">
       <UniqueIdentifier>{8315CC6E-A442-E46E-6881-E59DA25239A7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Chataigne\Source\Module\modules\spatial\logic">
+      <UniqueIdentifier>{84A01A87-1164-7A98-36B3-30E280BBB8F3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Chataigne\Source\Module\modules\spatial\ui">
       <UniqueIdentifier>{6B88DF83-E71E-294B-92A7-3AFCDD5ABA85}</UniqueIdentifier>
     </Filter>
@@ -2128,6 +2131,9 @@
     <ClCompile Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.cpp">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\SpatialUnits.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\PlayerSlots.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClCompile>
@@ -2151,6 +2157,15 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\TrackingData.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.cpp">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\Module\modules\spatial\ui\TopViewRenderer.cpp">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
@@ -5301,6 +5316,9 @@
     <ClInclude Include="..\..\Source\Module\modules\posistagenet\PosiStageNetModule.h">
       <Filter>Chataigne\Source\Module\modules\posistagenet</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\SpatialUnits.h">
+      <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\PlayerSlots.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
     </ClInclude>
@@ -5324,6 +5342,15 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\TrackingData.h">
       <Filter>Chataigne\Source\Module\modules\spatial</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicGraph.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\logic\LogicVariables.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Module\modules\spatial\ui\LogicGraphPanel.h">
+      <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\Module\modules\spatial\ui\SpatialSectionEditor.h">
       <Filter>Chataigne\Source\Module\modules\spatial\ui</Filter>

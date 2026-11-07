@@ -16,8 +16,8 @@ Nom : le module « Spatial » s'affiche **Cockpit** depuis le 28/10/2026 (D14).
 | **v0.5** | Entrée PSN, multi-sources, transformation par source | Augmenta et un flux PSN dans la même scène | ✅ v0.5.0 (31/10/2026) |
 | **v0.6** | Viewport 3D | Surfaces (sol, mur) placées en 3D, zones, slots et sortie vidéo par surface, PSN nommé par surface (D17) ; volumes : bonus | ✅ v0.6.0 (06/11/2026) |
 | **v0.7.1** | Live Mode | Mode spectacle : affichage et édition coupés, tout le calcul et les sorties continuent | ✅ v0.7.1 (06/11/2026) |
-| **v0.7.2** | Graphe nodal de base (Logic Graph) | Événements, Branch, variables, sorties OSC, éditeur avec aimantation (D18) | |
-| **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct, prefabs | |
+| **v0.7.2** | Graphe nodal de base (Logic Graph) | Événements, Branch, variables, sorties OSC, éditeur avec aimantation (D18) | ✅ v0.7.2 (07/11/2026) |
+| **v0.8** | Graphe avancé | Timelines, Delay, DoOnce, machines à états, débogage visuel en direct (dont l illumination du chemin parcouru, mise de côté en v0.7.2), prefabs | |
 | **v0.9** | Module TrackSimu (D16) | Blobs simulés dans Chataigne : une ou plusieurs scènes 2D sur des plans X / Y / Z, déplacés à la main ou par des mouvements (marche humaine, toucher d'une surface) | |
 | **v1.0** | Stabilisation | Mode show, sauvegarde robuste, documentation | |
 | **v2.x** | Capteurs bruts et calibration | LiDAR 2D/3D, caméras de profondeur (Orbbec…) | |

@@ -54,7 +54,12 @@ void TrackingMonitorPanel::resized()
 	columnRect = r.removeFromRight(columnCollapsed ? railWidth : columnWidth);
 
 	r.reduce(8, 8);
-	headerRect = r.removeFromTop(24);
+	headerVisibleRect = r.removeFromTop(24);
+	//chips on the right (748 px) + module state, surface and people on the left (about 600 px)
+	const int neededWidth = 748 + 600;
+	headerOverflow = jmax(0, neededWidth - headerVisibleRect.getWidth());
+	headerScroll = jlimit(0, headerOverflow, headerScroll);
+	headerRect = headerOverflow > 0 ? Rectangle<int>(headerVisibleRect.getX() - headerScroll, headerVisibleRect.getY(), neededWidth, headerVisibleRect.getHeight()) : headerVisibleRect;
 	shortcutsRect = headerRect.removeFromRight(104).reduced(0, 1);
 	headerRect.removeFromRight(8);
 	liveRect = headerRect.removeFromRight(64).reduced(0, 1);
@@ -287,7 +292,11 @@ void TrackingMonitorPanel::paint(Graphics& g)
 		return;
 	}
 
-	paintHeader(g);
+	{
+		Graphics::ScopedSaveState state(g);
+		g.reduceClipRegion(headerVisibleRect);
+		paintHeader(g);
+	}
 	paintSourceBar(g);
 	if (!topViewRect.isEmpty())
 	{
@@ -305,13 +314,25 @@ void TrackingMonitorPanel::paint(Graphics& g)
 	else paintColumn(g);
 
 	if (slotDragging) paintSlotDrag(g);
-	paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
-	paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
-	paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
-	paintViewSwitch(g);
+	{
+		Graphics::ScopedSaveState state(g);
+		g.reduceClipRegion(headerVisibleRect);
+		paintOutputChip(g, spoutRect, spoutOn, spoutHovered, "Spout Output");
+		paintOutputChip(g, ndiRect, ndiOn, ndiHovered, "NDI Output");
+		paintOutputChip(g, psnRect, psnOn, psnHovered, psnLabel);
+		paintViewSwitch(g);
+	}
 	if (view3D && !live) paintSurfacesPanel(g);
-	paintShortcuts(g); //last : the unfolded list goes over everything
+	{
+		//last : the unfolded list goes over everything
+		Graphics::ScopedSaveState state(g);
+		RectangleList<int> clip(headerVisibleRect);
+		if (shortcutsPinned || shortcutsHovered) clip.add(getShortcutsPanelRect());
+		g.reduceClipRegion(clip);
+		paintShortcuts(g);
+	}
 	paintLive(g);
+	paintHeaderEdges(g);
 }
 
 Rectangle<int> TrackingMonitorPanel::getOutputBoxRect(Rectangle<int> chip)
@@ -348,7 +369,7 @@ void TrackingMonitorPanel::paintOutputChip(Graphics& g, Rectangle<int> chip, boo
 
 bool TrackingMonitorPanel::handleOutputChipClick(Point<int> pos, Rectangle<int> chip, BoolParameter* output)
 {
-	if (!chip.contains(pos)) return false;
+	if (!hitHeader(chip, pos)) return false;
 
 	if (getOutputBoxRect(chip).expanded(4).contains(pos)) output->setUndoableValue(output->boolValue(), !output->boolValue());
 	else if (SpatialSurface* surface = getShownSurface()) surface->videoOutput.selectThis();
@@ -1358,21 +1379,21 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 		return;
 	}
 
-	bool overPSN = psnRect.contains(e.getPosition());
+	bool overPSN = hitHeader(psnRect, e.getPosition());
 	if (overPSN != psnHovered)
 	{
 		psnHovered = overPSN;
 		repaint(psnRect);
 	}
 
-	bool overSpout = spoutRect.contains(e.getPosition());
+	bool overSpout = hitHeader(spoutRect, e.getPosition());
 	if (overSpout != spoutHovered)
 	{
 		spoutHovered = overSpout;
 		repaint(spoutRect);
 	}
 
-	bool overNDI = ndiRect.contains(e.getPosition());
+	bool overNDI = hitHeader(ndiRect, e.getPosition());
 	if (overNDI != ndiHovered)
 	{
 		ndiHovered = overNDI;
@@ -1387,7 +1408,7 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 	}
 
 	//shortcuts list : open while the mouse is on the chip or on the list itself
-	bool overShortcuts = shortcutsRect.contains(e.getPosition()) || (shortcutsHovered && getShortcutsPanelRect().contains(e.getPosition()));
+	bool overShortcuts = hitHeader(shortcutsRect, e.getPosition()) || (shortcutsHovered && getShortcutsPanelRect().contains(e.getPosition()));
 	if (overShortcuts != shortcutsHovered)
 	{
 		shortcutsHovered = overShortcuts;
@@ -1412,7 +1433,14 @@ void TrackingMonitorPanel::mouseMove(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 {
-	if (liveRect.contains(e.getPosition()))
+	//header too wide for the panel : a right drag over it scrolls it (in Live Mode too)
+	if (!replayingClick && headerOverflow > 0 && e.mods.isRightButtonDown() && headerVisibleRect.contains(e.getPosition()))
+	{
+		headerScrolling = true;
+		headerScrollLastX = e.position.x;
+		return;
+	}
+	if (hitHeader(liveRect, e.getPosition()))
 	{
 		toggleLiveMode();
 		return;
@@ -1452,7 +1480,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	//click on a person (top view, column or rail) : its parameters and values in the Inspector
 	//(right click : Assign slot / Release slot)
 	//but first the shortcuts chip : a click keeps the list open ; clicks on the open list do nothing else
-	if (shortcutsRect.contains(e.getPosition()))
+	if (hitHeader(shortcutsRect, e.getPosition()))
 	{
 		shortcutsPinned = !shortcutsPinned;
 		repaint();
@@ -1460,14 +1488,14 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 	}
 	if ((shortcutsPinned || shortcutsHovered) && getShortcutsPanelRect().contains(e.getPosition())) return;
 
-	if (surfaceChipRect.contains(e.getPosition()))
+	if (hitHeader(surfaceChipRect, e.getPosition()))
 	{
 		showSurfaceMenu();
 		return;
 	}
 
 	//2D / 3D switch ; in 3D the view only moves the camera : left drag orbit, right or middle drag pan
-	if (viewSwitchRect.contains(e.getPosition()))
+	if (hitHeader(viewSwitchRect, e.getPosition()))
 	{
 		setView3D(e.position.x >= viewSwitchRect.getCentreX());
 		return;
@@ -1496,7 +1524,7 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 			return;
 		}
 
-		if (psnRect.contains(e.getPosition()))
+		if (hitHeader(psnRect, e.getPosition()))
 		{
 			BoolParameter* output = sm->psnOutput.enabled;
 			if (getOutputBoxRect(psnRect).expanded(4).contains(e.getPosition())) output->setUndoableValue(output->boolValue(), !output->boolValue());
@@ -1624,6 +1652,14 @@ void TrackingMonitorPanel::mouseDown(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 {
+	if (headerScrolling)
+	{
+		headerScroll -= roundToInt(e.position.x - headerScrollLastX);
+		headerScrollLastX = e.position.x;
+		resized();
+		repaint();
+		return;
+	}
 	if (live) return;
 	if (cameraDrag != 0)
 	{
@@ -1711,6 +1747,17 @@ void TrackingMonitorPanel::mouseDrag(const MouseEvent& e)
 
 void TrackingMonitorPanel::mouseUp(const MouseEvent& e)
 {
+	if (headerScrolling)
+	{
+		headerScrolling = false;
+		if (e.getDistanceFromDragStart() < 4)
+		{
+			replayingClick = true;
+			mouseDown(e);
+			replayingClick = false;
+		}
+		return;
+	}
 	if (live) return;
 	if (cameraDrag != 0)
 	{
@@ -2238,6 +2285,14 @@ void TrackingMonitorPanel::paintViewSwitch(Graphics& g)
 
 void TrackingMonitorPanel::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
 {
+	if (headerOverflow > 0 && headerVisibleRect.contains(e.getPosition()))
+	{
+		float d = std::abs(wheel.deltaX) > std::abs(wheel.deltaY) ? wheel.deltaX : wheel.deltaY;
+		headerScroll -= roundToInt(d * 160);
+		resized();
+		repaint();
+		return;
+	}
 	if (live) return;
 	if (!view3D || !topViewRect.contains(e.getPosition()))
 	{
@@ -2451,6 +2506,8 @@ void TrackingMonitorPanel::paintLive(Graphics& g)
 	//header button : red when live, outlined otherwise
 	if (!liveRect.isEmpty())
 	{
+		Graphics::ScopedSaveState state(g);
+		g.reduceClipRegion(headerVisibleRect);
 		Rectangle<float> b = liveRect.toFloat();
 		if (live)
 		{
@@ -2496,4 +2553,28 @@ void TrackingMonitorPanel::paintLive(Graphics& g)
 	g.setFont(Font(12.0f));
 	g.drawText("Display frozen, editing locked. Tracking, zones, slots and outputs keep running.", banner.withTrimmedTop(50).reduced(12, 0), Justification::centredTop);
 	g.drawText("Click LIVE in the header (or Ctrl + Shift + L) to leave.", banner.withTrimmedTop(68).reduced(12, 0), Justification::centredTop);
+}
+
+void TrackingMonitorPanel::paintHeaderEdges(Graphics& g)
+{
+	using namespace TrackingMonitorStyle;
+	if (headerOverflow <= 0) return;
+
+	//a fade and an arrow on each side that still hides something : right drag (or the wheel) scrolls the header
+	auto edge = [&](bool left)
+		{
+			Rectangle<float> r = headerVisibleRect.toFloat();
+			r = left ? r.removeFromLeft(28) : r.removeFromRight(28);
+			ColourGradient grad(panelBg, left ? r.getX() : r.getRight(), r.getY(), panelBg.withAlpha(0.0f), left ? r.getRight() : r.getX(), r.getY(), false);
+			g.setGradientFill(grad);
+			g.fillRect(r);
+			Path p;
+			float cx = left ? r.getX() + 8 : r.getRight() - 8, cy = r.getCentreY();
+			if (left) p.addTriangle(cx + 3, cy - 5, cx + 3, cy + 5, cx - 3, cy);
+			else p.addTriangle(cx - 3, cy - 5, cx - 3, cy + 5, cx + 3, cy);
+			g.setColour(TEXT_COLOR.withAlpha(.8f));
+			g.fillPath(p);
+		};
+	if (headerScroll > 0) edge(true);
+	if (headerScroll < headerOverflow) edge(false);
 }

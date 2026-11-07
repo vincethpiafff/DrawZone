@@ -122,6 +122,8 @@ void MainContentComponent::init()
 	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Composition Video", &CompositionVideoPanel::create));
 	// DrawZone: Tracking Monitor panel
 	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Tracking Monitor", &TrackingMonitorPanel::create));
+	// DrawZone: Logic Graph panel
+	ShapeShifterFactory::getInstance()->defs.add(new ShapeShifterDefinition("Logic Graph", &LogicGraphPanel::create));
 
 	OrganicMainContentComponent::init();
 

@@ -65,6 +65,14 @@ private:
 
 	//layout, computed in resized()
 	Rectangle<int> headerRect;
+	//header wider than the panel : a strip scrolled by a right drag (or the wheel) over it, clicks only in the visible part
+	Rectangle<int> headerVisibleRect;
+	int headerScroll = 0, headerOverflow = 0;
+	bool headerScrolling = false;
+	bool replayingClick = false;	// a right click without drag on the header keeps its usual action
+	float headerScrollLastX = 0;
+	bool hitHeader(Rectangle<int> chip, Point<int> p) const { return chip.contains(p) && headerVisibleRect.contains(p); }
+	void paintHeaderEdges(Graphics& g);
 	Rectangle<int> topViewRect;
 	Rectangle<int> columnRect;
 	Rectangle<int> slotBarRect;	// player slots strip under the top view

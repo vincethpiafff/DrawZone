@@ -16,6 +16,7 @@
 #pragma once
 
 #include "TrackingData.h"
+#include "SpatialUnits.h"
 #include "ui/SpatialStyle.h"
 #include "ui/SpatialSectionEditor.h"
 #include "PlayerSlots.h"
@@ -25,6 +26,8 @@
 #include "SpatialSurface.h"
 #include "SpatialSource.h"
 #include "SpatialZone.h"
+#include "logic/LogicGraph.h"
+#include "logic/LogicVariables.h"
 #include "SpatialPSNOutput.h"
 
 //Values of one tracked person, shown in Values > People while the person is tracked
@@ -124,6 +127,8 @@ public:
 	void setupInspectorSections();
 
 	IntParameter* personCount;
+	IntParameter* frameRate;	// FF of the times shown HH:MM:SS:FF (SpatialUnits.h)
+	void onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c) override;
 
 	SpatialZoneManager zoneManager;
 	ControllableContainer zonesValuesCC;
@@ -138,6 +143,13 @@ public:
 
 	SpatialPSNOutput psnOutput;		// player slots sent as PSN trackers
 	SpatialLiveMode liveMode;
+
+	//Variables (v0.7.2 brick 5) : values kept by the graphs, in Values > Variables
+	SpatialVariableManager variableManager;
+	ControllableContainer variablesValuesCC;
+
+	//Logic Graph (D18) : named graphs, run in updateZones after the zones and the slots
+	LogicGraphManager logicManager;
 
 	void processMessageInternal(const OSCMessage& msg) override;
 
@@ -174,3 +186,4 @@ public:
 };
 
 #include "ui/TrackingMonitorPanel.h"
+#include "ui/LogicGraphPanel.h"

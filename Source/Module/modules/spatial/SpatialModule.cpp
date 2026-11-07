@@ -9,15 +9,19 @@
 */
 
 #include "TrackingData.cpp"
+#include "SpatialUnits.cpp"
 #include "SpatialSurface.cpp"
 #include "SpatialSource.cpp"
 #include "SpatialZone.cpp"
+#include "logic/LogicGraph.cpp"
+#include "logic/LogicVariables.cpp"
 #include "PlayerSlots.cpp"
 #include "ui/TopViewRenderer.cpp"
 #include "ui/Viewport3DRenderer.cpp"
 #include "SpatialVideoOutput.cpp"
 #include "SpatialPSNOutput.cpp"
 #include "ui/TrackingMonitorPanel.cpp"
+#include "ui/LogicGraphPanel.cpp"
 #if ORGANICUI_USE_MCP
 #include "MCP/ChataigneMcp.h"	// Live Mode : MCP server paused
 #endif
@@ -28,10 +32,13 @@ SpatialModule::SpatialModule() :
 	zonesValuesCC("Zones"),
 	peopleValuesCC("People"),
 	slotsValuesCC("Slots"),
+	variablesValuesCC("Variables"),
 	psnOutput(this)
 {
 	personCount = valuesCC.addIntParameter("Person Count", "Number of people currently tracked, all surfaces together", 0, 0);
 	personCount->setControllableFeedbackOnly(true);
+	frameRate = moduleParams.addIntParameter("Frame Rate", "Frames per second of every time shown HH:MM:SS:FF (hours, minutes, seconds, frames), for the whole session", 25, 1, 240);
+	TimecodeParameter::setFrameRate(frameRate->intValue());	// new session : back to its default
 
 	legacySceneSizeMode = legacySceneCC.addEnumParameter("Size Mode", "Sessions before v0.6 only : moved into the first surface");
 	legacySceneSizeMode->addOption("Auto (From Sources)", LEGACY_SCENE_AUTO)->addOption("Manual", LEGACY_SCENE_MANUAL);
@@ -67,6 +74,16 @@ SpatialModule::SpatialModule() :
 
 	moduleParams.addChildControllableContainer(&psnOutput);
 	moduleParams.addChildControllableContainer(&liveMode);
+	//before the graphs : their Get / Set nodes point to the variables
+	variableManager.valuesParent = &variablesValuesCC;
+	variableManager.oscModule = this;	// Send OSC of the variables : the OSC outputs of the Cockpit
+	variablesValuesCC.saveAndLoadRecursiveData = false;	// live values, the Default Values are saved with the variables
+	valuesCC.addChildControllableContainer(&variablesValuesCC);
+	moduleParams.addChildControllableContainer(&variableManager);
+	variableManager.hideInEditor = true;	// edited from the Logic Graph panel only (card Variables), 06/11/2026
+	logicManager.module = this;
+	moduleParams.addChildControllableContainer(&logicManager);
+	logicManager.addItem(new LogicGraph(this), var(), false);
 
 	setupInspectorSections();
 
@@ -89,9 +106,16 @@ void SpatialModule::processMessageInternal(const OSCMessage& msg)
 	if (AugmentaSource* a = sourceManager.getAugmentaSource(localPort != nullptr ? localPort->intValue() : -1)) a->processMessage(msg, this);
 }
 
+void SpatialModule::onControllableFeedbackUpdateInternal(ControllableContainer* cc, Controllable* c)
+{
+	OSCModule::onControllableFeedbackUpdateInternal(cc, c);
+	if (c == frameRate) TimecodeParameter::setFrameRate(frameRate->intValue());
+}
+
 void SpatialModule::afterLoadJSONDataInternal()
 {
 	OSCModule::afterLoadJSONDataInternal();
+	TimecodeParameter::setFrameRate(frameRate->intValue());
 
 	//session before v0.6 : its Scene block goes into the first surface, then is put back to default (not saved again)
 	if (!legacySceneSizeMode->isOverriden && !legacySceneSizeManual->isOverriden) return;
@@ -149,6 +173,8 @@ void SpatialModule::updateZones()
 	}
 	psnOutput.update(s.persons);
 	updatePeople(s);
+	logicManager.process();	// after the zones, the slots and the people : the graphs read their values
+	for (auto& surface : surfaceManager.items) surface->playerSlots.events.clearQuick();	// read by the graphs
 }
 
 void SpatialModule::updatePeople(const TrackingData::Snapshot& s)
@@ -225,7 +251,7 @@ SpatialPerson::SpatialPerson(int id) :
 	orientation->setControllableFeedbackOnly(true);
 	height = addFloatParameter("Height", "Height of the person as sent by the tracking system, in meters", 0);
 	height->setControllableFeedbackOnly(true);
-	age = addFloatParameter("Age", "Seconds since the person entered the surface, as sent by the tracking system", 0);
+	age = (FloatParameter*)addParameter(new TimecodeParameter("Age", "Seconds since the person entered the surface, as sent by the tracking system", 0));
 	age->setControllableFeedbackOnly(true);
 }
 
@@ -518,6 +544,27 @@ void SpatialModule::setupInspectorSections()
 			return Array<Chip>({ chip(String(n) + (n == 1 ? " surface" : " surfaces"), false) });
 		};
 
+	variableManager.sectionSummary = [this, chip]()
+		{
+			int n = variableManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " variable" : " variables"), n > 0) });
+		};
+
+	logicManager.sectionSummary = [this, chip]()
+		{
+			int n = logicManager.items.size();
+			return Array<Chip>({ chip(String(n) + (n == 1 ? " graph" : " graphs"), false) });
+		};
+
+	liveMode.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
+		{
+			return new SpatialSectionEditor<EnablingControllableContainerEditor>(LIVE, [this, chip]()
+				{
+					bool on = liveMode.isLive();
+					return Array<Chip>({ chip(on ? "On air" : "Off", on) });
+				}, Inspectable::getArrayAs<ControllableContainer, EnablingControllableContainer>(cc), isRoot);
+		};
+
 	psnOutput.customGetEditorFunc = [this, chip](bool isRoot, Array<ControllableContainer*> cc) -> InspectableEditor*
 		{
 			return new SpatialSectionEditor<EnablingControllableContainerEditor>(OUTPUT, [this, chip]()
@@ -538,9 +585,9 @@ void SpatialModule::setupInspectorSections()
 	}
 
 	//inspector order (Vincent's rule, keep it for the next blocks) :
-	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones
+	//Live Mode, network inputs, network outputs (OSC, then PSN), Sources, Surfaces (each with its Player Slots and Video Output), Zones, Variables, Logic
 	//all folded at creation and at load (Chataigne only saves the folded state)
-	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager };
+	Array<ControllableContainer*> order { &liveMode, receiveCC.get(), outputManager.get(), thruManager.get(), &psnOutput, &sourceManager, &surfaceManager, &zoneManager, &variableManager, &logicManager };
 	auto& list = moduleParams.controllableContainers;
 	int pos = 0;
 	for (auto& cc : order)
