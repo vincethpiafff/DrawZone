@@ -42,7 +42,13 @@ Parameter* SpatialVariable::addValueParameter(ControllableContainer* cc, Type t,
 	switch (t)
 	{
 	case ONOFF: return cc->addBoolParameter(name, help, false);
-	case PERCENT: return cc->addParameter(new PercentParameter(name, help + " (%)", 0));
+	case PERCENT:
+	{
+		//-1 too : "outside" (Zone X of a person out of any zone, a held slot) goes through as it is, shown --
+		Parameter* p = cc->addParameter(new PercentParameter(name, help + " (%, -1 = outside)", 0));
+		p->setRange(-1, 1);
+		return p;
+	}
 	case TIME: return cc->addParameter(new TimecodeParameter(name, help + " (HH:MM:SS:FF)", 0));
 	case METERS: return cc->addFloatParameter(name, help + " (meters)", 0);
 	default: return cc->addFloatParameter(name, help, 0);
@@ -103,7 +109,7 @@ String SpatialVariable::format(Type t, const var& value)
 	switch (t)
 	{
 	case ONOFF: return (bool)value ? "On" : "Off";
-	case PERCENT: return PercentParameter::toPercent(v);
+	case PERCENT: return v < 0 ? String("--") : PercentParameter::toPercent(v);	// -1 : outside
 	case TIME: return TimecodeParameter::toTimecode(v);
 	case METERS: return String(v, 2) + " m";
 	default: return v == std::floor(v) ? String((int64)v) : String(v, 3);
